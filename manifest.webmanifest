@@ -1,0 +1,24 @@
+{
+  "name": "GasGuard - ระบบตรวจจับแก๊สรั่ว",
+  "short_name": "GasGuard",
+  "description": "ระบบเฝ้าระวังแก๊สรั่วแบบเรียลไทม์ พร้อมแจ้งเตือน สถิติ และรองรับเซ็นเซอร์จริงผ่าน REST API / MQTT",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "แดชบอร์ด", "url": "./index.html#dashboard" },
+    { "name": "การแจ้งเตือน", "url": "./index.html#alerts" },
+    { "name": "ตรวจวัดเรียลไทม์", "url": "./index.html#realtime" }
+  ]
+}
