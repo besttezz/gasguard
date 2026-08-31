@@ -1,0 +1,9 @@
+{
+  "name": "gasguard-v2-autonomous-lpg-safety",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node server/dev-server.js",
+    "test": "node tests/engine.test.js"
+  }
+}
