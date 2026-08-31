@@ -1,10 +1,13 @@
 /* GasGuard Service Worker — offline shell + runtime cache */
-const VERSION = 'gasguard-v2.0.1';
+const VERSION = 'gasguard-v2.1.0';
 const CORE = [
   './',
   './index.html',
   './css/style.css',
+  './js/config.js',
   './js/store.js',
+  './js/auth.js',
+  './js/db.js',
   './js/sources.js',
   './js/alerts.js',
   './js/charts.js',
@@ -12,6 +15,7 @@ const CORE = [
   './js/app.js',
   './manifest.webmanifest',
   './vendor/chart.umd.min.js',
+  './vendor/supabase.min.js',
   './vendor/fa/css/all.min.css',
   './vendor/fa/webfonts/fa-solid-900.woff2',
   './icons/icon-192.png',

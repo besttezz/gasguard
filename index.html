@@ -30,34 +30,99 @@
         <div class="ambient-orb orb-1"></div>
         <div class="ambient-orb orb-2"></div>
     </div>
-    <form class="login-card" id="login-form" autocomplete="off">
+    <div class="login-card" id="login-card">
         <div class="login-logo"><i class="fas fa-shield-halved"></i></div>
         <h1>GasGuard</h1>
         <p class="login-sub">ระบบตรวจจับแก๊สรั่ว · เข้าสู่ระบบเพื่อใช้งาน</p>
 
-        <label class="field">
-            <span>รหัส PIN</span>
-            <div class="pin-wrap">
-                <input type="password" id="login-pin" inputmode="numeric" autocomplete="current-password"
-                       placeholder="••••" maxlength="12" required>
-                <button type="button" class="icon-btn ghost" id="toggle-pin" aria-label="แสดงรหัส">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>
-        </label>
+        <p class="login-note" id="db-not-configured" hidden>
+            <i class="fas fa-circle-info"></i> ยังไม่ได้เชื่อมต่อฐานข้อมูล ใช้งานโหมด PIN ในเครื่องนี้ก่อนได้
+            (ดูวิธีเชื่อมต่อบัญชี/ฐานข้อมูลใน README.md)
+        </p>
 
-        <label class="checkbox-row">
-            <input type="checkbox" id="login-remember" checked>
-            <span>จดจำการเข้าสู่ระบบบนเครื่องนี้</span>
-        </label>
+        <div class="login-tabs" id="login-tabs">
+            <button type="button" class="login-tab active" data-tab="signin">เข้าสู่ระบบ</button>
+            <button type="button" class="login-tab" data-tab="signup">สมัครสมาชิก</button>
+        </div>
 
-        <p class="login-error" id="login-error" hidden></p>
+        <!-- เข้าสู่ระบบด้วยบัญชี (Supabase) -->
+        <form class="login-panel" id="signin-form" autocomplete="off">
+            <label class="field">
+                <span>อีเมล</span>
+                <input type="email" class="form-input" id="signin-email" autocomplete="email" required placeholder="you@example.com">
+            </label>
+            <label class="field">
+                <span>รหัสผ่าน</span>
+                <div class="pin-wrap">
+                    <input type="password" class="form-input" id="signin-password" autocomplete="current-password" required placeholder="••••••••">
+                    <button type="button" class="icon-btn ghost toggle-pw" data-target="signin-password" aria-label="แสดงรหัส"><i class="fas fa-eye"></i></button>
+                </div>
+            </label>
+            <p class="login-error" id="signin-error" hidden></p>
+            <p class="login-note" id="signin-note" hidden></p>
+            <button class="btn-primary block" type="submit" id="signin-submit">
+                <i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบ
+            </button>
+            <button type="button" class="link-btn" id="forgot-password-btn">ลืมรหัสผ่าน?</button>
+        </form>
 
-        <button class="btn-primary block" type="submit">
-            <i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบ
-        </button>
-        <p class="login-hint">PIN เริ่มต้น: <code>1234</code> (เปลี่ยนได้ในหน้าตั้งค่า)</p>
-    </form>
+        <!-- สมัครสมาชิก (Supabase) -->
+        <form class="login-panel" id="signup-form" autocomplete="off" hidden>
+            <label class="field">
+                <span>ชื่อที่แสดง</span>
+                <input type="text" class="form-input" id="signup-name" autocomplete="name" placeholder="เช่น สมชาย ใจดี">
+            </label>
+            <label class="field">
+                <span>อีเมล</span>
+                <input type="email" class="form-input" id="signup-email" autocomplete="email" required placeholder="you@example.com">
+            </label>
+            <label class="field">
+                <span>รหัสผ่าน</span>
+                <div class="pin-wrap">
+                    <input type="password" class="form-input" id="signup-password" autocomplete="new-password" required minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร">
+                    <button type="button" class="icon-btn ghost toggle-pw" data-target="signup-password" aria-label="แสดงรหัส"><i class="fas fa-eye"></i></button>
+                </div>
+            </label>
+            <label class="field">
+                <span>ยืนยันรหัสผ่าน</span>
+                <input type="password" class="form-input" id="signup-password2" autocomplete="new-password" required minlength="6" placeholder="พิมพ์รหัสผ่านอีกครั้ง">
+            </label>
+            <p class="login-error" id="signup-error" hidden></p>
+            <p class="login-note" id="signup-success" hidden></p>
+            <button class="btn-primary block" type="submit" id="signup-submit">
+                <i class="fas fa-user-plus"></i> สมัครสมาชิก
+            </button>
+        </form>
+
+        <button type="button" class="link-btn" id="use-pin-mode-btn">ใช้โหมด PIN ออฟไลน์แทน</button>
+
+        <!-- โหมด PIN ออฟไลน์ (เดิม) -->
+        <form class="login-panel" id="login-form" autocomplete="off" hidden>
+            <label class="field">
+                <span>รหัส PIN</span>
+                <div class="pin-wrap">
+                    <input type="password" id="login-pin" inputmode="numeric" autocomplete="current-password"
+                           placeholder="••••" maxlength="12" required>
+                    <button type="button" class="icon-btn ghost" id="toggle-pin" aria-label="แสดงรหัส">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </label>
+
+            <label class="checkbox-row">
+                <input type="checkbox" id="login-remember" checked>
+                <span>จดจำการเข้าสู่ระบบบนเครื่องนี้</span>
+            </label>
+
+            <p class="login-error" id="login-error" hidden></p>
+
+            <button class="btn-primary block" type="submit">
+                <i class="fas fa-right-to-bracket"></i> เข้าสู่ระบบด้วย PIN
+            </button>
+            <p class="login-hint">PIN เริ่มต้น: <code>1234</code> (เปลี่ยนได้ในหน้าตั้งค่า)</p>
+            <button type="button" class="link-btn" id="use-account-mode-btn" hidden>กลับไปใช้บัญชีอีเมล</button>
+        </form>
+    </div>
 </div>
 
 <!-- ============ APP SHELL ============ -->
@@ -675,7 +740,11 @@
 </div>
 
 <script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/supabase.min.js"></script>
+<script src="js/config.js"></script>
 <script src="js/store.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
 <script src="js/sources.js"></script>
 <script src="js/alerts.js"></script>
 <script src="js/charts.js"></script>
