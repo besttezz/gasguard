@@ -11,6 +11,9 @@
 - [x] REST and MQTT adapter entry points
 - [x] JSON export and core engine tests
 - [x] Explainable Safety Replay and mock Validation Lab against a fixed-threshold comparator
+- [x] V2 data dictionary and expanded mock telemetry envelope for raw sensor, environment, quality, actuator, network, power, and hardware-health fields
+- [x] Feature-store prototype, multi-sensor mock topology, reliability analytics, event outcome labels, and Engineer Data Explorer
+- [x] Scenario catalog and acceptance criteria for UI mock data and hardware handoff
 
 ## Integration phase, required before field use
 
@@ -25,6 +28,11 @@
 
 ## Intelligence phase, only after data quality validation
 
+- [ ] Implement feature-store rollups: multi-window rate, acceleration, moving averages, peak/recovery, time-above-baseline, and event exposure
+- [ ] Implement corrected-reading validation against the selected sensor and calibration procedure; the current formula is prototype-only
+- [ ] Add multi-sensor/zone fusion, topology metadata from the 2D plan, and disagreement handling
+- [ ] Add event outcome labels, label confidence, alert lifecycle, and alarm-quality metrics
+- [ ] Add actuator/network/power history and reliability health calculations
 - [ ] Establish labeled event taxonomy: cooking, suspected leak, fault, sensor drift, connectivity loss, maintenance
 - [ ] Create data-quality monitoring and calibration records
 - [ ] Validate statistical baseline/anomaly model against historical data

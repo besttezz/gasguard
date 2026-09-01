@@ -6,16 +6,19 @@
 
   const contract = {
     deviceId: 'GG-KITCHEN-01', sensorId: 'LPG-01', locationId: 'restaurant-a', zoneId: 'kitchen',
-    gas: { value: 0, unit: 'ppm', rawValue: 0, calibrationVersion: 'prototype-v0' },
-    environment: { temperature: 0, humidity: 0 },
-    system: { valve: 'open', connection: 'online', battery: 96, rssi: -58, activity: 'active' },
+    gas: { value: 0, unit: 'ppm', rawValue: 0, rawAdc: 0, sensorVoltage: 0, sensorResistance: 0, rsR0: 0, calculatedPpm: 0, correctedPpm: 0, calibrationVersion: 'prototype-v0' },
+    environment: { temperature: 0, humidity: 0, ventilationState: 'mechanical', fanState: 'on', doorState: 'open' },
+    quality: { confidence: 0, warmupComplete: true, timeSinceBootSec: 0, continuousOperatingHours: 0, qualityFlags: [] },
+    system: { valve: 'open', commandedValveState: 'open', actualValveState: 'open', valveResponseTimeMs: 620, valveFailedCommandCount: 0, valveCycleCount: 1248, connection: 'online', mqttConnectionState: 'connected', battery: 96, batteryVoltage: 4.08, inputVoltage: 5.02, powerSource: 'AC', backupActive: false, rssi: -58, latencyMs: 38, packetLossPct: 0.3, reconnectCount: 0, activity: 'active', operatingState: 'active', deviceUptimeSec: 152480, bootCount: 3, resetReason: 'power_on', firmwareVersion: 'prototype-v0.2' },
     timestamp: new Date().toISOString()
   };
 
   function reading(minute, value, extra = {}) {
     return {
-      ...contract, gas: { ...contract.gas, value: round(value), rawValue: round(value * 0.98) },
-      environment: { temperature: round(30.8 + Math.sin(minute / 17) * 1.1, 1), humidity: round(66 + Math.cos(minute / 22) * 4) },
+      ...contract,
+      gas: { ...contract.gas, value: round(value), rawValue: round(value * 0.98), rawAdc: round(value * 9.8 + 900), sensorVoltage: round(1.1 + value / 800, 2), sensorResistance: round(12 - value / 180, 2), rsR0: round(Math.max(.3, 1.8 - value / 420), 2), calculatedPpm: round(value), correctedPpm: round(value) },
+      environment: { ...contract.environment, temperature: round(30.8 + Math.sin(minute / 17) * 1.1, 1), humidity: round(66 + Math.cos(minute / 22) * 4) },
+      quality: { ...contract.quality, timeSinceBootSec: Math.max(0, 152480 - minute * 60), continuousOperatingHours: round((152480 - minute * 60) / 3600, 1) },
       system: { ...contract.system, ...extra.system }, timestamp: new Date(now - minute * 60000).toISOString()
     };
   }
@@ -32,13 +35,28 @@
     ['16:00', 92, 98, 94, 96, 102, 118, 110], ['20:00', 128, 142, 133, 138, 146, 170, 159]
   ];
 
+  const locations = [{ id:'LOC-001', name:'Restaurant A', type:'restaurant', status:'online', zones:[{id:'ZONE-KITCHEN',name:'Main Kitchen'},{id:'ZONE-STORAGE',name:'LPG Storage'}] }];
+  const devices = [{ id:'GG-ESP32-001', name:'Kitchen Gateway', type:'ESP32', firmware:'prototype-v0.2', status:'online', uptime:152480, network:{rssi:-58,latency:38,packetLoss:.3}, power:{source:'AC',voltage:5.02,backupBattery:96} }];
+  const sensors = [{ id:'LPG-001', deviceId:'GG-ESP32-001', zoneId:'ZONE-KITCHEN', name:'LPG Sensor A', type:'MQ-5', position:{x:9,y:5}, health:94, operatingHours:428, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} },{ id:'LPG-002', deviceId:'GG-ESP32-001', zoneId:'ZONE-KITCHEN', name:'LPG Sensor B', type:'MQ-5', position:{x:5,y:5}, health:92, operatingHours:415, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} },{ id:'LPG-003', deviceId:'GG-ESP32-001', zoneId:'ZONE-STORAGE', name:'Storage LPG Sensor', type:'MQ-5', position:{x:3,y:6}, health:90, operatingHours:421, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} }];
+
   const scenarios = {
     normal: { label: 'ทำงานตามปกติ', next(last, index) { return clamp(last + (Math.random() - .5) * 11 + Math.sin(index / 8) * 2, 66, 126); }, system: {} },
-    transient: { label: 'ค่าสูงชั่วคราวขณะทำอาหาร', next(last, index) { const pulse=index%10<4?22:-18; return clamp(last+pulse+(Math.random()-.5)*8,72,230); }, system: { valve: 'open', activity: 'active' } },
-    rise: { label: 'LPG เพิ่มต่อเนื่อง', next(last) { return clamp(last + 14 + Math.random() * 9, 70, 730); }, system: { activity: 'inactive' } },
-    critical: { label: 'เหตุวิกฤต', next(last) { return clamp(last + 42 + Math.random() * 25, 120, 980); }, system: { valve: 'closed', activity: 'inactive' } },
-    unknown: { label: 'เซ็นเซอร์ขาดการเชื่อมต่อ', next(last) { return last; }, system: { connection: 'offline', valve: 'unknown', activity: 'unknown' } }
+    transient: { label: 'ค่าสูงชั่วคราวขณะทำอาหาร', next(last, index) { const pulse=index%10<4?22:-18; return clamp(last+pulse+(Math.random()-.5)*8,72,230); }, system: { valve: 'open', actualValveState: 'open', activity: 'active', operatingState: 'active' } },
+    rise: { label: 'Slow leak · LPG เพิ่มต่อเนื่อง', next(last) { return clamp(last + 14 + Math.random() * 9, 70, 730); }, system: { activity: 'inactive', operatingState: 'idle' } },
+    critical: { label: 'Rapid leak · เหตุวิกฤต', next(last) { return clamp(last + 42 + Math.random() * 25, 120, 980); }, system: { valve: 'closed', commandedValveState: 'closed', actualValveState: 'closed', activity: 'inactive', operatingState: 'idle' } },
+    unknown: { label: 'Sensor failure · เซ็นเซอร์ขาดการเชื่อมต่อ', next(last) { return last; }, system: { connection: 'offline', mqttConnectionState: 'disconnected', valve: 'unknown', activity: 'unknown', operatingState: 'unknown' } },
+    network: { label: 'Network failure · MQTT offline', next(last) { return clamp(last+(Math.random()-.5)*8,66,140); }, system: { connection: 'offline', mqttConnectionState: 'disconnected', latencyMs: 0, packetLossPct: 100, reconnectCount: 4 } },
+    valveFailure: { label: 'Valve failure · command ≠ feedback', next(last) { return clamp(last+18+Math.random()*12,80,790); }, system: { valve: 'open', commandedValveState: 'closed', actualValveState: 'open', valveFailedCommandCount: 1, valveResponseTimeMs: 0, activity: 'inactive', operatingState: 'idle' } },
+    drift: { label: 'Sensor drift · baseline เปลี่ยน', next(last) { return clamp(last+3+Math.random()*5,90,450); }, system: { activity: 'idle', operatingState: 'idle' } }
   };
 
-  window.GasGuardData = { contract, history, dailyPattern, scenarios, reading, now };
+  function sensorFleet(primary) {
+    return sensors.map((sensor,index) => {
+      const mismatch = primary.system.commandedValveState === 'closed' && primary.system.actualValveState === 'open' && index === 1 ? 38 : 0;
+      const spread = mismatch || (index === 2 ? -12 : index === 1 ? 7 : 0);
+      return { sensorId:sensor.id, zoneId:sensor.zoneId, position:sensor.position, ppm:Math.max(0,round((primary.gas.correctedPpm ?? primary.gas.value)+spread)), online:primary.system.connection==='online', health:sensor.health };
+    });
+  }
+
+  window.GasGuardData = { contract, history, dailyPattern, locations, devices, sensors, sensorFleet, scenarios, reading, now };
 })();

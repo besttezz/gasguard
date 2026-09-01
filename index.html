@@ -17,21 +17,27 @@
       <div class="brand"><span class="brand-mark" aria-hidden="true">G</span><span>GasGuard</span></div>
       <p class="workspace-label">AUTONOMOUS LPG SAFETY</p>
       <nav class="navigation">
+        <p class="nav-group">ภาพรวม</p>
         <button class="nav-item is-active" data-page="overview"><span aria-hidden="true">◉</span> ภาพรวมความปลอดภัย</button>
+        <p class="nav-group engineer-item">MONITOR & ANALYZE</p>
         <button class="nav-item engineer-item" data-page="live"><span aria-hidden="true">⌁</span> ตรวจวัดแบบสด</button>
         <button class="nav-item engineer-item" data-page="intelligence"><span aria-hidden="true">✦</span> Safety Intelligence</button>
         <button class="nav-item engineer-item" data-page="replay"><span aria-hidden="true">▷</span> Safety Replay</button>
         <button class="nav-item engineer-item" data-page="validation"><span aria-hidden="true">✓</span> Validation Lab</button>
+        <button class="nav-item engineer-item" data-page="spatial"><span aria-hidden="true">⌘</span> Spatial Simulation</button>
         <button class="nav-item engineer-item" data-page="analytics"><span aria-hidden="true">▥</span> การวิเคราะห์ข้อมูล</button>
         <button class="nav-item engineer-item" data-page="events"><span aria-hidden="true">◷</span> เหตุการณ์</button>
         <button class="nav-item" data-page="alerts"><span aria-hidden="true">!</span> การแจ้งเตือน</button>
         <button class="nav-item" data-page="guide"><span aria-hidden="true">?</span> คู่มือข้อมูล</button>
+        <p class="nav-group engineer-item">VALIDATE & INSTALL</p>
         <button class="nav-item engineer-item" data-page="devices"><span aria-hidden="true">▣</span> อุปกรณ์</button>
         <button class="nav-item engineer-item" data-page="maintenance"><span aria-hidden="true">◌</span> การบำรุงรักษา</button>
         <button class="nav-item" data-page="assistant"><span aria-hidden="true">✧</span> Ask GasGuard</button>
+        <p class="nav-group engineer-item">OPERATE & DEVELOP</p>
         <button class="nav-item engineer-item" data-page="locations"><span aria-hidden="true">⌖</span> สถานที่และโซน</button>
         <button class="nav-item engineer-item" data-page="reports"><span aria-hidden="true">▤</span> รายงาน</button>
         <button class="nav-item engineer-item" data-page="settings"><span aria-hidden="true">⚙</span> ตั้งค่า</button>
+        <button class="nav-item engineer-item" data-page="explorer"><span aria-hidden="true">⌘</span> Data Explorer</button>
         <button class="nav-item engineer-item" data-page="developer"><span aria-hidden="true">&lt;/&gt;</span> Developer Console</button>
       </nav>
       <div class="sidebar-foot">
@@ -54,8 +60,20 @@
               <option value="transient">ค่าสูงชั่วคราวขณะทำอาหาร</option>
               <option value="critical">เหตุวิกฤต</option>
               <option value="unknown">เซ็นเซอร์ขาดการเชื่อมต่อ</option>
+              <option value="network">Network failure · MQTT offline</option>
+              <option value="valveFailure">Valve failure · command ≠ feedback</option>
+              <option value="drift">Sensor drift · baseline เปลี่ยน</option>
             </select>
           </label>
+          <label class="scenario-control engineer-control">พื้นที่ทดสอบ
+            <select id="layout-select" aria-label="เลือกพื้นที่จำลอง">
+              <option value="restaurant">ครัวร้านอาหาร</option>
+              <option value="home">ครัวบ้าน</option>
+              <option value="storage">พื้นที่เก็บถัง</option>
+              <option value="custom">แปลนจากการติดตั้ง</option>
+            </select>
+          </label>
+          <button class="button button-primary engineer-control" id="open-setup" type="button">ติดตั้งและลงทะเบียนระบบ</button>
           <button class="button button-secondary" id="pause-button" type="button">พักข้อมูล</button>
         </div>
       </header>
@@ -106,6 +124,12 @@
         <article class="panel validation-method"><p class="section-label">RESEARCH METHOD</p><h2>สิ่งที่ต้องวัดเมื่อเก็บข้อมูลจริง</h2><div class="function-grid"><div><strong>Detection lead time</strong><p>ระบบเตือนเร็วกว่า threshold คงที่กี่วินาที โดยไม่ลดความปลอดภัย</p></div><div><strong>False alarm rate</strong><p>เหตุการณ์ทำอาหารปกติหรือ peak ชั่วคราวที่ถูกแจ้งเตือนผิด</p></div><div><strong>Missed-event rate</strong><p>เหตุรั่วที่ระบบไม่ยกระดับตามเกณฑ์ที่กำหนดไว้</p></div><div><strong>Data availability</strong><p>สัดส่วนข้อมูลที่ใช้ตัดสินใจได้ และการจัดการเมื่อ sensor หรือ network ขาดหาย</p></div></div></article>
       </section>
 
+      <section id="page-spatial" class="page" aria-label="Spatial Simulation">
+        <div class="analytics-intro"><div><p class="section-label">SPATIAL LPG SIMULATION</p><h2 id="spatial-title">แผนผังครัวร้านอาหาร</h2><p id="spatial-copy">—</p></div><span class="data-badge">Conceptual visual, not CFD</span></div>
+        <article class="spatial-stage"><div class="spatial-map-wrap"><div class="spatial-map" id="spatial-map" role="img" aria-label="แผนผังการกระจาย LPG แบบจำลอง"><div class="spatial-fixture fixture-source" id="fixture-source">แหล่งกำเนิด</div><div class="spatial-fixture fixture-sensor" id="fixture-sensor">Sensor</div><div class="spatial-fixture fixture-vent" id="fixture-vent">ระบายอากาศ</div><div class="spatial-fixture fixture-door" id="fixture-door">ประตู</div></div></div><aside class="spatial-inspector"><p class="section-label">SIMULATION CONTEXT</p><h2 id="spatial-state">—</h2><dl class="feature-list" id="spatial-facts"></dl><div class="spatial-legend"><span><i class="level-low"></i>ต่ำ</span><span><i class="level-medium"></i>เฝ้าระวัง</span><span><i class="level-high"></i>สูง</span></div><p class="spatial-boundary">ภาพนี้ใช้เพื่อสื่อสาร scenario และวางตำแหน่งทดสอบเท่านั้น การกระจายจริงขึ้นกับการระบายอากาศ, ขนาดห้อง, อุณหภูมิ และคุณสมบัติเชื้อเพลิง</p></aside></article>
+        <article class="panel spatial-guidance"><p class="section-label">TEST DESIGN GUIDE</p><h2>ใช้แผนผังนี้ทดสอบอะไรได้บ้าง</h2><div class="function-grid"><div><strong>ตำแหน่ง sensor</strong><p>เปรียบเทียบ reading จากจุดใกล้แหล่งกำเนิด, จุดทำงาน และจุดปลายทาง เพื่อหา coverage ที่เหมาะสม</p></div><div><strong>การระบายอากาศ</strong><p>เปรียบเทียบเหตุการณ์เมื่อระบบระบายทำงานและไม่ทำงาน โดยบันทึกเวลาและการเปลี่ยนแปลงของค่า</p></div><div><strong>ระดับการควบคุม</strong><p>เชื่อม Safe, Attention, Critical และ Unknown กับ action ของคน, alarm และ edge controller ที่กำหนดไว้</p></div><div><strong>ขอบเขตผลทดลอง</strong><p>นำข้อมูลจริงมาแทนภาพจำลองก่อนสรุปผล ห้ามใช้ภาพนี้กำหนดระยะปลอดภัยหรือสั่งตัดวาล์วจริง</p></div></div></article>
+      </section>
+
       <section id="page-analytics" class="page" aria-label="การวิเคราะห์ข้อมูล">
         <div class="analytics-intro"><div><p class="section-label">HISTORICAL ANALYSIS</p><h2>พฤติกรรม LPG และความเสี่ยง</h2><p>คำนวณจาก historical mock readings ชุดเดียวกับที่ใช้สร้าง Risk และ Anomaly score</p></div><span class="data-badge">Analysis model v0.1</span></div>
         <div class="metric-grid" id="analytics-metrics"></div>
@@ -154,6 +178,7 @@
       <section id="page-locations" class="page" aria-label="สถานที่และโซน">
         <div class="events-header"><div><p class="section-label">LOCATION HIERARCHY</p><h2>Restaurant A</h2><p>โครงสร้างพร้อมขยายหลายสาขาและหลายโซน</p></div><span class="data-badge">1 location · 2 zones</span></div>
         <div class="location-grid"><article class="location-card"><span>01</span><h3>Kitchen</h3><p>โซนหลักสำหรับ LPG safety</p><ul><li>LPG Sensor · online</li><li>Temp / RH · online</li><li>Valve Controller · open</li></ul></article><article class="location-card"><span>02</span><h3>Storage</h3><p>โซนรอเชื่อมต่ออุปกรณ์จริง</p><ul><li>Sensor slot available</li><li>Monitoring planned</li></ul></article></div>
+        <article class="panel managed-sites-panel"><p class="section-label">MANAGED INSTALLATIONS</p><h2>ระบบที่ลงทะเบียนเข้าสู่การดูแล</h2><div class="managed-sites" id="managed-sites"></div></article>
       </section>
 
       <section id="page-reports" class="page" aria-label="รายงาน">
@@ -176,8 +201,28 @@
           <article class="panel"><p class="section-label">RECENT PIPELINE EVENTS</p><h2>Last 10 events</h2><div class="developer-events" id="developer-events"></div></article>
         </div>
       </section>
+
+      <section id="page-explorer" class="page" aria-label="Data Explorer">
+        <div class="events-header"><div><p class="section-label">ENGINEER DATA EXPLORER</p><h2>Raw, processed, derived and outcome data</h2><p>ตรวจ trace ของข้อมูลจาก sensor ก่อนนำไปใช้วิเคราะห์หรือสร้าง dataset</p></div><span class="data-badge">Feature schema v0.2</span></div>
+        <div class="metric-grid dense-grid" id="explorer-metrics"></div>
+        <div class="explorer-grid"><article class="panel"><p class="section-label">RAW TELEMETRY</p><h2>Reprocessable sensor source</h2><pre class="code-block" id="explorer-raw"></pre></article><article class="panel"><p class="section-label">PROCESSED READING</p><h2>Correction and quality</h2><pre class="code-block" id="explorer-processed"></pre></article><article class="panel"><p class="section-label">DERIVED FEATURES</p><h2>Feature store snapshot</h2><pre class="code-block" id="explorer-derived"></pre></article><article class="panel"><p class="section-label">RELIABILITY & FUSION</p><h2>Device and zone confidence</h2><dl class="feature-list" id="explorer-reliability"></dl></article></div>
+        <article class="panel label-panel"><div><p class="section-label">EVENT OUTCOME LABELLING</p><h2>บันทึก Ground Truth สำหรับ Alarm Quality และ AI</h2><p>ผู้ตรวจสอบกำหนดผลของเหตุการณ์พร้อมระดับความมั่นใจ เพื่อแยกเหตุจริงออกจาก cooking, noise หรือ fault</p></div><form id="event-label-form"><label>เหตุการณ์<select id="label-event-select"></select></label><label>ผลตรวจ<select id="label-value"><option value="cooking">Cooking</option><option value="normal">Normal</option><option value="sensor_noise">Sensor noise</option><option value="environmental_effect">Environmental effect</option><option value="device_fault">Device fault</option><option value="network_fault">Network fault</option><option value="maintenance">Maintenance</option><option value="confirmed_abnormal_event">Confirmed abnormal event</option><option value="unknown">Unknown / ยังตรวจไม่จบ</option></select></label><label>ความมั่นใจ<select id="label-confidence"><option value="medium">Medium</option><option value="confirmed">Confirmed</option><option value="low">Low</option></select></label><button class="button button-primary" type="submit">บันทึก Outcome Label</button></form><div class="label-quality" id="label-quality"></div></article>
+      </section>
     </main>
   </div>
+  <section class="setup-workspace" id="setup-workspace" aria-label="ติดตั้งและลงทะเบียนระบบ">
+    <header class="setup-topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">G</span><span>GasGuard Provisioning</span></div><div class="setup-topbar-actions"><span class="data-badge">Installation workspace</span><button class="button button-secondary" id="close-setup" type="button">กลับสู่ระบบดูแล</button></div></header>
+    <main class="setup-main">
+      <div class="setup-intro"><div><p class="section-label">INSTALL · REGISTER · HAND OVER</p><h1>เพิ่มระบบใหม่เข้าสู่การดูแลของ GasGuard</h1><p>สร้างข้อมูลสถานที่และผู้ดูแล, ผูก board/sensor, ตรวจ telemetry และลงทะเบียนระบบเพื่อให้ทีมกลับไปติดตามใน dashboard หลักได้</p></div><div class="setup-safety-note"><strong>ขอบเขตความปลอดภัย</strong><span>หน้านี้ช่วย provision ข้อมูลและทดสอบ data flow เท่านั้น การสอบเทียบ sensor และ edge fail-safe ต้องยืนยันกับอุปกรณ์จริง</span></div></div>
+      <div class="setup-grid">
+        <form class="setup-card setup-form" id="setup-form"><div class="setup-card-head"><div><p class="section-label">01 · SITE & OWNER</p><h2>ข้อมูลระบบใหม่</h2></div><span class="data-badge" id="setup-save-state">ยังไม่ได้บันทึก</span></div><label>ประเภทพื้นที่<select id="setup-facility"><option value="restaurant">ร้านอาหาร</option><option value="home">บ้านพักอาศัย</option><option value="storage">พื้นที่เก็บถัง</option></select></label><label>ชื่อสถานที่ / ระบบ<input id="setup-name" maxlength="60" placeholder="เช่น Restaurant A, Kitchen A"></label><div class="setup-pair"><label>ผู้ดูแลระบบ<input id="setup-owner" maxlength="80" placeholder="ชื่อผู้ดูแล"></label><label>ช่องทางติดต่อ<input id="setup-contact" maxlength="120" placeholder="อีเมลหรือเบอร์โทร"></label></div><div class="setup-pair"><label>ขนาดพื้นที่ (m²)<input id="setup-area" type="number" min="1" max="10000" placeholder="48"></label><label>การระบายอากาศ<select id="setup-ventilation"><option value="mechanical">พัดลม/hood</option><option value="natural">ธรรมชาติ</option><option value="limited">จำกัด</option></select></label></div><button class="button button-primary" type="submit">บันทึกข้อมูลระบบ</button></form>
+        <form class="setup-card setup-form" id="pairing-form"><div class="setup-card-head"><div><p class="section-label">02 · DEVICE PAIRING</p><h2>เชื่อมต่อ board และ sensor</h2></div><span class="status-pill" id="pairing-status">—</span></div><label>Device ID<input id="setup-device-id" maxlength="80" placeholder="เช่น GG-KITCHEN-01"></label><label>การเชื่อมต่อ<select id="setup-source"><option value="simulation">Simulation</option><option value="rest">REST API</option><option value="mqtt">MQTT over WebSocket</option></select></label><label>Endpoint / broker URL<input id="setup-endpoint" type="url" placeholder="https://api.example.com/readings หรือ wss://broker.example.com/mqtt"></label><button class="button button-primary" type="submit">บันทึกและทดสอบการเชื่อมต่อ</button><p class="form-note" id="pairing-note">—</p></form>
+        <article class="setup-card telemetry-card"><div class="setup-card-head"><div><p class="section-label">03 · LIVE TELEMETRY</p><h2>ข้อมูลจากอุปกรณ์</h2></div><span class="data-badge" id="setup-provider">—</span></div><div class="setup-metrics" id="setup-metrics"></div><dl class="feature-list setup-trace" id="setup-trace"></dl><div class="diagnostic-head"><strong>Full device diagnostic</strong><button class="button button-secondary" id="run-diagnostics" type="button">ตรวจทุกค่า</button></div><div class="diagnostic-grid" id="diagnostic-grid"></div></article>
+        <article class="setup-card commissioning-card"><div class="setup-card-head"><div><p class="section-label">04 · HAND OVER</p><h2>ตรวจและส่งต่อเข้าระบบดูแล</h2></div><span class="data-badge" id="calibration-state">ยังไม่มี reference</span></div><div class="setup-test-actions"><button class="button button-secondary" id="capture-reference" type="button">บันทึก Reference Baseline</button><button class="button button-secondary" id="run-setup-validation" type="button">รันชุดทดสอบ</button><button class="button button-primary" id="register-managed-site" type="button">ลงทะเบียนเข้าสู่ระบบดูแล</button></div><div class="setup-scenario-buttons" aria-label="ทดสอบสถานการณ์"><button data-setup-scenario="normal" type="button">ปกติ</button><button data-setup-scenario="transient" type="button">Peak ขณะทำอาหาร</button><button data-setup-scenario="rise" type="button">LPG เพิ่มต่อเนื่อง</button><button data-setup-scenario="unknown" type="button">Sensor offline</button></div><div class="commission-list" id="commission-list"></div></article>
+        <article class="setup-card floor-plan-card"><div class="setup-card-head"><div><p class="section-label">05 · 2D FLOOR PLAN</p><h2>วางแปลนพื้นที่และตำแหน่งอุปกรณ์</h2><p>เพิ่ม/ลด/ย้ายองค์ประกอบได้ด้วยตัวเอง หรือใช้จุด sensor ที่ระบบแนะนำแล้วปรับให้เหมาะกับข้อจำกัดหน้างาน</p></div><span class="data-badge" id="plan-status">—</span></div><div class="plan-layout"><div><div class="plan-tools" role="toolbar" aria-label="เครื่องมือวางแปลน"><button class="is-active" data-plan-tool="select" type="button">เลือก / ย้าย</button><button data-plan-tool="source" type="button">แหล่งแก๊ส</button><button data-plan-tool="sensor" type="button">LPG Sensor</button><button data-plan-tool="vent" type="button">ระบายอากาศ</button><button data-plan-tool="door" type="button">ประตู</button><button data-plan-tool="counter" type="button">เคาน์เตอร์/สิ่งกีดขวาง</button><button data-plan-tool="workzone" type="button">พื้นที่ใช้งาน</button><button data-plan-tool="wall" type="button">ผนัง/ฉากกั้น</button><button data-plan-tool="clear" type="button">ลบจุด</button></div><div class="plan-preview-actions"><button class="button button-secondary" id="generate-plan" type="button">สร้างแปลนตัวอย่าง</button><button class="button button-secondary" id="add-recommended-sensor" type="button">เพิ่ม Sensor ที่แนะนำ</button><button class="button button-primary" id="preview-plan" type="button">จำลองจากแปลนนี้</button></div><div class="plan-editor-note" id="plan-editor-note">เลือกเครื่องมือ แล้วคลิกช่องบนแปลน</div><div class="floor-plan" id="floor-plan" role="grid" aria-label="แปลนพื้นที่แบบ 2D"></div><div class="plan-preview" id="plan-preview" hidden><div><strong>Pre-registration simulation</strong><span id="plan-preview-copy">—</span></div><div class="plan-preview-map" id="plan-preview-map" role="img" aria-label="ตัวอย่างการกระจาย LPG จากแปลน"></div></div></div><aside class="plan-inspector"><p class="section-label">PLAN DATA</p><h3>องค์ประกอบในแปลน</h3><dl class="feature-list" id="plan-facts"></dl><div class="recommendation-panel"><strong>Sensor placement recommendation</strong><div id="plan-recommendations"></div></div><button class="button button-secondary" id="use-custom-plan" type="button">ใช้แปลนนี้ใน Spatial Simulation</button><p>จุดแนะนำเป็น heuristic สำหรับ prototype. ผู้ติดตั้งเลือกจุด manual ได้เสมอ และต้องยืนยันตำแหน่งจริงตามคู่มือ sensor และการสำรวจหน้างาน</p></aside></div></article>
+      </div>
+    </main>
+  </section>
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
   <script src="js/data.js"></script>
   <script src="js/engine.js"></script>

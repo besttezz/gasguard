@@ -8,6 +8,12 @@ eval(fs.readFileSync('js/engine.js', 'utf8'));
 const engine = global.GasGuardEngine;
 assert.equal(engine.analysis.safety, 'safe', 'baseline mock data starts in a safe state');
 assert.notEqual(engine.analysis.risk, null, 'online data has an explainable risk score');
+assert.ok(Number.isFinite(engine.analysis.correctedGas), 'analysis retains an environment-corrected LPG value');
+assert.ok(Number.isFinite(engine.analysis.current.gas.rawAdc), 'mock contract preserves raw sensor ADC data');
+assert.equal(engine.analysis.current.quality.warmupComplete, true, 'mock contract exposes warm-up quality state');
+assert.ok(engine.analysis.features.movingAverages.avg1m > 0, 'feature store exposes moving averages');
+assert.equal(engine.analysis.features.fusion.sensors.length, 3, 'mock fleet exposes multi-sensor topology');
+assert.ok(engine.analysis.reliability.connectivityHealth > 0, 'analysis exposes connectivity health');
 
 engine.setScenario('rise');
 for (let i = 0; i < 24; i++) engine.tick();
@@ -19,6 +25,11 @@ engine.setScenario('unknown');
 engine.tick();
 assert.equal(engine.analysis.safety, 'unknown', 'offline telemetry is unknown, never safe');
 assert.equal(engine.analysis.risk, null, 'offline telemetry cannot produce a safety risk score');
+
+engine.setScenario('valveFailure');
+engine.tick();
+assert.equal(engine.analysis.valveMismatch, true, 'command-feedback mismatch is surfaced as actuator evidence');
+assert.ok(engine.analysis.reliability.valveHealth < 50, 'valve mismatch reduces actuator health');
 
 const validation = engine.validation;
 assert.equal(validation.length, 4, 'validation lab provides four controlled scenarios');
@@ -33,6 +44,11 @@ assert.equal(failSafe.checks.find(item => item.id === 'offline').result, 'PASS',
 assert.equal(failSafe.checks.find(item => item.id === 'malformed').result, 'PASS', 'malformed payload is rejected');
 const evidence = engine.incidentEvidence();
 assert.equal(evidence.schemaVersion, 'gasguard-incident-evidence-v0.1', 'incident evidence uses a stable schema');
-assert.equal(evidence.analysis.safetyState, 'unknown', 'incident evidence retains current safety state');
+assert.equal(evidence.analysis.safetyState, engine.analysis.safety, 'incident evidence retains the current safety state');
+
+const labelTarget = engine.state.events.find(event => event.type === 'critical' || event.type === 'warning');
+assert.ok(labelTarget, 'safety transitions create a label-ready event');
+assert.equal(engine.labelEvent(labelTarget.id, 'cooking', 'engineer', 'confirmed'), true, 'engineer can label an event outcome');
+assert.ok(engine.alarmQuality.labelled >= 1, 'alarm quality includes labelled events');
 
 console.log('engine tests passed');
