@@ -32,7 +32,8 @@
     return { eventId:event.id || `legacy-event-${index}-${event.t||Date.now()}`, id:event.id || `legacy-event-${index}-${event.t||Date.now()}`, siteId:null, zoneId:null, deviceIds:[], eventType:event.type === 'system' ? 'legacy' : 'gas_risk', source:'legacy', lifecycleStatus:event.status === 'resolved' || event.type === 'system' ? 'resolved' : 'open', severity:event.type === 'critical' ? 'critical' : event.type === 'warning' ? 'attention' : 'unknown', peakSeverity:event.type === 'critical' ? 'critical' : event.type === 'warning' ? 'attention' : 'unknown', startedAt:at, lastUpdatedAt:at, resolvedAt:event.status === 'resolved' || event.type === 'system' ? at : null, firstReading:null, latestReading:null, peakLpgPpm:null, peakRiskScore:null, peakAnomalyScore:null, readingCount:0, updateCount:0, acknowledgement:{ acknowledgedAt:null, acknowledgedBy:null }, technicianReview:{ status:'not_started', startedAt:null, updatedAt:null, resolvedAt:null, note:null }, resolutionSummary:null, prototypeRuleVersion:PROTOTYPE_RULE_VERSION, evidence:{ timeline:[{ at, type:'legacy_import', detail:'Legacy event has no recoverable reading context' }], missingDataPeriods:[], alerts:[] }, legacy:true, type:event.type || 'system', title:event.title || 'Legacy event', detail:event.detail || 'ยังไม่มีข้อมูล', label:event.label || 'unknown', labelSource:event.labelSource || null, labelConfidence:event.labelConfidence || 'low', t:event.t || Date.now() };
   };
   state.events = state.events.map(normalizeEvent);
-  function persist() { try { if (storage) storage.setItem(STORE_KEY, JSON.stringify({ scenario: state.scenario, readings: state.readings.slice(-360), events: state.events.slice(0, 80), source: state.source })); } catch (e) {} }
+  function retainedEvents(){const protectedIds=window.GasGuardService?.protectedIncidentIds?.()||new Set(),keep=[],eligible=[];state.events.forEach(event=>{const id=event.eventId||event.id,protectedEvent=event.lifecycleStatus!=='resolved'||(event.technicianReview&&event.technicianReview.status!=='completed')||protectedIds.has(id);(protectedEvent?keep:eligible).push(event)});const limit=80,result=keep.length>=limit?[...keep,...eligible]:[...keep,...eligible.slice(0,limit-keep.length)];state.retentionWarning=keep.length>=limit?'มี Incident หรืองานบริการที่ต้องเก็บเกินขีดจำกัดปกติ จึงเก็บทั้งหมดไว้ก่อน; localStorage อาจเต็ม':result.length<state.events.length?'เก็บ Incident ที่เปิดอยู่และงานบริการที่ยังไม่เสร็จก่อน; รายการเก่าที่ปิดครบแล้วถูกจำกัดตาม localStorage':null;return result;}
+  function persist() { try { if (storage) storage.setItem(STORE_KEY, JSON.stringify({ scenario: state.scenario, readings: state.readings.slice(-360), events: retainedEvents(), source: state.source })); } catch (e) {} }
 
   function feature(readings) {
     const current = readings.at(-1);
@@ -174,6 +175,7 @@
 
   const engine = {
     state,
+    retainedEventPreview() { return retainedEvents(); },
     normalizeLegacyEvents() { state.events=state.events.map(normalizeEvent); persist(); return state.events; },
     get analysis() { return feature(state.readings); },
     get explanation() { return describe(this.analysis); },

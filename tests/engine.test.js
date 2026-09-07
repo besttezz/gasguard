@@ -4,6 +4,7 @@ const fs = require('node:fs');
 global.window = global;
 eval(fs.readFileSync('js/data.js', 'utf8'));
 eval(fs.readFileSync('js/engine.js', 'utf8'));
+eval(fs.readFileSync('js/service.js', 'utf8'));
 
 const engine = global.GasGuardEngine;
 assert.equal(engine.analysis.safety, 'safe', 'baseline mock data starts in a safe state');
@@ -115,5 +116,54 @@ assert.equal(engine.startInvestigation(workflowEvent.eventId), true, 'technician
 assert.equal(engine.saveTechnicianNote(workflowEvent.eventId, 'mock inspection note'), true, 'technician note is retained');
 assert.equal(engine.markTechnicianResolved(workflowEvent.eventId, 'mock workflow complete'), true, 'technician can complete workflow');
 assert.equal(workflowEvent.lifecycleStatus, lifecycleBeforeWorkflow, 'technician workflow never overwrites detection lifecycle');
+
+// Sprint 3 service workflow is local/mock-only and must stay separate from detection.
+const service = global.GasGuardService;
+service.state.requests=[];service.state.tasks=[];service.state.verifications=[];service.state.reports=[];
+const requestResult = service.create({incidentId:workflowEvent.eventId, requestType:'inspection', description:'mock service request'});
+assert.equal(requestResult.duplicate, false, 'a first service request is created');
+const request = requestResult.request;
+assert.equal(request.status, 'submitted', 'new service request starts submitted');
+assert.equal(request.siteId, workflowEvent.siteId, 'service request inherits incident site context');
+assert.equal(request.zoneId, workflowEvent.zoneId, 'service request inherits incident zone context');
+assert.equal(service.create({incidentId:workflowEvent.eventId}).duplicate, true, 'a second open request for one incident is deduplicated');
+assert.equal(service.transition(request.requestId, 'completed'), false, 'request cannot skip directly to completed');
+assert.equal(service.transition(request.requestId, 'acknowledged'), true, 'technician can acknowledge a request');
+assert.equal(service.transition(request.requestId, 'in_progress'), true, 'acknowledged request can start work');
+const serviceTask = service.task(request.requestId, {actionType:'inspect_sensor', description:'mock sensor inspection'});
+assert.ok(serviceTask && serviceTask.incidentId===workflowEvent.eventId, 'maintenance task is linked to request and incident');
+assert.equal(service.transition(request.requestId, 'awaiting_verification'), true, 'work can be sent for verification');
+assert.equal(service.transition(request.requestId, 'completed'), false, 'completion is blocked without passed verification');
+const failedVerification=service.verify(request.requestId,{result:'failed',observedResult:'mock failed'});
+assert.equal(failedVerification.result, 'failed', 'failed verification is retained');
+assert.equal(service.transition(request.requestId, 'completed'), false, 'failed verification cannot complete a request');
+const passedVerification=service.verify(request.requestId,{result:'passed',observedResult:'mock passed'});
+assert.equal(passedVerification.result, 'passed', 'passed verification replaces prior request verification');
+assert.equal(serviceTask.status, 'completed', 'passed verification completes related mock maintenance tasks');
+assert.equal(service.transition(request.requestId, 'completed'), true, 'passed verification allows completion');
+assert.equal(workflowEvent.lifecycleStatus, lifecycleBeforeWorkflow, 'service completion never changes detection lifecycle');
+const serviceReport=service.report(request.requestId);
+assert.ok(serviceReport && serviceReport.requestId===request.requestId, 'report keeps request relation');
+assert.equal(serviceReport.partsReplaced.length, 0, 'report does not invent parts replaced');
+assert.ok(serviceReport.detectionStatusAtCompletion, 'report records detection state independently');
+
+// Retention must preserve open incidents, unfinished technician reviews, and open service requests.
+const originalEvents=engine.state.events;
+const closed=Array.from({length:90},(_,i)=>({eventId:`closed-${i}`,id:`closed-${i}`,lifecycleStatus:'resolved',technicianReview:{status:'completed'}}));
+const openIncident={eventId:'open-incident',id:'open-incident',lifecycleStatus:'open',technicianReview:{status:'not_started'}};
+const protectedByRequest={eventId:'request-incident',id:'request-incident',lifecycleStatus:'resolved',technicianReview:{status:'completed'}};
+const incompleteReview={eventId:'review-incident',id:'review-incident',lifecycleStatus:'resolved',technicianReview:{status:'investigating'}};
+engine.state.events=[openIncident,protectedByRequest,incompleteReview,...closed];
+service.state.requests=[{requestId:'open-request',incidentId:'request-incident',status:'submitted'}];
+const retained=engine.retainedEventPreview();
+assert.ok(retained.some(event=>event.eventId==='open-incident'), 'retention never drops open incident');
+assert.ok(retained.some(event=>event.eventId==='request-incident'), 'retention never drops incident with open service request');
+assert.ok(retained.some(event=>event.eventId==='review-incident'), 'retention never drops incident with incomplete technician workflow');
+assert.equal(retained.length,80, 'only fully closed unprotected history is limited');
+const manyOpen=Array.from({length:81},(_,i)=>({eventId:`open-${i}`,id:`open-${i}`,lifecycleStatus:'open',technicianReview:{status:'not_started'}}));
+engine.state.events=manyOpen;
+assert.equal(engine.retainedEventPreview().length,81, 'protected incidents exceed normal limit without deletion');
+assert.ok(engine.state.retentionWarning, 'protected overflow creates a retention warning');
+engine.state.events=originalEvents;service.state.requests=[];
 
 console.log('engine tests passed');
