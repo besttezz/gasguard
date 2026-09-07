@@ -1,38 +1,46 @@
-# Sprint 3 — Service Request & Technician Workflow
+# Sprint 3.1 — Service Workflow Safety Hardening
 
-## Scope
+## Scope and boundary
 
-Sprint 3 adds a local, mock-only service workflow to the Autonomous LPG Safety prototype. It helps a user request an inspection, lets a technician record simulated work, verifies a result, and produces a plain-language report. It does not control hardware, alter the LPG risk model, or claim a real service outcome.
+Sprint 3.1 hardens the existing prototype workflow only. It adds no backend, authentication, push notification, hardware control, real appointment, real technician identity, actuator command, or change to LPG formulas and thresholds. Every record remains a mock record in the current browser.
 
-## Data model
+## Storage and transaction contract
 
-All records live in browser `localStorage` under `gasguard-v2-service-workflow` with version `service-workflow-v0.1`.
+Service data uses browser `localStorage` key `gasguard-v2-service-workflow`, schema `service-workflow-v0.2`.
 
-- `ServiceRequest`: request ID, site, incident, zone, device IDs, request type, title, description, priority, lifecycle timestamps, requester/contact preference, assigned technician, notes, related task IDs, report ID, history, and `mock` marker.
-- `MaintenanceTask`: task ID, request/incident/site/zone/device references, action, timing, performer, result, notes, evidence placeholders, and `mock` marker.
-- `Verification`: verification ID, request/incident references, test/expected/observed result, outcome, evidence placeholders, notes, performer, timestamp, and `mock` marker.
-- `ServiceReport`: issue, incident/diagnostic summary, task relations, intentionally empty parts-replaced list, verification result, detection state at completion, workflow state, technician identity, timestamps, next action, evidence references, and `mock` marker.
+Every mutating service API returns `{ ok, code, message, data }`. The state shown in the application changes only after serialisation and `localStorage.setItem` succeed. If storage is unavailable or full, the API returns `storage_unavailable` or `storage_write_failed`; it never reports a false success. Existing v0.1 or unversioned data is normalized by a defensive migration. Unreadable data starts a recoverable empty workflow and displays a warning.
 
-## State machine
+## Request state machine and immutability
 
 `submitted → acknowledged → scheduled/in_progress → awaiting_verification → completed`
 
-Other allowed paths are `submitted/scheduled → cancelled`, `in_progress/awaiting_verification → unable_to_complete`, and `unable_to_complete → in_progress`. A request cannot become `completed` until a verification record has result `passed`.
+Allowed alternatives are cancellation before work is completed, `in_progress/awaiting_verification → unable_to_complete`, and `unable_to_complete → in_progress`.
 
-The app records a timestamped history for every state transition. Creating another open request for the same Incident returns the existing request instead, preventing duplicate open work.
+- A request becomes `completed` only after its latest Verification has result `passed`.
+- `completed` and `cancelled` are terminal. Notes, tasks, verification, and all transitions are rejected without changing the record.
+- A cancelled request cannot create a report.
+- One Incident may have only one open request. The duplicate response returns the existing request without a write.
 
-## Incident separation and retention
+## Report gate and idempotency
 
-The technician workflow is separate from the detection lifecycle. Closing a service request never resolves a gas-risk or system-fault Incident. A generated service report visibly warns when the linked detection Incident is still open.
+A Service Report can be created only when the request is `completed` and the latest Verification is `passed`. The report records relations and observed mock results; it does not invent parts replaced, service outcome, or technician identity. Calling report again returns the same report (`report_exists`) rather than creating another record.
 
-When preserving browser history, the engine keeps every open Incident, every Incident with incomplete technician review, and every Incident attached to an open service request or incomplete maintenance task. Only completed, unprotected historical records are eligible for the normal 80-record limit. If protected records alone exceed that limit, they are all retained and a storage warning is set instead of deleting them.
+Service completion is separate from LPG incident detection. A report always preserves the linked Incident's detection status, and the UI warns when that Incident remains open.
 
-## UI entry points
+## Roles and audit view
 
-- General user: **Ask GasGuard** has a mock service-request form; open Incident cards also offer a request shortcut.
-- Technician: **รายงานการบริการ** contains the service queue, simulated task/verification actions, and generated service reports. **การบำรุงรักษา** lists related mock tasks.
-- Developer: the existing Developer Console remains read-only and shows the selected Incident together with its related request, task, verification, report, and storage-warning evidence. These records are prototype evidence, not certified service records.
+- **General:** Ask GasGuard shows requests created by the general role and their report summary only after a valid report exists.
+- **Technician:** the service queue provides only actions allowed by the state machine; reports are available only after the report gate passes.
+- **Developer:** Relation Explorer selects all data, an Incident, or a Request and displays linked Incident, Request, Task, Verification, and Report objects. Its labels include schema version, `LOCAL_BROWSER_DATA`, `MOCK`, and `NOT_A_PRODUCTION_AUDIT_LOG`.
 
-## Mock boundary
+## Engine storage integrity
 
-The workflow is local-only and is explicitly marked mock/demo. It sends no message, makes no network call, invokes no hardware, controls no valve, creates no real booking, and has no authentication or push notification. Real deployment requires a backend, identity and authorization, audit and privacy controls, notification delivery, retention policy, and validation against actual installation procedures.
+The analytics engine treats malformed retained browser data as `unknown`: confidence is `0`, risk is `null`, and the interface must not imply that the space is safe. Once valid telemetry is received, the malformed raw payload is backed up under `gasguard-v2-draft-corrupt-backup`; a recovery transition and resolved recovery event are retained for traceability. This is recovery of a local prototype session, not a certified audit procedure.
+
+## Retention
+
+The engine retains open Incidents, incomplete technician reviews, and Incidents connected to an open Service Request or incomplete Maintenance Task. Fully resolved and unprotected history remains eligible for the normal browser-local limit. A warning is shown rather than deleting protected records when the protected set exceeds the limit.
+
+## Verification coverage
+
+`npm test` covers engine regression scenarios, terminal-state immutability, report gates and idempotency, relationship snapshots, migration idempotency, storage-write failure, corrupted local engine storage and recovery, and retention protection. It is deterministic mock coverage only; it is not hardware, calibration, field-installation, security, or production acceptance testing.

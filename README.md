@@ -21,6 +21,8 @@ The test verifies the core safety semantics:
 - normal historical readings become `safe`
 - a sustained rise becomes `critical`
 - offline telemetry becomes `unknown`, never `safe`
+- completed/cancelled service requests are immutable and reports are gated by passed verification
+- browser-local write failures, corrupt saved data, recovery traceability, and retention protection
 
 ## Draft 1 scope
 
@@ -34,3 +36,4 @@ The test verifies the core safety semantics:
 Cloud authentication, persistent cloud storage, PWA caching, and real edge actuation are intentionally deferred. They must not replace local fail-safe logic on the device.
 
 See [Data Architecture](docs/data-architecture.md) for the contract and safety semantics.
+See [Sprint 3.1 service workflow hardening](docs/sprint-3-service-workflow.md) for the local-only service state machine, persistence contract, and audit-view boundary.

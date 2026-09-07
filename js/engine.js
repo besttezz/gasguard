@@ -18,9 +18,9 @@
   const STORE_KEY = 'gasguard-v2-draft';
   const PROTOTYPE_RULE_VERSION = 'UNVALIDATED_PROTOTYPE/event-lifecycle-v0.1';
   const storage = typeof localStorage === 'undefined' ? null : localStorage;
-  function load() { try { return JSON.parse(storage && storage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
-  const saved = load();
-  const state = { scenario: saved.scenario || 'normal', paused: false, readings: Array.isArray(saved.readings) && saved.readings.length ? saved.readings : history.slice(), events: Array.isArray(saved.events) && saved.events.length ? saved.events : [{ id:'evt-system-start', type: 'system', title: 'เริ่ม Data Analysis Engine', detail: 'Mock provider เชื่อมต่อกับ Feature Engine แล้ว', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() - 8 * 60000 }], index: history.length, source: saved.source || { mode: 'simulation', restUrl: '', mqttUrl: '', topic: 'gasguard/+/reading' } };
+  function load() { const raw=storage&&storage.getItem(STORE_KEY); if(raw==null)return{saved:{},integrityFault:null};try{const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('invalid schema');return{saved:parsed,integrityFault:null};}catch(e){return{saved:{},integrityFault:{at:new Date().toISOString(),code:'storage_corrupt',message:'พบข้อมูลเดิมเสียหาย ระบบไม่สามารถยืนยันสถานะได้',raw}};} }
+  const loaded = load(), saved = loaded.saved;
+  const state = { scenario: saved.scenario || 'normal', paused: false, readings: Array.isArray(saved.readings) && saved.readings.length ? saved.readings : history.slice(), events: Array.isArray(saved.events) && saved.events.length ? saved.events : [{ id:'evt-system-start', type: 'system', title: 'เริ่ม Data Analysis Engine', detail: 'Mock provider เชื่อมต่อกับ Feature Engine แล้ว', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() - 8 * 60000 }], index: history.length, source: saved.source || { mode: 'simulation', restUrl: '', mqttUrl: '', topic: 'gasguard/+/reading' }, integrityFault:loaded.integrityFault, recoveryTransition:null };
   const severityRank = { safe:0, attention:1, critical:2, unknown:0 };
   const eventTime = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString(); };
   const eventContext = f => ({ siteId:f.current.locationId ?? null, zoneId:f.current.zoneId ?? null, deviceIds:[f.current.deviceId,f.current.sensorId].filter(Boolean) });
@@ -33,7 +33,25 @@
   };
   state.events = state.events.map(normalizeEvent);
   function retainedEvents(){const protectedIds=window.GasGuardService?.protectedIncidentIds?.()||new Set(),keep=[],eligible=[];state.events.forEach(event=>{const id=event.eventId||event.id,protectedEvent=event.lifecycleStatus!=='resolved'||(event.technicianReview&&event.technicianReview.status!=='completed')||protectedIds.has(id);(protectedEvent?keep:eligible).push(event)});const limit=80,result=keep.length>=limit?[...keep,...eligible]:[...keep,...eligible.slice(0,limit-keep.length)];state.retentionWarning=keep.length>=limit?'มี Incident หรืองานบริการที่ต้องเก็บเกินขีดจำกัดปกติ จึงเก็บทั้งหมดไว้ก่อน; localStorage อาจเต็ม':result.length<state.events.length?'เก็บ Incident ที่เปิดอยู่และงานบริการที่ยังไม่เสร็จก่อน; รายการเก่าที่ปิดครบแล้วถูกจำกัดตาม localStorage':null;return result;}
-  function persist() { try { if (storage) storage.setItem(STORE_KEY, JSON.stringify({ scenario: state.scenario, readings: state.readings.slice(-360), events: retainedEvents(), source: state.source })); } catch (e) {} }
+  function persist() {
+    try {
+      if (storage) storage.setItem(STORE_KEY, JSON.stringify({ scenario: state.scenario, readings: state.readings.slice(-360), events: retainedEvents(), source: state.source }));
+    } catch (e) {}
+  }
+  function recoverIntegrityFromValidReading() {
+    const fault=state.integrityFault;
+    if(!fault)return;
+    const at=new Date().toISOString();
+    try { if(storage&&fault.raw!=null)storage.setItem(`${STORE_KEY}-corrupt-backup`,fault.raw); } catch(e) {}
+    state.integrityFault=null;
+    state.recoveryTransition={at,type:'storage_recovery',code:'storage_recovery',previousFaultCode:fault.code,message:'รับข้อมูล telemetry ที่ตรวจรูปแบบได้แล้ว; เริ่มสถานะในเครื่องใหม่โดยเก็บ raw ที่เสียหายไว้เป็น backup'};
+    state.events.unshift(normalizeEvent({
+      id:`evt-storage-recovery-${Date.now()}`,
+      type:'system',title:'กู้คืนการติดตามจากข้อมูลในเครื่องที่เสียหาย',
+      detail:'พบ telemetry รูปแบบถูกต้องแล้ว แต่ข้อมูลเดิมถูกเก็บไว้เป็น backup เพื่อการตรวจสอบ',
+      status:'resolved',t:Date.now(),label:'unknown',labelSource:'system',labelConfidence:'confirmed'
+    },0));
+  }
 
   function feature(readings) {
     const current = readings.at(-1);
@@ -78,7 +96,7 @@
     const batteryHealth=round(clamp((current.system.battery||0)-Math.max(0,3.7-(current.system.batteryVoltage||4))*60,0,100));
     const peakDurationSec=peakIndex>=0?(fiveMinute.length-1-peakIndex)*2:0;
     const recoveryRate=currentCorrected<peak&&peakDurationSec?round((peak-currentCorrected)/Math.max(1,peakDurationSec/60),2):0;
-    return { current, rawGas: round(current.gas.calculatedPpm ?? current.gas.value), correctedGas: round(currentCorrected), compensation: { temperature: round((current.environment.temperature - 30) * .003, 4), humidity: round((current.environment.humidity - 65) * .0015, 4), formulaVersion: 'prototype-comp-v0.1' }, baseline: round(baseline), rate: round(rate * 0.5, 1), variance: round(variance, 1), exposure: round(exposure), confidence: round(confidence), anomaly: round(anomaly), risk: risk == null ? null : round(risk), safety, z: round(z, 2), drift: round(drift, 1), sensorHealth: round(sensorHealth), valveMismatch, classification, features:{rates:{rate5s,rate30s,rate1m,rate5m},movingAverages:{avg1m:round(avg1m),avg5m:round(avg5m),avg15m:round(avg15m),avg1h:round(avg1h)},stability:{std1m:round(std(oneMinute),2),std5m:round(std(fiveMinute),2),std1h:round(std(oneHour),2)},eventShape:{peakValue:round(peak),peakDurationSec,recoveryRate,timeAboveBaselineSec:readings.slice(-30).filter(r=>correctedPpm(r)>baseline).length*2,areaUnderCurve:round(exposure)},fusion:{sensors:fleet,mean:round(fusionMean),spread:round(fusionSpread),confidence:fusionConfidence}},reliability:{valveHealth,connectivityHealth,batteryHealth} };
+    const integrityUnknown=Boolean(state.integrityFault);return { current, rawGas: round(current.gas.calculatedPpm ?? current.gas.value), correctedGas: round(currentCorrected), compensation: { temperature: round((current.environment.temperature - 30) * .003, 4), humidity: round((current.environment.humidity - 65) * .0015, 4), formulaVersion: 'prototype-comp-v0.1' }, baseline: round(baseline), rate: round(rate * 0.5, 1), variance: round(variance, 1), exposure: round(exposure), confidence: integrityUnknown?0:round(confidence), anomaly: round(anomaly), risk: integrityUnknown?null:(risk == null ? null : round(risk)), safety:integrityUnknown?'unknown':safety, z: round(z, 2), drift: round(drift, 1), sensorHealth: round(sensorHealth), valveMismatch, classification:integrityUnknown?'Data integrity fault':classification, integrityFault:state.integrityFault, features:{rates:{rate5s,rate30s,rate1m,rate5m},movingAverages:{avg1m:round(avg1m),avg5m:round(avg5m),avg15m:round(avg15m),avg1h:round(avg1h)},stability:{std1m:round(std(oneMinute),2),std5m:round(std(fiveMinute),2),std1h:round(std(oneHour),2)},eventShape:{peakValue:round(peak),peakDurationSec,recoveryRate,timeAboveBaselineSec:readings.slice(-30).filter(r=>correctedPpm(r)>baseline).length*2,areaUnderCurve:round(exposure)},fusion:{sensors:fleet,mean:round(fusionMean),spread:round(fusionSpread),confidence:fusionConfidence}},reliability:{valveHealth,connectivityHealth,batteryHealth} };
   }
 
   function describe(f) {
@@ -187,20 +205,20 @@
     get validation() { return validationCases.map(validateCase); },
     runValidation() { const results=this.validation; return { ranAt:new Date().toISOString(), results, passed:results.filter(x=>x.pass).length, total:results.length }; },
     runFailSafeDrill() { return { ranAt:new Date().toISOString(), checks:failSafeChecks() }; },
-    incidentEvidence() { const f=this.analysis; return { schemaVersion:'gasguard-incident-evidence-v0.2', prototypeRuleVersion:PROTOTYPE_RULE_VERSION, generatedAt:new Date().toISOString(), scope:'Prototype analytics evidence. Not a certified safety record or actuator command.', currentReading:f.current, analysis:{ baseline:f.baseline, ratePpmPerMinute:f.rate, exposurePpmMinute:f.exposure, anomalyScore:f.anomaly, riskScore:f.risk, safetyState:f.safety, confidence:f.confidence, classification:f.classification }, explanation:this.explanation, recentEvents:state.events.slice(0,10), source:{ mode:state.source.mode, providerBoundary:'Web data layer only. Edge safety controller validation required.' } }; },
+    incidentEvidence() { const f=this.analysis; return { schemaVersion:'gasguard-incident-evidence-v0.2', prototypeRuleVersion:PROTOTYPE_RULE_VERSION, generatedAt:new Date().toISOString(), scope:'Prototype analytics evidence. Not a certified safety record or actuator command.', currentReading:f.current, analysis:{ baseline:f.baseline, ratePpmPerMinute:f.rate, exposurePpmMinute:f.exposure, anomalyScore:f.anomaly, riskScore:f.risk, safetyState:f.safety, confidence:f.confidence, classification:f.classification }, integrity:{ status:f.integrityFault?'unknown':'verified_from_current_session', fault:f.integrityFault, recoveryTransition:state.recoveryTransition }, explanation:this.explanation, recentEvents:state.events.slice(0,10), source:{ mode:state.source.mode, providerBoundary:'Web data layer only. Edge safety controller validation required.' } }; },
     labelEvent(eventId, label, source='engineer', confidence='medium') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; event.label=label;event.labelSource=source;event.labelConfidence=confidence;persist();return true; },
     acknowledgeEvent(eventId, by='technician') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.acknowledgement={acknowledgedAt:at,acknowledgedBy:by};event.technicianReview={...event.technicianReview,status:event.technicianReview.status==='not_started'?'acknowledged':event.technicianReview.status,updatedAt:at};appendTransition(event,'acknowledged',`Acknowledged by ${by}`,at);persist();return true; },
     startInvestigation(eventId, by='technician') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,status:'investigating',startedAt:event.technicianReview.startedAt||at,updatedAt:at,startedBy:by};appendTransition(event,'investigating',`Investigation started by ${by}`,at);persist();return true; },
     saveTechnicianNote(eventId,note) { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,note:String(note||'').trim()||null,updatedAt:at};appendTransition(event,'technician_note',event.technicianReview.note||'No note supplied',at);persist();return true; },
     markTechnicianResolved(eventId,summary='') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,status:'resolved',resolvedAt:at,updatedAt:at};event.resolutionSummary=String(summary||'').trim()||event.resolutionSummary||null;appendTransition(event,'technician_workflow_resolved','Technician workflow completed; engine detection lifecycle is unchanged',at);persist();return true; },
     get alarmQuality() { const safetyEvents=state.events.filter(x=>x.eventType==='gas_risk'), labelled=safetyEvents.filter(x=>x.label&&x.label!=='unknown'), falseAlarms=labelled.filter(x=>['normal','cooking','sensor_noise','environmental_effect'].includes(x.label));return { total:safetyEvents.length,labelled:labelled.length,falseAlarmCount:falseAlarms.length,falseAlarmRate:labelled.length?round(falseAlarms.length/labelled.length*100):null }; },
-    ingest(input) { const next = normalizeIncoming(input); if (!next) return false; state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); syncLifecycle(this.analysis); persist(); return true; },
+    ingest(input) { const next = normalizeIncoming(input); if (!next) return false; recoverIntegrityFromValidReading(); state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); syncLifecycle(this.analysis); persist(); return true; },
     tick() {
       if (state.paused) return this.analysis;
       const last = state.readings.at(-1).gas.value;
       const cfg = scenarios[state.scenario];
       const next = reading(0, cfg.next(last, state.index++), { system: cfg.system });
-      state.readings.push(next); if (state.readings.length > 180) state.readings.shift();
+      recoverIntegrityFromValidReading(); state.readings.push(next); if (state.readings.length > 180) state.readings.shift();
       const nextAnalysis = this.analysis; syncLifecycle(nextAnalysis); persist(); return nextAnalysis;
     }
   };
