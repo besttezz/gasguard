@@ -3,6 +3,8 @@
   const now = Date.now();
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const round = (n, d = 0) => Number(n.toFixed(d));
+  // Simulation inputs must replay predictably; this only replaces mock noise, never safety rules.
+  const mockNoise = (index, amplitude) => ((Math.sin((index + 1) * 12.9898 + 78.233) * 43758.5453) % 1 + 1) % 1 * amplitude;
 
   const contract = {
     deviceId: 'GG-KITCHEN-01', sensorId: 'LPG-01', locationId: 'restaurant-a', zoneId: 'kitchen',
@@ -40,14 +42,14 @@
   const sensors = [{ id:'LPG-001', deviceId:'GG-ESP32-001', zoneId:'ZONE-KITCHEN', name:'LPG Sensor A', type:'MQ-5', position:{x:9,y:5}, health:94, operatingHours:428, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} },{ id:'LPG-002', deviceId:'GG-ESP32-001', zoneId:'ZONE-KITCHEN', name:'LPG Sensor B', type:'MQ-5', position:{x:5,y:5}, health:92, operatingHours:415, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} },{ id:'LPG-003', deviceId:'GG-ESP32-001', zoneId:'ZONE-STORAGE', name:'Storage LPG Sensor', type:'MQ-5', position:{x:3,y:6}, health:90, operatingHours:421, calibration:{status:'valid',lastCalibration:'2026-08-20',nextCalibration:'2026-11-20'} }];
 
   const scenarios = {
-    normal: { label: 'ทำงานตามปกติ', next(last, index) { return clamp(last + (Math.random() - .5) * 11 + Math.sin(index / 8) * 2, 66, 126); }, system: {} },
-    transient: { label: 'ค่าสูงชั่วคราวขณะทำอาหาร', next(last, index) { const pulse=index%10<4?22:-18; return clamp(last+pulse+(Math.random()-.5)*8,72,230); }, system: { valve: 'open', actualValveState: 'open', activity: 'active', operatingState: 'active' } },
-    rise: { label: 'Slow leak · LPG เพิ่มต่อเนื่อง', next(last) { return clamp(last + 14 + Math.random() * 9, 70, 730); }, system: { activity: 'inactive', operatingState: 'idle' } },
-    critical: { label: 'Rapid leak · เหตุวิกฤต', next(last) { return clamp(last + 42 + Math.random() * 25, 120, 980); }, system: { valve: 'closed', commandedValveState: 'closed', actualValveState: 'closed', activity: 'inactive', operatingState: 'idle' } },
+    normal: { label: 'ทำงานตามปกติ', next(last, index) { return clamp(last + (mockNoise(index, 11) - 5.5) + Math.sin(index / 8) * 2, 66, 126); }, system: {} },
+    transient: { label: 'ค่าสูงชั่วคราวขณะทำอาหาร', next(last, index) { const pulse=index%10<4?22:-18; return clamp(last+pulse+(mockNoise(index + 17, 8)-4),72,230); }, system: { valve: 'open', actualValveState: 'open', activity: 'active', operatingState: 'active' } },
+    rise: { label: 'Slow leak · LPG เพิ่มต่อเนื่อง', next(last,index) { return clamp(last + 14 + mockNoise(index + 31, 9), 70, 730); }, system: { activity: 'inactive', operatingState: 'idle' } },
+    critical: { label: 'Rapid leak · เหตุวิกฤต', next(last,index) { return clamp(last + 42 + mockNoise(index + 47, 25), 120, 980); }, system: { valve: 'closed', commandedValveState: 'closed', actualValveState: 'closed', activity: 'inactive', operatingState: 'idle' } },
     unknown: { label: 'Sensor failure · เซ็นเซอร์ขาดการเชื่อมต่อ', next(last) { return last; }, system: { connection: 'offline', mqttConnectionState: 'disconnected', valve: 'unknown', activity: 'unknown', operatingState: 'unknown' } },
-    network: { label: 'Network failure · MQTT offline', next(last) { return clamp(last+(Math.random()-.5)*8,66,140); }, system: { connection: 'offline', mqttConnectionState: 'disconnected', latencyMs: 0, packetLossPct: 100, reconnectCount: 4 } },
-    valveFailure: { label: 'Valve failure · command ≠ feedback', next(last) { return clamp(last+18+Math.random()*12,80,790); }, system: { valve: 'open', commandedValveState: 'closed', actualValveState: 'open', valveFailedCommandCount: 1, valveResponseTimeMs: 0, activity: 'inactive', operatingState: 'idle' } },
-    drift: { label: 'Sensor drift · baseline เปลี่ยน', next(last) { return clamp(last+3+Math.random()*5,90,450); }, system: { activity: 'idle', operatingState: 'idle' } }
+    network: { label: 'Network failure · MQTT offline', next(last,index) { return clamp(last+(mockNoise(index + 59, 8)-4),66,140); }, system: { connection: 'offline', mqttConnectionState: 'disconnected', latencyMs: 0, packetLossPct: 100, reconnectCount: 4 } },
+    valveFailure: { label: 'Valve failure · command ≠ feedback', next(last,index) { return clamp(last+18+mockNoise(index + 71, 12),80,790); }, system: { valve: 'open', commandedValveState: 'closed', actualValveState: 'open', valveFailedCommandCount: 1, valveResponseTimeMs: 0, activity: 'inactive', operatingState: 'idle' } },
+    drift: { label: 'Sensor drift · baseline เปลี่ยน', next(last,index) { return clamp(last+3+mockNoise(index + 83, 5),90,450); }, system: { activity: 'idle', operatingState: 'idle' } }
   };
 
   function sensorFleet(primary) {

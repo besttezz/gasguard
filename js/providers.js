@@ -1,11 +1,11 @@
 (function () {
   'use strict';
   const engine = window.GasGuardEngine;
-  const providers = { status: 'simulation', message: 'Mock provider · 2s interval', _lastRest: 0, _mqtt: null, _mqttLoading: null,
+  const providers = { status: 'simulation', message: 'Mock provider · 2s interval', simulationSpeed:1, _simulationPulse:0, _lastRest: 0, _mqtt: null, _mqttLoading: null,
     setStatus(status, message) { this.status = status; this.message = message; },
     async tick() {
       const source = engine.state.source;
-      if (source.mode === 'simulation') { this.setStatus('simulation', 'Mock provider · 2s interval'); return engine.tick(); }
+      if (source.mode === 'simulation') { this.setStatus('simulation', `Mock provider · 2s interval · ${this.simulationSpeed}x`); this._simulationPulse++; if(this.simulationSpeed===0.5&&this._simulationPulse%2===1)return engine.analysis;let result=engine.analysis;for(let i=0;i<Math.max(1,Math.round(this.simulationSpeed));i++)result=engine.tick();return result; }
       if (source.mode === 'rest') return this.fetchRest(source);
       if (source.mode === 'mqtt') return this.ensureMqtt(source);
     },
@@ -39,6 +39,7 @@
       } catch (error) { this.setStatus('error', `MQTT setup · ${error.message}`); }
       return engine.analysis;
     },
+    setSimulationSpeed(speed) { const next=Number(speed); this.simulationSpeed=[0.5,1,2,4].includes(next)?next:1; this._simulationPulse=0; },
     reset() { if (this._mqtt) { try { this._mqtt.end(true); } catch (e) {} this._mqtt = null; } }
   };
   window.GasGuardProviders = providers;
