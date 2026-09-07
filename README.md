@@ -8,7 +8,7 @@ GasGuard V2 is an analytics-first LPG safety interface. It uses one canonical re
 npm run dev
 ```
 
-Open `http://localhost:8080`.
+Open `http://localhost:5567`.
 
 ## Test
 

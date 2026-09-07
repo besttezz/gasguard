@@ -9,51 +9,58 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
-</head>
+    <style>
+      @media (min-width: 761px) {
+        .sidebar { display: flex; flex-direction: column; }
+        .navigation { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+        .sidebar-foot { position: static; left: auto; right: auto; bottom: auto; flex: 0 0 auto; margin: 16px 8px 0; padding-top: 14px; border-top: 1px solid var(--line); }
+        .sidebar-foot strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .top-actions { flex-wrap: wrap; justify-content: flex-end; }
+        .top-actions .button { white-space: nowrap; }
+      }
+      .site-context { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+      .demo-role-note { display: block; max-width: 190px; margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.35; }
+      .source-badge { align-self: end; color: oklch(.36 .09 79); background: oklch(.97 .04 79); }
+      .general-landing { display: none; margin: 20px 0; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); }
+      .general-landing-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+      .general-landing-head .section-label { margin: 0 0 5px; }
+      .general-landing h2 { margin: 0; font-size: 21px; }
+      .general-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+      .general-status-grid div { padding: 12px; border-radius: 10px; background: oklch(.97 .01 27); }
+      .general-status-grid span, .general-status-grid strong { display: block; }
+      .general-status-grid span { color: var(--muted); font-size: 12px; }
+      .general-status-grid strong { margin-top: 4px; font-size: 14px; }
+      .general-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+      .general-role .general-landing { display: block; }
+      .general-role .score-block, .general-role #overview-metrics, .general-role #page-overview > .content-grid, .general-role #page-overview > .action-guide { display: none; }
+      .general-role .role-technical-control, .general-role .role-technician-control { display: none; }
+      .developer-role .role-technician-control { display: none; }
+      @media (max-width: 760px) { .general-status-grid { grid-template-columns: 1fr 1fr; } .source-badge { align-self: auto; } }
+    </style>
+  </head>
 <body>
   <a class="skip-link" href="#main-content">ข้ามไปยังเนื้อหาหลัก</a>
   <div class="app-shell">
     <aside class="sidebar" aria-label="เมนูหลัก">
       <div class="brand"><span class="brand-mark" aria-hidden="true">G</span><span>GasGuard</span></div>
       <p class="workspace-label">AUTONOMOUS LPG SAFETY</p>
-      <nav class="navigation">
-        <p class="nav-group">ภาพรวม</p>
-        <button class="nav-item is-active" data-page="overview"><span aria-hidden="true">◉</span> ภาพรวมความปลอดภัย</button>
-        <p class="nav-group engineer-item">MONITOR & ANALYZE</p>
-        <button class="nav-item engineer-item" data-page="live"><span aria-hidden="true">⌁</span> ตรวจวัดแบบสด</button>
-        <button class="nav-item engineer-item" data-page="intelligence"><span aria-hidden="true">✦</span> Safety Intelligence</button>
-        <button class="nav-item engineer-item" data-page="replay"><span aria-hidden="true">▷</span> Safety Replay</button>
-        <button class="nav-item engineer-item" data-page="validation"><span aria-hidden="true">✓</span> Validation Lab</button>
-        <button class="nav-item engineer-item" data-page="spatial"><span aria-hidden="true">⌘</span> Spatial Simulation</button>
-        <button class="nav-item engineer-item" data-page="analytics"><span aria-hidden="true">▥</span> การวิเคราะห์ข้อมูล</button>
-        <button class="nav-item engineer-item" data-page="events"><span aria-hidden="true">◷</span> เหตุการณ์</button>
-        <button class="nav-item" data-page="alerts"><span aria-hidden="true">!</span> การแจ้งเตือน</button>
-        <button class="nav-item" data-page="guide"><span aria-hidden="true">?</span> คู่มือข้อมูล</button>
-        <p class="nav-group engineer-item">VALIDATE & INSTALL</p>
-        <button class="nav-item engineer-item" data-page="devices"><span aria-hidden="true">▣</span> อุปกรณ์</button>
-        <button class="nav-item engineer-item" data-page="maintenance"><span aria-hidden="true">◌</span> การบำรุงรักษา</button>
-        <button class="nav-item" data-page="assistant"><span aria-hidden="true">✧</span> Ask GasGuard</button>
-        <p class="nav-group engineer-item">OPERATE & DEVELOP</p>
-        <button class="nav-item engineer-item" data-page="locations"><span aria-hidden="true">⌖</span> สถานที่และโซน</button>
-        <button class="nav-item engineer-item" data-page="reports"><span aria-hidden="true">▤</span> รายงาน</button>
-        <button class="nav-item engineer-item" data-page="settings"><span aria-hidden="true">⚙</span> ตั้งค่า</button>
-        <button class="nav-item engineer-item" data-page="explorer"><span aria-hidden="true">⌘</span> Data Explorer</button>
-        <button class="nav-item engineer-item" data-page="developer"><span aria-hidden="true">&lt;/&gt;</span> Developer Console</button>
-      </nav>
+      <nav class="navigation" id="navigation" aria-label="เมนูตามบทบาท"></nav>
       <div class="sidebar-foot">
         <span class="connection-dot" id="connection-dot"></span>
-        <div><strong id="connection-label">Data simulation active</strong><small>Mock provider · 2s interval</small></div>
+        <div><strong id="connection-label">Data simulation active</strong><small>อัปเดตอัตโนมัติทุก 2 วินาที</small></div>
       </div>
     </aside>
 
     <main id="main-content" class="main-content">
       <header class="topbar">
-        <div><p class="section-label" id="page-kicker">SAFETY OVERVIEW</p><h1 id="page-title">ภาพรวมความปลอดภัย</h1></div>
+        <div><p class="section-label" id="page-kicker">SAFETY OVERVIEW</p><h1 id="page-title">ภาพรวมความปลอดภัย</h1><p class="site-context" id="site-context">กำลังอ่านข้อมูลสถานที่</p></div>
         <div class="top-actions">
-          <label class="scenario-control">มุมมอง
-            <select id="view-mode" aria-label="เลือกมุมมองผู้ใช้"><option value="owner">เจ้าของร้าน</option><option value="engineer">วิศวกร</option></select>
+          <label class="scenario-control">โหมดผู้ใช้
+            <select id="view-mode" aria-label="เลือกโหมดสาธิตมุมมองผู้ใช้"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select>
+            <span class="demo-role-note">โหมดสาธิตมุมมองผู้ใช้ ไม่ใช่การยืนยันตัวตนหรือสิทธิ์จริง</span>
           </label>
-          <label class="scenario-control engineer-control">สถานการณ์จำลอง
+          <span class="data-badge source-badge" id="data-source-badge">กำลังตรวจแหล่งข้อมูล</span>
+          <label class="scenario-control role-technical-control">สถานการณ์จำลอง
             <select id="scenario-select" aria-label="เลือกสถานการณ์จำลอง">
               <option value="normal">ทำงานตามปกติ</option>
               <option value="rise">LPG เพิ่มต่อเนื่อง</option>
@@ -65,7 +72,7 @@
               <option value="drift">Sensor drift · baseline เปลี่ยน</option>
             </select>
           </label>
-          <label class="scenario-control engineer-control">พื้นที่ทดสอบ
+          <label class="scenario-control role-technical-control">พื้นที่ทดสอบ
             <select id="layout-select" aria-label="เลือกพื้นที่จำลอง">
               <option value="restaurant">ครัวร้านอาหาร</option>
               <option value="home">ครัวบ้าน</option>
@@ -73,8 +80,8 @@
               <option value="custom">แปลนจากการติดตั้ง</option>
             </select>
           </label>
-          <button class="button button-primary engineer-control" id="open-setup" type="button">ติดตั้งและลงทะเบียนระบบ</button>
-          <button class="button button-secondary" id="pause-button" type="button">พักข้อมูล</button>
+          <button class="button button-primary role-technician-control" id="open-setup" type="button">ติดตั้งและลงทะเบียนระบบ</button>
+          <button class="button button-secondary role-technical-control" id="pause-button" type="button">พักข้อมูล</button>
         </div>
       </header>
 
@@ -83,6 +90,7 @@
           <div><p class="section-label">RESTAURANT A · KITCHEN</p><h2 id="safety-state">กำลังประเมินความปลอดภัย</h2><p id="safety-message">กำลังจัดเตรียมข้อมูลจากเซ็นเซอร์</p></div>
           <div class="score-block"><strong id="safety-score">--</strong><span>/ 100 risk</span><small id="safety-score-caption">Safety score</small></div>
         </div>
+        <section class="general-landing" id="general-landing" aria-label="สรุปสำหรับผู้ใช้ทั่วไป"><div class="general-landing-head"><div><p class="section-label">สถานะสถานที่</p><h2 id="general-site-name">ยังไม่ได้ลงทะเบียนสถานที่</h2></div><span class="status-pill" id="general-connection">—</span></div><div class="general-status-grid" id="general-status-grid"></div><div class="general-actions"><button class="button button-secondary" data-goto="events" type="button">ดูรายละเอียดเหตุการณ์</button><button class="button button-primary" data-goto="assistant" type="button">ขอความช่วยเหลือ</button></div></section>
 
         <div class="metric-grid" id="overview-metrics"></div>
 
