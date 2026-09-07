@@ -16,11 +16,22 @@
   const timeValue = reading => new Date(reading.timestamp).getTime();
 
   const STORE_KEY = 'gasguard-v2-draft';
+  const PROTOTYPE_RULE_VERSION = 'UNVALIDATED_PROTOTYPE/event-lifecycle-v0.1';
   const storage = typeof localStorage === 'undefined' ? null : localStorage;
   function load() { try { return JSON.parse(storage && storage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
   const saved = load();
   const state = { scenario: saved.scenario || 'normal', paused: false, readings: Array.isArray(saved.readings) && saved.readings.length ? saved.readings : history.slice(), events: Array.isArray(saved.events) && saved.events.length ? saved.events : [{ id:'evt-system-start', type: 'system', title: 'เริ่ม Data Analysis Engine', detail: 'Mock provider เชื่อมต่อกับ Feature Engine แล้ว', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() - 8 * 60000 }], index: history.length, source: saved.source || { mode: 'simulation', restUrl: '', mqttUrl: '', topic: 'gasguard/+/reading' } };
-  state.events = state.events.map((event,index) => ({ id:event.id || `legacy-event-${index}-${event.t||Date.now()}`, status:event.status || 'open', label:event.label || 'unknown', labelSource:event.labelSource || null, labelConfidence:event.labelConfidence || 'low', ...event }));
+  const severityRank = { safe:0, attention:1, critical:2, unknown:0 };
+  const eventTime = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString(); };
+  const eventContext = f => ({ siteId:f.current.locationId ?? null, zoneId:f.current.zoneId ?? null, deviceIds:[f.current.deviceId,f.current.sensorId].filter(Boolean) });
+  const readingSummary = f => ({ timestamp:f.current.timestamp || null, lpgPpm:f.correctedGas ?? null, riskScore:f.risk ?? null, anomalyScore:f.anomaly ?? null, safety:f.safety, valveCommand:f.current.system.commandedValveState ?? null, valveFeedback:f.current.system.actualValveState ?? f.current.system.valve ?? null, connection:f.current.system.connection ?? null });
+  const titleFor = (type,severity) => type === 'system_fault' ? 'ไม่สามารถยืนยันการติดตามระบบได้' : severity === 'critical' ? 'ความเสี่ยง LPG ระดับสูง' : 'พบแนวโน้ม LPG ผิดปกติ';
+  const normalizeEvent = (event,index) => {
+    if (event.eventId) return { ...event, id:event.id || event.eventId, eventType:event.legacy&&event.type==='system'?'legacy':event.eventType, lifecycleStatus:event.legacy&&event.type==='system'?'resolved':event.lifecycleStatus, resolvedAt:event.legacy&&event.type==='system'?(event.resolvedAt||eventTime(event.t||Date.now())):event.resolvedAt, deviceIds:Array.isArray(event.deviceIds)?event.deviceIds:[], evidence:event.evidence || { timeline:[], missingDataPeriods:[], alerts:[] }, acknowledgement:event.acknowledgement || { acknowledgedAt:null, acknowledgedBy:null }, technicianReview:event.technicianReview || { status:'not_started', startedAt:null, updatedAt:null, resolvedAt:null, note:null }, prototypeRuleVersion:event.prototypeRuleVersion || PROTOTYPE_RULE_VERSION };
+    const at = eventTime(event.t || Date.now());
+    return { eventId:event.id || `legacy-event-${index}-${event.t||Date.now()}`, id:event.id || `legacy-event-${index}-${event.t||Date.now()}`, siteId:null, zoneId:null, deviceIds:[], eventType:event.type === 'system' ? 'legacy' : 'gas_risk', source:'legacy', lifecycleStatus:event.status === 'resolved' || event.type === 'system' ? 'resolved' : 'open', severity:event.type === 'critical' ? 'critical' : event.type === 'warning' ? 'attention' : 'unknown', peakSeverity:event.type === 'critical' ? 'critical' : event.type === 'warning' ? 'attention' : 'unknown', startedAt:at, lastUpdatedAt:at, resolvedAt:event.status === 'resolved' || event.type === 'system' ? at : null, firstReading:null, latestReading:null, peakLpgPpm:null, peakRiskScore:null, peakAnomalyScore:null, readingCount:0, updateCount:0, acknowledgement:{ acknowledgedAt:null, acknowledgedBy:null }, technicianReview:{ status:'not_started', startedAt:null, updatedAt:null, resolvedAt:null, note:null }, resolutionSummary:null, prototypeRuleVersion:PROTOTYPE_RULE_VERSION, evidence:{ timeline:[{ at, type:'legacy_import', detail:'Legacy event has no recoverable reading context' }], missingDataPeriods:[], alerts:[] }, legacy:true, type:event.type || 'system', title:event.title || 'Legacy event', detail:event.detail || 'ยังไม่มีข้อมูล', label:event.label || 'unknown', labelSource:event.labelSource || null, labelConfidence:event.labelConfidence || 'low', t:event.t || Date.now() };
+  };
+  state.events = state.events.map(normalizeEvent);
   function persist() { try { if (storage) storage.setItem(STORE_KEY, JSON.stringify({ scenario: state.scenario, readings: state.readings.slice(-360), events: state.events.slice(0, 80), source: state.source })); } catch (e) {} }
 
   function feature(readings) {
@@ -76,12 +87,36 @@
     return { title: 'รูปแบบการใช้งานอยู่ในเกณฑ์คาดหมาย', text: `ค่า LPG ยังคงใกล้ baseline ${f.baseline} ppm, ไม่มีการเพิ่มขึ้นผิดปกติ`, action: 'เฝ้าระวังต่อเนื่องตามรอบการทำงานปกติ' };
   }
 
-  function eventFor(f, prev) {
-    if (!prev || f.safety === prev) return;
-    const labels = { safe: ['system', 'กลับสู่รูปแบบปกติ'], attention: ['warning', 'พบแนวโน้ม LPG ผิดปกติ'], critical: ['critical', 'ความเสี่ยง LPG ระดับสูง'], unknown: ['warning', 'ไม่สามารถตรวจติดตามเซ็นเซอร์ได้'] };
-    const [type, title] = labels[f.safety];
-    state.events.unshift({ id:`evt-${Date.now()}`, type, title, detail: f.safety === 'unknown' ? 'Sensor connection offline, safety state is unknown' : `Risk ${f.risk}/100 · Anomaly ${f.anomaly}/100 · LPG ${f.correctedGas} ppm`, status:'open', label:'unknown', labelSource:null, labelConfidence:'low', triggerReason:f.classification, t: Date.now() });
-    state.events = state.events.slice(0, 40);
+  function activeEvent(context,eventType) { return state.events.find(event => !event.legacy && event.eventType === eventType && event.siteId === context.siteId && event.zoneId === context.zoneId && event.lifecycleStatus !== 'resolved'); }
+  function appendTransition(event,type,detail,at) { event.evidence.timeline.push({ at, type, detail }); if (event.evidence.timeline.length > 40) event.evidence.timeline.shift(); }
+  function createEvent(f,eventType) {
+    const at = eventTime(f.current.timestamp), context = eventContext(f), severity = eventType === 'system_fault' ? 'unknown' : f.safety, summary = readingSummary(f), id = `evt-${Date.now()}-${Math.random().toString(16).slice(2,6)}`;
+    const event = { eventId:id, id, ...context, eventType, source:state.source.mode || 'simulation', lifecycleStatus:eventType === 'system_fault' ? 'system_fault' : 'open', severity, peakSeverity:severity, startedAt:at, lastUpdatedAt:at, resolvedAt:null, firstReading:summary, latestReading:summary, peakLpgPpm:summary.lpgPpm, peakRiskScore:summary.riskScore, peakAnomalyScore:summary.anomalyScore, readingCount:1, updateCount:0, acknowledgement:{ acknowledgedAt:null, acknowledgedBy:null }, technicianReview:{ status:'not_started', startedAt:null, updatedAt:null, resolvedAt:null, note:null }, resolutionSummary:null, prototypeRuleVersion:PROTOTYPE_RULE_VERSION, evidence:{ timeline:[{ at, type:'detected', detail:eventType === 'system_fault' ? 'Monitoring state is unknown; safety cannot be confirmed' : `Detected ${severity} gas-risk state` }], missingDataPeriods:[], alerts:[] }, type:eventType === 'system_fault' ? 'system' : severity === 'critical' ? 'critical' : 'warning', title:titleFor(eventType,severity), detail:eventType === 'system_fault' ? 'ข้อมูล sensor หรือ network ไม่พร้อม จึงไม่สามารถยืนยันสถานะความปลอดภัยได้' : `LPG ${summary.lpgPpm ?? 'ยังไม่มีข้อมูล'} ppm · Risk ${summary.riskScore ?? 'ยังไม่มีข้อมูล'} / 100`, label:'unknown', labelSource:null, labelConfidence:'low', triggerReason:f.classification, t:new Date(at).getTime() };
+    state.events.unshift(event); state.events = state.events.slice(0,80); return event;
+  }
+  function updateEvent(event,f) {
+    const at = eventTime(f.current.timestamp), summary = readingSummary(f), previousSeverity = event.severity;
+    event.lastUpdatedAt=at; event.latestReading=summary; event.readingCount+=1; event.updateCount+=1;
+    event.peakLpgPpm=Math.max(event.peakLpgPpm ?? -Infinity, summary.lpgPpm ?? -Infinity); if (event.peakLpgPpm===-Infinity) event.peakLpgPpm=null;
+    event.peakRiskScore=Math.max(event.peakRiskScore ?? -Infinity, summary.riskScore ?? -Infinity); if (event.peakRiskScore===-Infinity) event.peakRiskScore=null;
+    event.peakAnomalyScore=Math.max(event.peakAnomalyScore ?? -Infinity, summary.anomalyScore ?? -Infinity); if (event.peakAnomalyScore===-Infinity) event.peakAnomalyScore=null;
+    if (severityRank[f.safety] > severityRank[event.peakSeverity]) { event.peakSeverity=f.safety; appendTransition(event,'escalated',`${previousSeverity} → ${f.safety}`,at); }
+    if (f.safety !== 'unknown') { event.severity=f.safety; event.type=f.safety === 'critical' ? 'critical' : 'warning'; event.title=titleFor('gas_risk',f.safety); }
+    event.detail=event.eventType === 'system_fault' ? 'ข้อมูล sensor หรือ network ไม่พร้อม จึงไม่สามารถยืนยันสถานะความปลอดภัยได้' : `ล่าสุด LPG ${summary.lpgPpm ?? 'ยังไม่มีข้อมูล'} ppm · Risk ${summary.riskScore ?? 'ยังไม่มีข้อมูล'} / 100`;
+    appendTransition(event,'reading_update',`Reading ${event.readingCount} retained in incident`,at);
+  }
+  function resolveEvent(event,at,summary) { event.lifecycleStatus='resolved'; event.resolvedAt=at; event.lastUpdatedAt=at; if(summary) event.latestReading=summary; appendTransition(event,'resolved','Engine returned to its existing normal/safe state',at); }
+  function syncLifecycle(f) {
+    const context=eventContext(f), at=eventTime(f.current.timestamp), summary=readingSummary(f);
+    if (f.safety === 'unknown') {
+      const fault=activeEvent(context,'system_fault');
+      if(fault) { updateEvent(fault,f); fault.lifecycleStatus='system_fault'; fault.evidence.missingDataPeriods.push({ at, reason:'unknown monitoring state' }); if(fault.evidence.missingDataPeriods.length>20) fault.evidence.missingDataPeriods.shift(); }
+      else createEvent(f,'system_fault');
+      return;
+    }
+    const fault=activeEvent(context,'system_fault'); if(fault) resolveEvent(fault,at,summary);
+    if (f.safety === 'safe') { state.events.filter(event=>!event.legacy&&event.eventType==='gas_risk'&&event.siteId===context.siteId&&event.zoneId===context.zoneId&&event.lifecycleStatus!=='resolved').forEach(event=>resolveEvent(event,at,summary)); return; }
+    const gas=activeEvent(context,'gas_risk'); if(gas) updateEvent(gas,f); else createEvent(f,'gas_risk');
   }
 
   function normalizeIncoming(input) {
@@ -139,28 +174,32 @@
 
   const engine = {
     state,
+    normalizeLegacyEvents() { state.events=state.events.map(normalizeEvent); persist(); return state.events; },
     get analysis() { return feature(state.readings); },
     get explanation() { return describe(this.analysis); },
-    setScenario(s) { state.scenario = s; state.events.unshift({ type: 'system', title: 'เปลี่ยนสถานการณ์จำลอง', detail: scenarios[s].label, t: Date.now() }); persist(); },
+    setScenario(s) { state.scenario = s; persist(); },
     togglePause() { state.paused = !state.paused; },
-    clearEvents() { state.events = [{ id:`evt-${Date.now()}`, type: 'system', title: 'เริ่ม Event Timeline ใหม่', detail: 'ล้างเฉพาะเหตุการณ์ที่สร้างจากการจำลอง', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() }]; persist(); },
+    clearEvents() { state.events = []; persist(); },
     saveSource(source) { state.source = { ...state.source, ...source }; persist(); },
     exportData() { return JSON.stringify({ version: 'draft-1', exportedAt: new Date().toISOString(), readings: state.readings, events: state.events, source: state.source }, null, 2); },
     get validation() { return validationCases.map(validateCase); },
     runValidation() { const results=this.validation; return { ranAt:new Date().toISOString(), results, passed:results.filter(x=>x.pass).length, total:results.length }; },
     runFailSafeDrill() { return { ranAt:new Date().toISOString(), checks:failSafeChecks() }; },
-    incidentEvidence() { const f=this.analysis; return { schemaVersion:'gasguard-incident-evidence-v0.1', generatedAt:new Date().toISOString(), scope:'Prototype analytics evidence. Not a certified safety record or actuator command.', currentReading:f.current, analysis:{ baseline:f.baseline, ratePpmPerMinute:f.rate, exposurePpmMinute:f.exposure, anomalyScore:f.anomaly, riskScore:f.risk, safetyState:f.safety, confidence:f.confidence, classification:f.classification }, explanation:this.explanation, recentEvents:state.events.slice(0,10), source:{ mode:state.source.mode, providerBoundary:'Web data layer only. Edge safety controller validation required.' } }; },
-    labelEvent(eventId, label, source='engineer', confidence='medium') { const event=state.events.find(x=>x.id===eventId); if(!event)return false; event.label=label;event.labelSource=source;event.labelConfidence=confidence;event.status=label==='unknown'?'open':'resolved';persist();return true; },
-    get alarmQuality() { const safetyEvents=state.events.filter(x=>x.type==='warning'||x.type==='critical'), labelled=safetyEvents.filter(x=>x.label&&x.label!=='unknown'), falseAlarms=labelled.filter(x=>['normal','cooking','sensor_noise','environmental_effect'].includes(x.label));return { total:safetyEvents.length,labelled:labelled.length,falseAlarmCount:falseAlarms.length,falseAlarmRate:labelled.length?round(falseAlarms.length/labelled.length*100):null }; },
-    ingest(input) { const prev = this.analysis.safety, next = normalizeIncoming(input); if (!next) return false; state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); const analysis = this.analysis; eventFor(analysis, prev); persist(); return true; },
+    incidentEvidence() { const f=this.analysis; return { schemaVersion:'gasguard-incident-evidence-v0.2', prototypeRuleVersion:PROTOTYPE_RULE_VERSION, generatedAt:new Date().toISOString(), scope:'Prototype analytics evidence. Not a certified safety record or actuator command.', currentReading:f.current, analysis:{ baseline:f.baseline, ratePpmPerMinute:f.rate, exposurePpmMinute:f.exposure, anomalyScore:f.anomaly, riskScore:f.risk, safetyState:f.safety, confidence:f.confidence, classification:f.classification }, explanation:this.explanation, recentEvents:state.events.slice(0,10), source:{ mode:state.source.mode, providerBoundary:'Web data layer only. Edge safety controller validation required.' } }; },
+    labelEvent(eventId, label, source='engineer', confidence='medium') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; event.label=label;event.labelSource=source;event.labelConfidence=confidence;persist();return true; },
+    acknowledgeEvent(eventId, by='technician') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.acknowledgement={acknowledgedAt:at,acknowledgedBy:by};event.technicianReview={...event.technicianReview,status:event.technicianReview.status==='not_started'?'acknowledged':event.technicianReview.status,updatedAt:at};appendTransition(event,'acknowledged',`Acknowledged by ${by}`,at);persist();return true; },
+    startInvestigation(eventId, by='technician') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,status:'investigating',startedAt:event.technicianReview.startedAt||at,updatedAt:at,startedBy:by};appendTransition(event,'investigating',`Investigation started by ${by}`,at);persist();return true; },
+    saveTechnicianNote(eventId,note) { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,note:String(note||'').trim()||null,updatedAt:at};appendTransition(event,'technician_note',event.technicianReview.note||'No note supplied',at);persist();return true; },
+    markTechnicianResolved(eventId,summary='') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,status:'resolved',resolvedAt:at,updatedAt:at};event.resolutionSummary=String(summary||'').trim()||event.resolutionSummary||null;appendTransition(event,'technician_workflow_resolved','Technician workflow completed; engine detection lifecycle is unchanged',at);persist();return true; },
+    get alarmQuality() { const safetyEvents=state.events.filter(x=>x.eventType==='gas_risk'), labelled=safetyEvents.filter(x=>x.label&&x.label!=='unknown'), falseAlarms=labelled.filter(x=>['normal','cooking','sensor_noise','environmental_effect'].includes(x.label));return { total:safetyEvents.length,labelled:labelled.length,falseAlarmCount:falseAlarms.length,falseAlarmRate:labelled.length?round(falseAlarms.length/labelled.length*100):null }; },
+    ingest(input) { const next = normalizeIncoming(input); if (!next) return false; state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); syncLifecycle(this.analysis); persist(); return true; },
     tick() {
       if (state.paused) return this.analysis;
-      const prev = this.analysis.safety;
       const last = state.readings.at(-1).gas.value;
       const cfg = scenarios[state.scenario];
       const next = reading(0, cfg.next(last, state.index++), { system: cfg.system });
       state.readings.push(next); if (state.readings.length > 180) state.readings.shift();
-      const nextAnalysis = this.analysis; eventFor(nextAnalysis, prev); persist(); return nextAnalysis;
+      const nextAnalysis = this.analysis; syncLifecycle(nextAnalysis); persist(); return nextAnalysis;
     }
   };
   window.GasGuardEngine = engine;
