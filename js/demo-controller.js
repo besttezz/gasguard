@@ -15,8 +15,21 @@
     'gasguard-v2-managed-sites'
   ]);
   const resetMarker = 'gasguard-v2-demo-reset-pending';
-  const state = { scenarioId:'S01', steps:0, speed:1, startedAt:null, active:false };
+  const state = { scenarioId:'S01', steps:0, speed:1, startedAt:null, active:false, guideStage:0 };
   let updateReviewContext = () => {};
+  const guidedStages = Object.freeze([
+    { title:'Normal operation', scenario:'S01', role:'general', page:'overview', expected:'ผู้ใช้ทั่วไปเห็นสถานะปกติและเวลาข้อมูลล่าสุด', check:['สถานะมีข้อความ “ปกติ”','ไม่มี raw risk score ใน General'], human:'ไม่มี action ของมนุษย์ใน stage นี้' },
+    { title:'Gradual LPG rise', scenario:'S02', role:'developer', page:'demo', expected:'Developer ใช้ Step เพื่อดู rate of rise และ evidence ตาม Engine', check:['เลือก S02','กด Step และดูจำนวน step เพิ่มทีละหนึ่ง'], human:'ผู้ตรวจควรกด Step ด้วยตนเองเพื่อหยุดดูแต่ละ reading' },
+    { title:'Danger', scenario:'S03', role:'general', page:'overview', expected:'General เห็นความเสี่ยงสูงและ action ที่อ่านง่าย', check:['เริ่ม S03 แล้วเดิน readings','ยืนยันว่า Danger ไม่พึ่งสีอย่างเดียว'], human:'ผู้ตรวจควรเริ่ม Scenario และกด Step จน Engine ยกระดับ' },
+    { title:'System response evidence', scenario:'S03', role:'developer', page:'events', expected:'Developer เห็น incident และหลักฐาน lifecycle', check:['เลือก incident ใน evidence','ตรวจป้าย LOCAL_BROWSER_DATA'], human:'ไม่มีการสั่งวาล์วจริงใน prototype' },
+    { title:'Unknown / fault', scenario:'S04', role:'general', page:'overview', expected:'ข้อมูล offline เป็น Unknown ไม่ใช่ Safe', check:['เลือก S04','risk ต้องไม่มีค่า fabricated'], human:'ผู้ตรวจควรกด Step เพื่อส่ง input offline หนึ่งครั้ง' },
+    { title:'Recovery', scenario:'S08', role:'developer', page:'demo', expected:'เปลี่ยนกลับข้อมูล valid โดยไม่ลบประวัติ fault', check:['เลือก S08 และเริ่ม Scenario','เปิด evidence เพื่อตรวจประวัติเดิม'], human:'Recovery คือการรับ mock reading ที่ valid ไม่ใช่การรับรองหน้างาน' },
+    { title:'General creates request', scenario:'S09', role:'general', page:'assistant', expected:'General เปิดคำขอจาก incident โดยเห็น Simulation label', check:['เปิดคำขอด้วยปุ่ม UI','ตรวจ required field และ success toast'], human:'ผู้ตรวจเป็นผู้ส่ง request เอง ระบบไม่สร้างแทน' },
+    { title:'Technician investigates', scenario:'S09', role:'technician', page:'replay', expected:'Detection แยกจาก technician workflow', check:['เลือก incident','เพิ่ม note หรือเริ่มตรวจสอบ'], human:'ผู้ตรวจดำเนิน workflow ของช่างเอง' },
+    { title:'Verification', scenario:'S09', role:'technician', page:'reports', expected:'Verification gate ต้องผ่านก่อนปิดงาน', check:['ตรวจสถานะ request','ยืนยันว่าปุ่ม terminal แก้ไขไม่ได้'], human:'ผู้ตรวจบันทึก verification เองผ่าน workflow' },
+    { title:'Service report', scenario:'S09', role:'technician', page:'reports', expected:'รายงานเชื่อม relation และมี disclaimer', check:['เปิด report จาก request','ตรวจ not-a-safety-certificate disclaimer'], human:'รายงานเป็น mock และแก้ไขไม่ได้ผ่าน UI' },
+    { title:'Developer evidence', scenario:'S09', role:'developer', page:'events', expected:'Relation Explorer แสดง chain Incident → Request → Verification → Report', check:['เลือก record ที่เกี่ยวข้อง','ตรวจ UNVALIDATED_PROTOTYPE'], human:'หาก relation ยังไม่ครบ ให้กลับไปทำ stage ของมนุษย์ก่อนหน้า' }
+  ]);
   const escape = value => String(value == null ? '—' : value).replace(/[&<>"']/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char]));
   const openIncidents = () => engine.state.events.filter(event => event.lifecycleStatus !== 'resolved');
   const current = () => library.byId(state.scenarioId);
@@ -63,18 +76,61 @@
     $('demo-start').textContent = state.active && !engine.state.paused ? 'กำลังทำงาน' : (state.steps ? 'ทำต่อ Scenario' : 'เริ่ม Scenario');
     $('demo-pause').textContent = engine.state.paused ? 'ทำงานต่อ' : 'พัก';
     $('demo-speed').value = String(state.speed);
+    renderGuidedDemo();
     renderShell();
     updateReviewContext();
+  }
+  function pageLabel(page) {
+    return ({overview:'ภาพรวมความปลอดภัย',assistant:'ขอความช่วยเหลือ',replay:'ตรวจสอบเหตุการณ์',reports:'รายงานการบริการ',events:'Logs and Evidence',demo:'ศูนย์ควบคุมการจำลอง'})[page] || page;
+  }
+  function roleLabel(role) { return ({general:'บุคคลทั่วไป',technician:'ช่างเทคนิค',developer:'นักพัฒนา'})[role] || role; }
+  function renderGuidedDemo() {
+    const panel = $('guided-demo');
+    if (!panel) return;
+    const isGuided = state.scenarioId === 'S10';
+    panel.hidden = !isGuided;
+    if (!isGuided) return;
+    const stage = guidedStages[state.guideStage] || guidedStages[0];
+    $('guided-demo-stage').textContent = `Stage ${state.guideStage + 1} / ${guidedStages.length}`;
+    $('guided-demo-title').textContent = stage.title;
+    $('guided-demo-copy').textContent = stage.expected;
+    $('guided-demo-facts').innerHTML = [['Scenario state',stage.scenario],['Role',roleLabel(stage.role)],['Page',pageLabel(stage.page)]].map(([label,value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join('');
+    $('guided-demo-checklist').innerHTML = stage.check.map(item => `<li>${escape(item)}</li>`).join('');
+    $('guided-demo-human').textContent = stage.human;
+    $('guided-demo-prev').disabled = state.guideStage === 0;
+    $('guided-demo-next').disabled = state.guideStage === guidedStages.length - 1;
   }
   function setScenario(id, restart) {
     const scenario = library.byId(id);
     state.scenarioId = scenario.id;
     state.steps = 0;
     state.active = false;
+    if (scenario.id === 'S10') state.guideStage = 0;
     engine.restartSimulation(scenario.engineScenario);
     if (providers.setSimulationSpeed) providers.setSimulationSpeed(state.speed);
     if (restart) state.startedAt = Date.now();
     refreshApp();
+    renderDemo();
+  }
+  function openGuidedStage() {
+    const stage = guidedStages[state.guideStage] || guidedStages[0];
+    if (state.scenarioId !== stage.scenario) setScenario(stage.scenario, true);
+    const role = $('view-mode');
+    if (role && role.value !== stage.role) {
+      role.value = stage.role;
+      role.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+    const navButton = document.querySelector(`[data-role-page="${stage.page}"]`);
+    navButton?.click();
+    updateReviewContext();
+  }
+  function moveGuidedStage(delta) {
+    state.guideStage = Math.max(0, Math.min(guidedStages.length - 1, state.guideStage + delta));
+    renderDemo();
+  }
+  function restartGuidedDemo() {
+    state.guideStage = 0;
+    setScenario('S10', true);
     renderDemo();
   }
   function start() {
@@ -183,6 +239,10 @@
     $('demo-restart')?.addEventListener('click', () => setScenario(state.scenarioId, true));
     $('demo-speed')?.addEventListener('change', event => { state.speed = Number(event.target.value); providers.setSimulationSpeed?.(state.speed); renderDemo(); });
     $('demo-reset')?.addEventListener('click', resetDemo);
+    $('guided-demo-prev')?.addEventListener('click', () => moveGuidedStage(-1));
+    $('guided-demo-next')?.addEventListener('click', () => moveGuidedStage(1));
+    $('guided-demo-open')?.addEventListener('click', openGuidedStage);
+    $('guided-demo-restart')?.addEventListener('click', restartGuidedDemo);
     const originalTick = providers.tick.bind(providers);
     providers.tick = async function controlledTick() {
       const before = engine.state.readings.length;

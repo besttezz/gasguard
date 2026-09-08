@@ -46,12 +46,11 @@ GasGuard ใน branch `autonomous-lpg-safety` เป็น Mock Prototype แ�
 
 ## เส้นทางสาธิต S10
 
-1. เริ่ม S01 เพื่อแสดงหน้าปกติในมุมมองบุคคลทั่วไป
-2. เปลี่ยนเป็น S02 แล้วกด Step เพื่ออธิบายแนวโน้ม
-3. เปลี่ยนเป็น S03 เพื่อดู alert/incident และ evidence
-4. เปลี่ยนเป็น S04 เพื่อยืนยันว่า Unknown ไม่ถูกแสดงเป็น Safe
-5. เปลี่ยนเป็น S08 แล้วตรวจ Recovery transition และประวัติเหตุการณ์
-6. ใช้ S09 เพื่อเปิด Incident จากนั้นสลับเป็นช่างเทคนิคและทำ workflow/verification/report ในหน้าเดิม
+1. เลือก S10 ใน D8 จะปรากฏ Guided Presentation 11 stage
+2. กด `เปิดหน้าที่แนะนำ` เพื่อสลับ role/page ของ stage ปัจจุบัน
+3. ใช้ `Stage ก่อนหน้า` และ `Stage ถัดไป` เพื่ออ่าน scenario, expected result และ checklist
+4. Stage ที่ระบุว่าต้องทำโดยมนุษย์จะไม่สร้าง request, verification หรือ report แทนผู้ตรวจ
+5. `เริ่ม S10 ใหม่` จะกลับ stage แรกอย่าง deterministic โดยไม่สร้าง interval ใหม่
 
 ## Reset Demo Session
 

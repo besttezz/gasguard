@@ -49,6 +49,12 @@ assert.equal(controller.includes('localStorage.clear('), false, 'demo reset neve
 for (const key of ['gasguard-v2-draft','gasguard-v2-service-workflow','gasguard-v2-view-mode','gasguard-v2-demo-role','gasguard-v2-setup-profile','gasguard-v2-managed-sites']) {
   assert.ok(controller.includes(`'${key}'`), `reset allowlist includes ${key}`);
 }
+assert.ok(controller.includes('const guidedStages = Object.freeze(['), 'S10 has a guided stage registry');
+assert.equal((controller.match(/title:'/g) || []).length >= 11, true, 'S10 includes all presentation stages');
+for (const title of ['Normal operation','Gradual LPG rise','Danger','Unknown / fault','Recovery','General creates request','Technician investigates','Verification','Service report','Developer evidence']) {
+  assert.ok(controller.includes(title), `guided flow includes ${title}`);
+}
+assert.equal(controller.includes('setInterval('), false, 'guided flow does not allocate a playback interval');
 
 // Fault inputs retain the existing fail-safe guarantees through the unchanged Engine.
 const safetyRuntime = runtime();
