@@ -10,6 +10,14 @@ npm run dev
 
 Open `http://localhost:5567`.
 
+For the one-click local launcher, double-click `start-gasguard.cmd`. It opens the main application only. `open-review-board.cmd` opens the optional image-review tool.
+
+## Mobile UI review
+
+Use a browser viewport around `390×844` to review the mobile application shell. The bottom navigation has four direct destinations and a role-specific More menu. Open **More** to switch the Demo mode between General, Technician and Developer. This selector changes only browser-local demo state; it is not authentication.
+
+Run `node scripts/capture-mobile-app-evidence.mjs` to recreate the mobile/desktop evidence package in `docs/ui-review/mobile-app/`. See `docs/mobile-app-ux.md` for the page map and interaction rules.
+
 ## Test
 
 ```powershell

@@ -248,12 +248,21 @@
     </main>
   </section>
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
+  <nav class="mobile-navigation" id="mobile-navigation" aria-label="เมนูหลักบนมือถือ"></nav>
+  <dialog class="mobile-more-sheet" id="mobile-more-sheet" aria-labelledby="mobile-more-title">
+    <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard Demo</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
+    <p class="mobile-sheet-copy">โหมดสาธิตนี้เปลี่ยนมุมมองเพื่อทดสอบหน้าจอ ไม่ใช่การเข้าสู่ระบบหรือการกำหนดสิทธิ์จริง</p>
+    <label class="mobile-role-control">โหมดสาธิต<select id="mobile-view-mode" aria-label="เลือกโหมดสาธิต"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select></label>
+    <div class="mobile-more-list" id="mobile-more-list"></div>
+  </dialog>
   <aside class="review-bar" id="review-bar" hidden aria-label="Demo review context"><span id="review-context">Review mode</span><button class="button button-secondary" id="copy-review-context" type="button">Copy review context</button><button class="button button-secondary" id="close-review" type="button">ปิด</button></aside>
   <script src="js/data.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/providers.js"></script>
   <script src="js/service.js"></script>
+  <script src="js/navigation.js"></script>
   <script src="js/app.js"></script>
+  <script>if(new URLSearchParams(window.location.search).get('overlay')==='more')document.querySelector('#mobile-more-sheet')?.showModal();</script>
   <script src="js/demo-scenarios.js"></script>
   <script src="js/demo-controller.js"></script>
 </body>
