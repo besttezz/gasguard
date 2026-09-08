@@ -13,7 +13,7 @@
 
 Feedback เก็บใน `localStorage` ของ browser เครื่องนี้ด้วย key `gasguard-ui-review-feedback-v1` เท่านั้น จึงไม่ถูกส่งออกจากเครื่องโดยอัตโนมัติ และการ Reset จะไม่ล้าง storage ส่วนอื่น
 
-ภาพชุดนี้ถูก capture จาก simulation บน commit `41dd58a` เมื่อ `2026-09-08` รายละเอียดที่ตรวจสอบได้อยู่ใน `capture-manifest.json`.
+ภาพชุดนี้ถูก capture จาก simulation ของงานใน commit `b53e247` เมื่อ `2026-09-08` รายละเอียดที่ตรวจสอบได้อยู่ใน `capture-manifest.json`.
 
 ## Capture list
 
