@@ -2,6 +2,19 @@
 
 เปิด `http://localhost:5567/?review=1` ก่อนตรวจทุกภาพ เพื่อให้แถบ Review context แสดง Page, Role, Scenario และ viewport.
 
+## Review Board
+
+เปิด [Review Board](http://localhost:5567/docs/ui-review/review-board.html) เพื่อดูภาพทั้งหมดในชุดนี้
+
+1. กดภาพเพื่อขยาย แล้วใช้ปุ่มก่อนหน้า/ถัดไปหรือปุ่มลูกศรบนแป้นพิมพ์
+2. เลือก `ผ่าน`, `ต้องแก้` หรือ `ขอเพิ่มข้อมูล` และเขียน Comment ใต้ภาพ
+3. กด `Copy feedback` เพื่อคัดลอกเฉพาะภาพ หรือ `Copy All Feedback` เพื่อส่งกลับ Project Manager
+4. กด `Export JSON` เมื่อต้องการไฟล์ feedback และ `Reset Feedback` เมื่อต้องการล้างเฉพาะ feedback ของ Review Board
+
+Feedback เก็บใน `localStorage` ของ browser เครื่องนี้ด้วย key `gasguard-ui-review-feedback-v1` เท่านั้น จึงไม่ถูกส่งออกจากเครื่องโดยอัตโนมัติ และการ Reset จะไม่ล้าง storage ส่วนอื่น
+
+ภาพชุดนี้ถูก capture จาก simulation บน commit `41dd58a` เมื่อ `2026-09-08` รายละเอียดที่ตรวจสอบได้อยู่ใน `capture-manifest.json`.
+
 ## Capture list
 
 | File | Page | Role | Scenario | Viewport | Expected review point |
