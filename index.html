@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/general-home.css">
     <style>
       @media (min-width: 761px) {
         .sidebar { display: flex; flex-direction: column; }
@@ -31,8 +32,8 @@
       .general-status-grid span { color: var(--muted); font-size: 12px; }
       .general-status-grid strong { margin-top: 4px; font-size: 14px; }
       .general-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
-      .general-role .general-landing { display: block; }
-      .general-role .score-block, .general-role #overview-metrics, .general-role #page-overview > .content-grid, .general-role #page-overview > .action-guide { display: none; }
+      .general-role .general-landing { display: grid; }
+      .general-role #overview-metrics, .general-role #page-overview > .content-grid, .general-role #page-overview > .action-guide { display: none; }
       .general-role .role-technical-control, .general-role .role-technician-control { display: none; }
       .developer-role .role-technician-control { display: none; }
       @media (max-width: 760px) { .general-status-grid { grid-template-columns: 1fr 1fr; } .source-badge { align-self: auto; } }
@@ -86,11 +87,25 @@
       </header>
 
       <section id="page-overview" class="page is-visible" aria-label="ภาพรวมความปลอดภัย">
+        <section class="general-home-intro" aria-label="ข้อมูลผู้ใช้และสถานที่">
+          <header class="general-app-header">
+            <a class="general-brand" href="#page-overview" aria-label="GasGuard หน้าหลัก"><span class="general-brand-mark"><img src="assets/gasguard-mascot.png" alt=""></span><span><strong>GasGuard</strong><small>Safer Homes&nbsp; Safer Kitchens</small></span></a>
+            <div class="general-header-actions"><button class="general-icon-button" data-goto="alerts" type="button" aria-label="เปิดการแจ้งเตือน"><span aria-hidden="true">♧</span><i></i></button><button class="general-icon-button" id="general-profile-button" type="button" aria-label="เปิดเมนูผู้ใช้"><span aria-hidden="true">●</span></button></div>
+          </header>
+          <div class="general-welcome"><div><p>สวัสดีตอนเย็น</p><button class="general-site-select" type="button" aria-label="สถานที่ปัจจุบัน Restaurant A">Restaurant A <span aria-hidden="true">⌄</span></button><small>อ.เมืองขอนแก่น, ขอนแก่น</small></div><div class="general-mascot-hello"><span>ดูแลความปลอดภัย<br>ให้คุณเสมอครับ</span><img src="assets/gasguard-mascot.png" alt="GasGuard AI ผู้ช่วยดูแลความปลอดภัย"></div></div>
+        </section>
         <div class="safety-hero" id="safety-hero">
-          <div><p class="section-label">RESTAURANT A · KITCHEN</p><h2 id="safety-state">กำลังประเมินความปลอดภัย</h2><p id="safety-message">กำลังจัดเตรียมข้อมูลจากเซ็นเซอร์</p></div>
-          <div class="score-block"><strong id="safety-score">--</strong><span>/ 100 risk</span><small id="safety-score-caption">Safety score</small></div>
+          <div class="safety-shield" aria-hidden="true">✓</div><div class="safety-hero-copy"><p class="section-label">สถานะความปลอดภัยตอนนี้</p><h2 id="safety-state">กำลังประเมินความปลอดภัย</h2><p id="safety-message">กำลังจัดเตรียมข้อมูลจากเซ็นเซอร์</p><small id="safety-updated">กำลังรอข้อมูลล่าสุด</small></div><div class="score-block"><strong id="safety-score">--</strong><span>/100</span><small id="safety-score-caption">คะแนนความปลอดภัย</small></div><button class="safety-hero-link" data-goto="alerts" type="button" aria-label="ดูรายละเอียดสถานะ"><span aria-hidden="true">›</span></button>
         </div>
-        <section class="general-landing" id="general-landing" aria-label="สรุปสำหรับผู้ใช้ทั่วไป"><div class="general-landing-head"><div><p class="section-label">สถานะสถานที่</p><h2 id="general-site-name">ยังไม่ได้ลงทะเบียนสถานที่</h2></div><span class="status-pill" id="general-connection">—</span></div><div class="general-status-grid" id="general-status-grid"></div><div class="general-actions"><button class="button button-secondary" data-goto="events" type="button">ดูรายละเอียดเหตุการณ์</button><button class="button button-primary" data-goto="assistant" type="button">ขอความช่วยเหลือ</button></div></section>
+        <section class="general-landing" id="general-landing" aria-label="สรุปสำหรับผู้ใช้ทั่วไป">
+          <h2 class="visually-hidden" id="general-site-name">Restaurant A</h2><span class="visually-hidden" id="general-connection">—</span>
+          <section class="general-metrics" aria-label="ข้อมูลเซ็นเซอร์ล่าสุด" id="general-status-grid"></section>
+          <section class="general-system-status" aria-label="สถานะระบบ"><article><span class="system-status-icon" aria-hidden="true">⌁</span><div><small>การเชื่อมต่อ</small><strong id="general-system-connection">กำลังตรวจสอบ</strong><p id="general-system-copy">กำลังอ่านสถานะอุปกรณ์</p></div><i id="general-system-dot"></i></article><article><span class="system-status-icon" aria-hidden="true">♜</span><div><small>วาล์วแก๊ส</small><strong id="general-valve-state">กำลังตรวจสอบ</strong><p id="general-valve-copy">กำลังอ่านสถานะวาล์ว</p></div><i id="general-valve-dot"></i></article></section>
+          <section class="general-plan" aria-labelledby="general-plan-title"><div class="general-plan-head"><div><span class="section-icon" aria-hidden="true">⌑</span><h3 id="general-plan-title">พื้นที่ตรวจสอบ</h3></div><button class="general-section-link" data-goto="locations" type="button">ดูแผนที่เต็ม <span aria-hidden="true">›</span></button></div><div class="general-plan-layout"><div class="general-plan-map" id="general-plan-map" role="img" aria-label="แปลนพื้นที่แสดงตำแหน่ง Kitchen A, Dining Area และ Storage"></div><div class="general-area-list" id="general-plan-facts"></div></div><div class="visually-hidden"><span id="general-plan-state">กำลังประเมิน</span><strong id="general-plan-summary">กำลังเตรียมข้อมูลจากเซ็นเซอร์</strong><p id="general-plan-copy">ภาพจำลองจะปรับตามสถานะของระบบ</p></div></section>
+          <button class="general-ai-card" data-goto="assistant" type="button"><span class="ai-mascot"><img src="assets/gasguard-mascot.png" alt=""></span><span><strong>GasGuard AI</strong><b id="general-ai-title">กำลังตรวจสอบข้อมูล</b><small id="general-ai-message">ผมจะแจ้งให้คุณทราบเมื่อมีสิ่งผิดปกติครับ</small></span><i aria-hidden="true">›</i></button>
+          <section class="general-recent" aria-labelledby="general-recent-title"><div class="general-section-head"><div><span class="section-icon" aria-hidden="true">▤</span><h3 id="general-recent-title">เหตุการณ์ล่าสุด</h3></div><button class="general-section-link" data-goto="events" type="button">ดูทั้งหมด <span aria-hidden="true">›</span></button></div><div id="general-recent-events" class="general-recent-list"></div></section>
+          <div class="general-actions"><button class="button button-secondary" data-goto="alerts" type="button"><span aria-hidden="true">⌕</span> ดูรายละเอียด</button><button class="button button-primary" id="general-help-button" data-goto="assistant" type="button"><span aria-hidden="true">☎</span> ขอความช่วยเหลือ</button></div>
+        </section>
 
         <section class="technician-queue" id="technician-queue" aria-label="คิวงานช่างตามลำดับความสำคัญ"><div class="panel-heading"><div><p class="section-label">PRIORITY WORK QUEUE</p><h2>งานที่ควรทำต่อ</h2><p class="queue-copy">เรียงตามเหตุที่เปิดอยู่และเวลา โดยไม่สร้างคะแนนความสำคัญใหม่</p></div><span class="data-badge">SIMULATION</span></div><div class="queue-list" id="technician-queue-list"></div></section>
 
@@ -253,6 +268,7 @@
     <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard Demo</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
     <p class="mobile-sheet-copy">โหมดสาธิตนี้เปลี่ยนมุมมองเพื่อทดสอบหน้าจอ ไม่ใช่การเข้าสู่ระบบหรือการกำหนดสิทธิ์จริง</p>
     <label class="mobile-role-control">โหมดสาธิต<select id="mobile-view-mode" aria-label="เลือกโหมดสาธิต"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select></label>
+    <label class="mobile-demo-control">สถานการณ์สาธิต<select id="mobile-scenario-select" aria-label="เลือกสถานการณ์สาธิต"><option value="normal">ปกติ</option><option value="rise">เฝ้าระวัง</option><option value="critical">อันตราย</option><option value="unknown">ออฟไลน์ / ไม่ทราบสถานะ</option></select></label>
     <div class="mobile-more-list" id="mobile-more-list"></div>
   </dialog>
   <aside class="review-bar" id="review-bar" hidden aria-label="Demo review context"><span id="review-context">Review mode</span><button class="button button-secondary" id="copy-review-context" type="button">Copy review context</button><button class="button button-secondary" id="close-review" type="button">ปิด</button></aside>

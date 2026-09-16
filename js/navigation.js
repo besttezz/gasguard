@@ -11,10 +11,10 @@
       landing: 'overview',
       entries: Object.freeze([
         entry('ภาพรวม', 'หน้าหลัก', 'overview', '◉', 'primary'),
-        entry('ติดตาม', 'การแจ้งเตือน', 'alerts', '!', 'primary'),
-        entry('ติดตาม', 'พื้นที่', 'locations', '⌖', 'primary'),
-        entry('ติดตาม', 'ประวัติเหตุการณ์', 'events', '◷', 'primary'),
-        entry('ช่วยเหลือ', 'ช่วยเหลือและงานบริการ', 'assistant', '✧', 'primary'),
+        entry('ติดตาม', 'แจ้งเตือน', 'alerts', '♧', 'primary'),
+        entry('ติดตาม', 'พื้นที่', 'locations', '⌑', 'primary'),
+        entry('ติดตาม', 'ประวัติ', 'events', '◷', 'primary'),
+        entry('ช่วยเหลือ', 'ช่วยเหลือและงานบริการ', 'assistant', '☎', 'more'),
         entry('ช่วยเหลือ', 'คู่มือการอ่านข้อมูล', 'guide', '?', 'more')
       ])
     }),
