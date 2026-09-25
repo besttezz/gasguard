@@ -15,22 +15,24 @@ const normal = publicDemo.getScenario('NORMAL');
 assert.equal(normal.id, 'NORMAL');
 assert.equal(normal.safety, 'safe');
 assert.equal(normal.gasPpm, 84);
-assert.equal(normal.valve, 'OPEN');
-assert.equal(normal.connection, 'ONLINE');
+assert.equal(normal.systemMode, 'MONITORING');
+assert.equal(normal.connection, 'AVAILABLE');
 assert.ok(normal.badge.includes('SIMULATION'));
 
 const attention = publicDemo.getScenario('ATTENTION');
 assert.equal(attention.id, 'ATTENTION');
 assert.equal(attention.safety, 'attention');
 assert.equal(attention.gasPpm, 185);
-assert.equal(attention.valve, 'CLOSED');
+assert.equal(attention.systemMode, 'ATTENTION');
+assert.equal(attention.connection, 'AVAILABLE');
 assert.ok(attention.badge.includes('SIMULATION'));
 
 const critical = publicDemo.getScenario('CRITICAL');
 assert.equal(critical.id, 'CRITICAL');
 assert.equal(critical.safety, 'critical');
 assert.equal(critical.gasPpm, 420);
-assert.equal(critical.valve, 'CLOSED');
+assert.equal(critical.systemMode, 'HIGH RISK');
+assert.equal(critical.connection, 'AVAILABLE');
 assert.ok(critical.badge.includes('SIMULATION'));
 
 // Trend paths and accessible descriptions

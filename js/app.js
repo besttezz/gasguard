@@ -233,7 +233,8 @@
     if($('public-demo-rate-note'))$('public-demo-rate-note').textContent=scenario.safety==='safe'?'แนวโน้มคงที่':(scenario.safety==='attention'?'เพิ่มขึ้นปานกลาง':'เพิ่มขึ้นรวดเร็ว');
     if($('public-demo-score'))$('public-demo-score').textContent=`${scenario.safetyScore} / 100`;
     if($('public-demo-risk'))$('public-demo-risk').textContent=`ความเสี่ยง: ${scenario.riskScore}/100`;
-    if($('public-demo-valve'))$('public-demo-valve').textContent=scenario.valve;
+    if($('public-demo-system-mode'))$('public-demo-system-mode').textContent=scenario.systemMode;
+    if($('public-demo-valve'))$('public-demo-valve').textContent=scenario.systemMode;
     if($('public-demo-connection'))$('public-demo-connection').textContent=scenario.connection;
     if($('public-demo-summary'))$('public-demo-summary').textContent=scenario.summary;
     if($('public-demo-action'))$('public-demo-action').textContent=scenario.action;
