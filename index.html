@@ -58,8 +58,9 @@
           <div class="public-nav-links" id="public-desktop-links">
             <a href="#public-product-section" class="public-nav-link">Product</a>
             <a href="#public-demo-section" class="public-nav-link">Demo</a>
-            <a href="#public-tech-section" class="public-nav-link">Technology</a>
+            <a href="#public-flow-section" class="public-nav-link">How It Works</a>
             <a href="#public-roles-section" class="public-nav-link">Roles</a>
+            <a href="#public-tech-section" class="public-nav-link">Technology</a>
           </div>
           <div class="public-nav-actions">
             <button type="button" class="public-btn-login" id="nav-login-button">
@@ -79,8 +80,8 @@
           <a href="#public-product-section" class="public-mobile-link">Product</a>
           <a href="#public-demo-section" class="public-mobile-link">Demo</a>
           <a href="#public-flow-section" class="public-mobile-link">How It Works</a>
-          <a href="#public-tech-section" class="public-mobile-link">Technology</a>
           <a href="#public-roles-section" class="public-mobile-link">Roles</a>
+          <a href="#public-tech-section" class="public-mobile-link">Technology</a>
           <div class="public-mobile-actions">
             <button type="button" class="public-btn-login is-full" id="mobile-login-button">
               Sign In
@@ -366,94 +367,6 @@
         </div>
       </section>
 
-      <!-- How It Works Pipeline -->
-      <section class="public-section" id="public-flow-section" aria-labelledby="public-flow-title">
-        <div class="public-container">
-          <div class="public-section-head">
-            <p class="public-section-kicker">Data Flow</p>
-            <h2 class="public-section-title" id="public-flow-title">How It Works — การทำงานของระบบ</h2>
-            <p class="public-section-desc">สถาปัตยกรรมการประมวลผลข้อมูลตั้งแต่ระดับ Sensor ไปจนถึงผู้ใช้งาน</p>
-          </div>
-          <div class="public-pipeline" role="list">
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">1</div>
-              <strong>Sensor / Hardware</strong>
-              <small>รับสัญญาณ Raw ADC &amp; Voltage จากบอร์ด ESP32 หรือตัวจำลอง</small>
-            </div>
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">2</div>
-              <strong>Measurement Layer</strong>
-              <small>ตรวจสอบโครงสร้างข้อมูล และเตรียมข้อมูลสำหรับการแปลงเป็น ppm ตามสถานะการ Calibration</small>
-            </div>
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">3</div>
-              <strong>Telemetry V1.1</strong>
-              <small>กำหนด Boot ID, Sequence Tracking และกรองข้อมูลตกหล่นหรือซ้ำ</small>
-            </div>
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">4</div>
-              <strong>Safety Engine</strong>
-              <small>วิเคราะห์ Rate of Rise, Variance, Baseline และคำนวณ Safety State</small>
-            </div>
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">5</div>
-              <strong>Alerts &amp; Events</strong>
-              <small>จำแนกระดับความเสี่ยง บันทึก Timeline และบันทึกเหตุการณ์และข้อมูลประกอบการตรวจสอบย้อนหลัง</small>
-            </div>
-            <div class="public-pipe-step" role="listitem">
-              <div class="public-pipe-num">6</div>
-              <strong>Role Workspaces</strong>
-              <small>นำเสนอข้อมูลตรงตามบทบาท (General, Technician, Admin, Developer)</small>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Technology Highlights -->
-      <section class="public-section" id="public-tech-section" aria-labelledby="public-tech-title">
-        <div class="public-container">
-          <div class="public-section-head">
-            <p class="public-section-kicker">Core Technology</p>
-            <h2 class="public-section-title" id="public-tech-title">Technology &amp; Architecture</h2>
-            <p class="public-section-desc">องค์ประกอบทางเทคนิคที่ขับเคลื่อนระบบ GasGuard</p>
-          </div>
-          <div class="public-tech-grid">
-            <div class="public-tech-card">
-              <strong>ESP32 Ingress Readiness</strong>
-              <p>รองรับการส่ง Telemetry ผ่าน HTTP POST พร้อมระบบตรวจสอบ Device Key และแยกระดับ Registry ชัดเจน</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>MQ-3 / MQ-6 Architecture</strong>
-              <p>ออกแบบโครงสร้างรองรับเซ็นเซอร์ก๊าซและแอลกอฮอล์ โดยแยกกระบวนการ Calibration ออกจาก Raw Reading</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Measurement Layer</strong>
-              <p>ตรวจสอบความถูกต้องของ payload ดิบก่อนเข้าสู่ระบบ ป้องกันข้อมูลผิดพลาดที่อาจกระทบต่อ Engine</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Telemetry V1.1 Standard</strong>
-              <p>มาตรฐานข้อมูลกลาง กำกับ session ด้วย bootId และ sequence แบบ monotonic เพื่อความแม่นยำ</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Data Protection Engine</strong>
-              <p>ตรวจจับและปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) และข้อมูลที่มาสลับลำดับ (Out-of-order)</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Explainable Safety Scoring</strong>
-              <p>คำนวณคะแนนความปลอดภัยและระดับความเสี่ยง (0-100) พร้อมเหตุผลประกอบที่ตรวจสอบย้อนกลับได้</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Multi-Source Pipeline</strong>
-              <p>รองรับทั้งการจำลองในเบราว์เซอร์ (Simulation), การเชื่อมต่อผ่าน REST API และ MQTT Protocol</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Strict Workspace Isolation</strong>
-              <p>แยกพื้นที่จำลอง (Demo Site), พื้นที่ทดสอบ (Device Test) และฮาร์ดแวร์จริง (Hardware Pilot) ไม่ปะปนกัน</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Public Demo Preview Section -->
       <section class="public-section public-demo-section" id="public-demo-section" aria-labelledby="public-demo-title">
         <div class="public-container">
@@ -602,34 +515,526 @@
         </div>
       </section>
 
-      <!-- User Roles Section -->
-      <section class="public-section" id="public-roles-section" aria-labelledby="public-roles-title">
+      <!-- How It Works Section -->
+      <section class="public-section public-flow-section" id="public-flow-section" aria-labelledby="public-flow-title">
         <div class="public-container">
           <div class="public-section-head">
-            <p class="public-section-kicker">Role Matrix</p>
-            <h2 class="public-section-title" id="public-roles-title">User Roles — บทบาทการใช้งาน</h2>
-            <p class="public-section-desc">GasGuard แยกพื้นที่ทำงานและการมองเห็นข้อมูลอย่างเข้มงวดตามหน้าที่</p>
+            <span class="public-section-kicker">HOW IT WORKS</span>
+            <h2 class="public-section-title" id="public-flow-title">จากข้อมูลเซนเซอร์<br>สู่สถานะที่เข้าใจได้</h2>
+            <p class="public-section-desc">GasGuard แยกการรับข้อมูล การตรวจสอบ การวิเคราะห์ และการนำเสนอออกเป็นแต่ละชั้น เพื่อให้ข้อมูลสามารถตรวจสอบย้อนกลับ และพัฒนาแต่ละส่วนได้อย่างเป็นระบบ.</p>
           </div>
-          <div class="public-roles-grid">
-            <div class="public-role-card">
-              <span class="public-role-tag">GENERAL</span>
-              <h3>ผู้ใช้งานทั่วไป</h3>
-              <p>ดูภาพรวมความปลอดภัยของสถานที่ตนเอง รับการแจ้งเตือนฉุกเฉิน และสร้างคำขอบริการตรวจสอบระบบ</p>
+
+          <div class="flow-architecture-stage">
+            <div class="flow-track" role="list" aria-label="ลำดับการทำงานของระบบ 5 ขั้นตอน">
+              <!-- Stage 1: SENSOR / DATA SOURCE -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 1">01</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 1</span>
+                    <span class="flow-node-en">SENSOR / DATA SOURCE</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">รับข้อมูล</h3>
+                <p class="flow-node-desc">รับข้อมูลจากอุปกรณ์หรือแหล่งข้อมูลจำลอง เช่น บอร์ด ESP32, โครงสร้างเซนเซอร์ MQ-3 / MQ-6 หรือข้อมูลจำลองในระบบ</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>รองรับ HTTP Ingress &amp; โครงสร้าง MQTT Protocol</li>
+                      <li>แยกสัญญาณดิบ Raw ADC reading ออกจากชั้นประมวลผล</li>
+                      <li>โหมดการจำลอง Deterministic Simulation ภายในเบราว์เซอร์</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> อยู่ระหว่างเตรียมการทดสอบกับฮาร์ดแวร์จริง ยังไม่มีการ Calibrate ทางกายภาพ
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 1-2 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 2: MEASUREMENT -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 2">02</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 2</span>
+                    <span class="flow-node-en">MEASUREMENT</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">ตรวจและเตรียมข้อมูล</h3>
+                <p class="flow-node-desc">ตรวจโครงสร้างข้อมูลดิบ และเตรียมข้อมูลก่อนส่งเข้าสู่ Telemetry โดยแยกกระบวนการตรวจสอบออกจากเซนเซอร์</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>ตรวจสอบโครงสร้าง Raw Payload Schema Validation</li>
+                      <li>Sensor Adapter Boundary รองรับ Voltage และสัญญาณดิบ</li>
+                      <li>เตรียมความพร้อมสำหรับกระบวนการแปลงหน่วย ppm</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> ยังไม่แปลงค่าดิบเป็น ppm แท้จริงจนกว่าจะผ่านการ Calibrate ทางกายภาพ
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 2-3 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 3: TELEMETRY -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 3">03</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 3</span>
+                    <span class="flow-node-en">TELEMETRY</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">จัดรูปแบบข้อมูลกลาง</h3>
+                <p class="flow-node-desc">สร้างข้อมูลตาม Telemetry V1.1 พร้อม identity, boot/session sequence และข้อมูลเวลาที่ระบบต้องใช้</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>มาตรฐานข้อมูลกลาง Telemetry V1.1 กำกับด้วย Device Identity</li>
+                      <li>กำกับเซสชันด้วย bootId และ sequence แบบ monotonic</li>
+                      <li>ระบบป้องกันข้อมูลค้าง (Stale), ซ้ำ (Duplicate) หรือสลับลำดับ (Out-of-order)</li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 3-4 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 4: SAFETY ANALYSIS -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 4">04</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 4</span>
+                    <span class="flow-node-en">SAFETY ANALYSIS</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">วิเคราะห์สถานการณ์</h3>
+                <p class="flow-node-desc">ใช้ข้อมูลปัจจุบัน แนวโน้ม baseline และ prototype rule set เพื่อสร้างสถานะสำหรับ UI</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>คำนวณอัตราการเปลี่ยนแปลง Rate of Rise (ppm/min)</li>
+                      <li>เปรียบเทียบแนวโน้มกับ Dynamic Baseline และ Variance</li>
+                      <li>ประเมินระดับความปลอดภัยด้วย Safety Rule Engine v0.1 (Rule-based)</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> ประเมินตามกฎต้นแบบ ไม่ใช่การวินิจฉัยก๊าซรั่วสมบูรณ์แบบหรือมาตรฐานรับรองความปลอดภัย
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 4-5 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 5: EXPERIENCE -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 5">05</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 5</span>
+                    <span class="flow-node-en">EXPERIENCE</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">แจ้งเตือนและแสดงผล</h3>
+                <p class="flow-node-desc">นำผลไปแสดงใน Dashboard, Alerts, Events และ workflow ตามบทบาทผู้ใช้</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>แยกพื้นที่ทำงานตาม 4 บทบาท (General, Technician, Admin, Developer)</li>
+                      <li>บันทึก Timeline เหตุการณ์เพื่อการตรวจสอบย้อนหลัง (Audit Trail)</li>
+                      <li>คำอธิบายสถานการณ์แบบ Explainable Safety ที่ผู้ใช้เข้าใจได้ทันที</li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
             </div>
-            <div class="public-role-card">
-              <span class="public-role-tag">TECHNICIAN</span>
-              <h3>ช่างเทคนิค</h3>
-              <p>ตรวจวัดค่าอุปกรณ์แบบละเอียด จัดการคิวงานซ่อมบำรุง ยืนยันผลการติดตั้ง และจัดทำรายงานบริการ</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- User Roles Section -->
+      <section class="public-section public-roles-section" id="public-roles-section" aria-labelledby="public-roles-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <span class="public-section-kicker">BUILT FOR EVERY ROLE</span>
+            <h2 class="public-section-title" id="public-roles-title">แต่ละคนเห็นสิ่งที่จำเป็น<br>ต่อหน้าที่ของตัวเอง</h2>
+            <p class="public-section-desc">GasGuard แยกมุมมองตามหน้าที่ เพื่อให้ผู้ใช้ทั่วไป ทีมซ่อมบำรุง ผู้ดูแลระบบ และทีมพัฒนา ไม่ต้องรับข้อมูลที่ซับซ้อนเกินความจำเป็น.</p>
+          </div>
+
+          <div class="roles-interactive-layout" id="public-roles-interactive">
+            <!-- Left: Role Selector Tabs -->
+            <div class="roles-tab-list" role="tablist" aria-label="เลือกบทบาทผู้ใช้งาน">
+              <!-- Role 1: General -->
+              <button type="button" class="role-tab-item is-active" id="role-tab-general" role="tab" aria-selected="true" aria-controls="role-panel-general">
+                <div class="role-tab-badge">GENERAL</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ผู้ใช้งานทั่วไป</strong>
+                  <span class="role-tab-question">“ตอนนี้พื้นที่ของฉันเป็นอย่างไร?”</span>
+                </div>
+              </button>
+
+              <!-- Role 2: Technician -->
+              <button type="button" class="role-tab-item" id="role-tab-technician" role="tab" aria-selected="false" aria-controls="role-panel-technician">
+                <div class="role-tab-badge">TECHNICIAN</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ช่างเทคนิค</strong>
+                  <span class="role-tab-question">“ตอนนี้มีอะไรที่ต้องตรวจสอบหรือบำรุงรักษา?”</span>
+                </div>
+              </button>
+
+              <!-- Role 3: Admin -->
+              <button type="button" class="role-tab-item" id="role-tab-admin" role="tab" aria-selected="false" aria-controls="role-panel-admin">
+                <div class="role-tab-badge">ADMIN</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ผู้ดูแลระบบ</strong>
+                  <span class="role-tab-question">“ภาพรวมหลายพื้นที่และอุปกรณ์เป็นอย่างไร?”</span>
+                </div>
+              </button>
+
+              <!-- Role 4: Developer -->
+              <button type="button" class="role-tab-item" id="role-tab-developer" role="tab" aria-selected="false" aria-controls="role-panel-developer">
+                <div class="role-tab-badge">DEVELOPER</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">นักพัฒนา / วิศวกร</strong>
+                  <span class="role-tab-question">“Data pipeline และ integration ทำงานถูกต้องหรือไม่?”</span>
+                </div>
+              </button>
             </div>
-            <div class="public-role-card">
-              <span class="public-role-tag">ADMIN</span>
-              <h3>ผู้ดูแลระบบ</h3>
-              <p>ดูแลภาพรวมทุกสถานที่ (Sites), ตรวจสอบสถานะการเชื่อมต่อของอุปกรณ์ทั้งหมด และบริหารสิทธิ์การใช้งาน</p>
+
+            <!-- Right: Contextual Role Showcase Stage -->
+            <div class="roles-showcase-stage">
+              <!-- Panel 1: General -->
+              <div class="role-showcase-panel is-active" id="role-panel-general" role="tabpanel" aria-labelledby="role-tab-general">
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">GENERAL</span>
+                      <span class="role-th-label">ผู้ใช้งานทั่วไป</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ตอนนี้พื้นที่ของฉันเป็นอย่างไร?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ผู้ใช้ต้องการทราบสถานะความปลอดภัยในพื้นที่ของตนอย่างรวดเร็ว ได้รับการแจ้งเตือนที่เข้าใจง่าย และมีขั้นตอนที่ชัดเจนเมื่อเกิดเหตุ โดยไม่ต้องมีความรู้ด้านเทคนิคเซนเซอร์
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>ภาพรวมความปลอดภัย:</strong> ดูสถานะรวมของพื้นที่ (ปกติ / เฝ้าระวัง / ความเสี่ยงสูง)</li>
+                        <li><strong>การแจ้งเตือนและเหตุการณ์:</strong> รับข้อความแจ้งเตือนที่เข้าใจได้ทันที ไม่สับสน</li>
+                        <li><strong>คำอธิบายสถานการณ์:</strong> ทราบเหตุผลเบื้องต้นของสถานะโดยไม่ต้องอ่านข้อมูล telemetry ดิบ</li>
+                        <li><strong>การจัดการพื้นที่:</strong> ระบุตำแหน่ง เช่น ครัวร้านอาหาร หรือพื้นที่ถังแก๊สอย่างชัดเจน</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: General -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอผู้ใช้งานทั่วไป">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">General Workspace · Safety Status</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">สถานที่ / พื้นที่</span>
+                          <strong class="fragment-loc-name">Restaurant A · Kitchen Area</strong>
+                        </div>
+                        <span class="fragment-badge is-safe">NORMAL / ปกติ</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>ระดับ LPG ปัจจุบัน</span>
+                          <strong>84 <small>ppm</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>การเปลี่ยนแปลง</span>
+                          <strong>+0.2 <small>ppm/min</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-advice-box">
+                        <span class="advice-icon" aria-hidden="true">✓</span>
+                        <div class="advice-copy">
+                          <strong>สถานะปกติ:</strong>
+                          <p>ค่าอยู่ในเกณฑ์อ้างอิง ระบบเฝ้าระวังทำงานต่อเนื่อง ไม่พบความผิดปกติ</p>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองผู้ใช้งานทั่วไป (General Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 2: Technician -->
+              <div class="role-showcase-panel" id="role-panel-technician" role="tabpanel" aria-labelledby="role-tab-technician" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">TECHNICIAN</span>
+                      <span class="role-th-label">ช่างเทคนิค</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ตอนนี้มีอะไรที่ต้องตรวจสอบหรือบำรุงรักษา?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ช่างเทคนิคต้องการทราบสุขภาพของอุปกรณ์ ตารางงานซ่อมบำรุง การตรวจสอบจุดเสี่ยง และบันทึกผลการเข้าตรวจสอบระบบอย่างเป็นขั้นตอน
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>สุขภาพอุปกรณ์ (Device Health):</strong> ตรวจสอบสัญญาณเครือข่าย แหล่งจ่ายไฟ และสถานะเซนเซอร์</li>
+                        <li><strong>งานซ่อมบำรุง (Maintenance):</strong> จัดการคิวงานเข้าตรวจเช็ก และบันทึกประวัติการบำรุงรักษา</li>
+                        <li><strong>การตรวจสอบเหตุการณ์ (Incidents):</strong> รับการแจ้งเตือนปัญหาทางเทคนิคและยืนยันสาเหตุ</li>
+                        <li><strong>ลำดับขั้นตอนบริการ (Service Workflow):</strong> ตรวจสอบการติดตั้งและบันทึกผลการทดสอบ</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Technician -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอช่างเทคนิค">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Technician Workspace · Maintenance</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">อุปกรณ์ที่ดูแล</span>
+                          <strong class="fragment-loc-name">ESP32-NODE-01 · Kitchen Area</strong>
+                        </div>
+                        <span class="fragment-badge is-ready">HEALTHY</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>สัญญาณ RSSI</span>
+                          <strong>-64 <small>dBm</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>คิวงานตรวจสอบ</span>
+                          <strong>1 <small>งานรอตรวจ</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-workflow-box">
+                        <div class="wf-item is-done">
+                          <span class="wf-check" aria-hidden="true">●</span>
+                          <span>ตรวจสอบการเชื่อมต่อบอร์ด ESP32 และเซนเซอร์</span>
+                        </div>
+                        <div class="wf-item is-current">
+                          <span class="wf-check" aria-hidden="true">○</span>
+                          <span>ตรวจเช็กสภาพแวดล้อมและบันทึกรายงานการบำรุงรักษา</span>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองช่างเทคนิค (Technician Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 3: Admin -->
+              <div class="role-showcase-panel" id="role-panel-admin" role="tabpanel" aria-labelledby="role-tab-admin" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">ADMIN</span>
+                      <span class="role-th-label">ผู้ดูแลระบบ</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ภาพรวมหลายพื้นที่และอุปกรณ์เป็นอย่างไร?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ผู้ดูแลระบบต้องการมุมมองจากศูนย์กลางเพื่อติดตามความปลอดภัยของหลายพื้นที่ (Multi-site) ควบคุมความพร้อมของอุปกรณ์ทั้งหมด และเรียกดูรายงานสรุป
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>ภาพรวมหลายสถานที่ (Sites):</strong> ดูสถานะรวมของทุกสาขาและจุดติดตั้งในระบบ</li>
+                        <li><strong>อุปกรณ์ในระบบ (Devices Fleet):</strong> ติดตามการออนไลน์และการทำงานของโหนดทั้งหมด</li>
+                        <li><strong>การแจ้งเตือนและเหตุการณ์:</strong> ติดตามประวัติเหตุการณ์สำคัญที่เกิดขึ้นในภาพรวม</li>
+                        <li><strong>รายงานและบันทึก:</strong> ตรวจสอบประวัติการบำรุงรักษาและสรุปความปลอดภัยประจำรอบ</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Admin -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอผู้ดูแลระบบ">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Admin Dashboard · Fleet &amp; Sites</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">ขอบเขตการดูแล</span>
+                          <strong class="fragment-loc-name">All Active Sites (3 Locations)</strong>
+                        </div>
+                        <span class="fragment-badge is-safe">ALL OPERATIONAL</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>อุปกรณ์ออนไลน์</span>
+                          <strong>6 / 6 <small>nodes</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>เหตุการณ์ที่บันทึก</span>
+                          <strong>0 <small>active alerts</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-sites-summary">
+                        <div class="site-chip-row">
+                          <span class="site-chip">Restaurant A · Normal</span>
+                          <span class="site-chip">Central Kitchen · Normal</span>
+                          <span class="site-chip">Storage Unit · Normal</span>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองผู้ดูแลระบบ (Admin Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 4: Developer -->
+              <div class="role-showcase-panel" id="role-panel-developer" role="tabpanel" aria-labelledby="role-tab-developer" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">DEVELOPER</span>
+                      <span class="role-th-label">นักพัฒนา / วิศวกร</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “Data pipeline และ integration ทำงานถูกต้องหรือไม่?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      วิศวกรต้องการเครื่องมือวินิจฉัย Telemetry ตรวจสอบความถูกต้องของ Ingress ทดสอบใน Hardware Lab และประเมินพฤติกรรมของ Safety Engine
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>Telemetry Diagnostics:</strong> ตรวจสอบ packet sequence, bootId และ timestamp validation</li>
+                        <li><strong>Data Validation:</strong> ยืนยันการปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) หรือผิดรูปแบบ</li>
+                        <li><strong>Hardware Lab Sandbox:</strong> ทดสอบ Ingress จากอุปกรณ์และทดลอง payload จำลอง</li>
+                        <li><strong>Integration Readiness:</strong> ตรวจสอบความพร้อมของอินเทอร์เฟซ API และการเชื่อมต่อฮาร์ดแวร์</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Developer -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอนักพัฒนา">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Hardware Lab · Telemetry Ingress</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">Protocol Version</span>
+                          <strong class="fragment-loc-name">Telemetry V1.1 · Monotonic</strong>
+                        </div>
+                        <span class="fragment-badge is-developer">INGRESS ACTIVE</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>Session Boot ID</span>
+                          <strong>b7e-9a1 <small>seq #1428</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>Data Protection</span>
+                          <strong>0 <small>dropped / stale</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-telemetry-box">
+                        <code>{ "node": "esp32-01", "voltage": 1.24, "status": "VALIDATED" }</code>
+                      </div>
+                      <span class="fragment-watermark">มุมมองนักพัฒนา / วิศวกร (Developer Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="public-role-card">
-              <span class="public-role-tag">DEVELOPER</span>
-              <h3>นักพัฒนา / วิศวกร</h3>
-              <p>ทดสอบ Raw Ingress, ใช้งาน Hardware Lab, วิเคราะห์โมเดลความเสี่ยง และจำลองสภาวะแวดล้อม</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technology Highlights -->
+      <section class="public-section" id="public-tech-section" aria-labelledby="public-tech-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Core Technology</p>
+            <h2 class="public-section-title" id="public-tech-title">Technology &amp; Architecture</h2>
+            <p class="public-section-desc">องค์ประกอบทางเทคนิคที่ขับเคลื่อนระบบ GasGuard</p>
+          </div>
+          <div class="public-tech-grid">
+            <div class="public-tech-card">
+              <strong>ESP32 Ingress Readiness</strong>
+              <p>รองรับการส่ง Telemetry ผ่าน HTTP POST พร้อมระบบตรวจสอบ Device Key และแยกระดับ Registry ชัดเจน</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>MQ-3 / MQ-6 Architecture</strong>
+              <p>ออกแบบโครงสร้างรองรับเซ็นเซอร์ก๊าซและแอลกอฮอล์ โดยแยกกระบวนการ Calibration ออกจาก Raw Reading</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Measurement Layer</strong>
+              <p>ตรวจสอบความถูกต้องของ payload ดิบก่อนเข้าสู่ระบบ ป้องกันข้อมูลผิดพลาดที่อาจกระทบต่อ Engine</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Telemetry V1.1 Standard</strong>
+              <p>มาตรฐานข้อมูลกลาง กำกับ session ด้วย bootId และ sequence แบบ monotonic เพื่อความแม่นยำ</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Data Protection Engine</strong>
+              <p>ตรวจจับและปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) และข้อมูลที่มาสลับลำดับ (Out-of-order)</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Explainable Safety Scoring</strong>
+              <p>คำนวณคะแนนความปลอดภัยและระดับความเสี่ยง (0-100) พร้อมเหตุผลประกอบที่ตรวจสอบย้อนกลับได้</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Multi-Source Pipeline</strong>
+              <p>รองรับทั้งการจำลองในเบราว์เซอร์ (Simulation), การเชื่อมต่อผ่าน REST API และ MQTT Protocol</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Strict Workspace Isolation</strong>
+              <p>แยกพื้นที่จำลอง (Demo Site), พื้นที่ทดสอบ (Device Test) และฮาร์ดแวร์จริง (Hardware Pilot) ไม่ปะปนกัน</p>
             </div>
           </div>
         </div>

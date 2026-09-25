@@ -110,5 +110,30 @@ assert.ok(appCode.includes('showLoginView'), 'app.js implements showLoginView');
 assert.ok(appCode.includes('renderPublicDemo'), 'app.js implements renderPublicDemo');
 assert.ok(appCode.includes('login-back-button'), 'app.js handles login-back-button to return to public landing');
 assert.ok(appCode.includes('logout'), 'app.js implements logout');
+assert.ok(appCode.includes('initPublicRolesTabs'), 'app.js implements initPublicRolesTabs');
+
+// 7. Test Sprint 4: How It Works 5 stages and progressive disclosure
+assert.ok(html.includes('id="public-flow-section"'), 'HTML contains public flow section');
+assert.ok(html.includes('SENSOR / DATA SOURCE'), 'Stage 1: SENSOR / DATA SOURCE exists');
+assert.ok(html.includes('MEASUREMENT'), 'Stage 2: MEASUREMENT exists');
+assert.ok(html.includes('TELEMETRY'), 'Stage 3: TELEMETRY exists');
+assert.ok(html.includes('SAFETY ANALYSIS'), 'Stage 4: SAFETY ANALYSIS exists');
+assert.ok(html.includes('EXPERIENCE'), 'Stage 5: EXPERIENCE exists');
+assert.ok(html.includes('details class="flow-disclosure"'), 'Progressive disclosure details elements exist');
+assert.ok(css.includes('.flow-architecture-stage'), 'CSS contains flow architecture stage');
+assert.ok(css.includes('.flow-track'), 'CSS contains flow track');
+
+// 8. Test Sprint 4: User Roles 4 roles centered on questions
+assert.ok(html.includes('id="public-roles-section"'), 'HTML contains public roles section');
+assert.ok(html.includes('id="role-tab-general"'), 'Role tab General exists');
+assert.ok(html.includes('id="role-tab-technician"'), 'Role tab Technician exists');
+assert.ok(html.includes('id="role-tab-admin"'), 'Role tab Admin exists');
+assert.ok(html.includes('id="role-tab-developer"'), 'Role tab Developer exists');
+assert.ok(html.includes('“ตอนนี้พื้นที่ของฉันเป็นอย่างไร?”'), 'General question exists');
+assert.ok(html.includes('“ตอนนี้มีอะไรที่ต้องตรวจสอบหรือบำรุงรักษา?”'), 'Technician question exists');
+assert.ok(html.includes('“ภาพรวมหลายพื้นที่และอุปกรณ์เป็นอย่างไร?”'), 'Admin question exists');
+assert.ok(html.includes('“Data pipeline และ integration ทำงานถูกต้องหรือไม่?”'), 'Developer question exists');
+assert.ok(css.includes('.roles-interactive-layout'), 'CSS contains roles interactive layout');
+assert.ok(css.includes('.role-story-grid'), 'CSS contains role story grid');
 
 console.log('public landing tests passed');

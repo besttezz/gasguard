@@ -295,7 +295,55 @@
     });
   }
   document.querySelectorAll('[data-public-scenario]').forEach(btn=>btn.addEventListener('click',()=>renderPublicDemo(btn.dataset.publicScenario)));
-  window.GasGuardPublicFlow={showPublicView,showLoginView,renderPublicDemo};
+  function initPublicRolesTabs() {
+    const tabs = Array.from(document.querySelectorAll('.role-tab-item'));
+    const panels = Array.from(document.querySelectorAll('.role-showcase-panel'));
+    if (!tabs.length || !panels.length) return;
+
+    function selectRole(targetId) {
+      tabs.forEach(tab => {
+        const isCurrent = tab.getAttribute('aria-controls') === targetId;
+        tab.classList.toggle('is-active', isCurrent);
+        tab.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+      });
+      panels.forEach(panel => {
+        const isTarget = panel.id === targetId;
+        panel.classList.toggle('is-active', isTarget);
+        if (isTarget) {
+          panel.removeAttribute('hidden');
+        } else {
+          panel.setAttribute('hidden', '');
+        }
+      });
+    }
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => {
+        const targetId = tab.getAttribute('aria-controls');
+        selectRole(targetId);
+      });
+      tab.addEventListener('keydown', (e) => {
+        let newIndex = -1;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          newIndex = (index + 1) % tabs.length;
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          newIndex = (index - 1 + tabs.length) % tabs.length;
+        } else if (e.key === 'Home') {
+          newIndex = 0;
+        } else if (e.key === 'End') {
+          newIndex = tabs.length - 1;
+        }
+        if (newIndex >= 0) {
+          e.preventDefault();
+          tabs[newIndex].focus();
+          const targetId = tabs[newIndex].getAttribute('aria-controls');
+          selectRole(targetId);
+        }
+      });
+    });
+  }
+  initPublicRolesTabs();
+  window.GasGuardPublicFlow={showPublicView,showLoginView,renderPublicDemo,selectPublicRole:(targetId)=>document.querySelector(`.role-tab-item[aria-controls="${targetId}"]`)?.click()};
   renderPublicDemo();
   window.GasGuardAuth.initialize((_event,session)=>setTimeout(()=>acceptSession(session),0)).then(session=>{
     if(session)acceptSession(session);
