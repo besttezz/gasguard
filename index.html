@@ -9,7 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/general-home.css">
+    <link rel="stylesheet" href="css/general-home.css">
+    <link rel="stylesheet" href="css/role-workspaces.css">
+  <link rel="stylesheet" href="css/auth.css">
     <style>
       @media (min-width: 761px) {
         .sidebar { display: flex; flex-direction: column; }
@@ -39,7 +41,21 @@
       @media (max-width: 760px) { .general-status-grid { grid-template-columns: 1fr 1fr; } .source-badge { align-self: auto; } }
     </style>
   </head>
-<body>
+<body class="auth-pending">
+  <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <div class="auth-brand"><img src="assets/gasguard-mascot.png" alt=""><span><strong>GasGuard</strong><small>Autonomous LPG Safety</small></span></div>
+      <h1 id="auth-title">เข้าสู่ระบบ</h1>
+      <p class="auth-copy" id="auth-copy">ใช้บัญชีที่ผู้ดูแลระบบสร้างให้เพื่อเข้าสู่พื้นที่ทำงาน</p>
+      <form class="auth-form" id="login-form">
+        <label class="auth-field">อีเมล<input id="login-email" type="email" autocomplete="username" required></label>
+        <label class="auth-field">รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary auth-submit" id="login-submit" type="submit">เข้าสู่ระบบ</button>
+      </form>
+      <p class="auth-message is-info" id="auth-message" role="alert" aria-live="polite">กำลังตรวจสอบ session</p>
+      <div class="auth-denied-actions"><button class="button button-secondary auth-submit" id="denied-sign-out" type="button">ออกจากระบบ</button></div>
+    </div>
+  </section>
   <a class="skip-link" href="#main-content">ข้ามไปยังเนื้อหาหลัก</a>
   <div class="app-shell">
     <aside class="sidebar" id="app-sidebar" aria-label="เมนูหลัก">
@@ -56,21 +72,15 @@
       <header class="topbar">
         <div><p class="section-label" id="page-kicker">SAFETY OVERVIEW</p><h1 id="page-title">ภาพรวมความปลอดภัย</h1><p class="site-context" id="site-context">กำลังอ่านข้อมูลสถานที่</p></div>
         <div class="top-actions">
-          <label class="scenario-control">โหมดผู้ใช้
-            <select id="view-mode" aria-label="เลือกโหมดสาธิตมุมมองผู้ใช้"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select>
-            <span class="demo-role-note">โหมดสาธิตมุมมองผู้ใช้ ไม่ใช่การยืนยันตัวตนหรือสิทธิ์จริง</span>
-          </label>
+          <span class="gasguard-workspace-badge" id="workspace-badge"><strong>Demo Site</strong><small>SIMULATION</small></span><span class="auth-user" id="auth-user-label"></span><button class="button button-secondary" id="sign-out-button" type="button">ออกจากระบบ</button>
           <span class="data-badge source-badge" id="data-source-badge">กำลังตรวจแหล่งข้อมูล</span><span class="data-badge" id="last-reading-badge" aria-live="polite">กำลังรอข้อมูล</span><span class="data-badge developer-only">UNVALIDATED_PROTOTYPE · LOCAL_BROWSER_DATA · NOT_A_PRODUCTION_AUDIT_LOG</span>
-          <label class="scenario-control role-technical-control">สถานการณ์จำลอง
+          <label class="scenario-control developer-only">สถานการณ์จำลอง
             <select id="scenario-select" aria-label="เลือกสถานการณ์จำลอง">
-              <option value="normal">ทำงานตามปกติ</option>
-              <option value="rise">LPG เพิ่มต่อเนื่อง</option>
-              <option value="transient">ค่าสูงชั่วคราวขณะทำอาหาร</option>
-              <option value="critical">เหตุวิกฤต</option>
-              <option value="unknown">เซ็นเซอร์ขาดการเชื่อมต่อ</option>
-              <option value="network">Network failure · MQTT offline</option>
-              <option value="valveFailure">Valve failure · command ≠ feedback</option>
-              <option value="drift">Sensor drift · baseline เปลี่ยน</option>
+              <option value="NORMAL">NORMAL</option>
+              <option value="ATTENTION">ATTENTION</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="RECOVERY">RECOVERY</option>
+              <option value="OFFLINE">OFFLINE</option>
             </select>
           </label>
           <label class="scenario-control role-technical-control">พื้นที่ทดสอบ
@@ -86,13 +96,25 @@
         </div>
       </header>
 
+      <section class="workspace-boundary gasguard-card workspace-boundary-card" id="workspace-boundary" hidden aria-live="polite"><div><span class="workspace-boundary-icon" aria-hidden="true">⌁</span><div><p class="section-label" id="workspace-boundary-label">DEVICE WORKSPACE</p><h2 id="workspace-boundary-title">Waiting for device</h2><p id="workspace-boundary-copy">ยังไม่มี telemetry จากอุปกรณ์ ระบบจึงไม่แสดงค่า gas, online หรือ safety state จากข้อมูลจำลอง</p></div></div><div class="device-ingress-pipeline" aria-label="Device ingestion pipeline"><span>Device</span><i>→</i><span>Ingress</span><i>→</i><span>Measurement</span><i>→</i><span>Telemetry V1.1</span><i>→</i><span>Safety Engine</span></div><dl class="workspace-boundary-facts" id="workspace-boundary-facts"></dl></section>
+
+      <section id="page-admin-dashboard" class="page" aria-label="Admin Dashboard">
+        <div class="events-header"><div><p class="section-label">PLATFORM ADMINISTRATION</p><h2>ภาพรวมระบบ GasGuard</h2><p>สถานะจาก application state และข้อมูลที่เก็บใน browser ปัจจุบัน</p></div><span class="data-badge">LOCAL APPLICATION DATA</span></div>
+        <div class="admin-summary" id="admin-summary"></div>
+        <div class="admin-dashboard-grid">
+          <article class="panel"><p class="section-label">RECENT EVENTS</p><h2>เหตุการณ์ล่าสุด</h2><div class="admin-event-list" id="admin-recent-events"></div></article>
+          <article class="panel"><p class="section-label">SYSTEM STATUS</p><h2>แหล่งข้อมูลและการเชื่อมต่อ</h2><dl class="feature-list" id="admin-system-status"></dl></article>
+          <article class="panel admin-access-panel"><p class="section-label">USERS &amp; ACCESS</p><h2>การจัดการบัญชีผู้ใช้</h2><p>User accounts and roles are managed through the configured authentication service.</p><p class="form-note">GasGuard frontend ไม่สร้างผู้ใช้ ไม่เปลี่ยน role และไม่อ่านรายชื่อผู้ใช้ทั้งหมด</p></article>
+        </div>
+      </section>
+
       <section id="page-overview" class="page is-visible" aria-label="ภาพรวมความปลอดภัย">
         <section class="general-home-intro" aria-label="ข้อมูลผู้ใช้และสถานที่">
           <header class="general-app-header">
             <a class="general-brand" href="#page-overview" aria-label="GasGuard หน้าหลัก"><span class="general-brand-mark"><img src="assets/gasguard-mascot.png" alt=""></span><span><strong>GasGuard</strong><small>Safer Homes&nbsp; Safer Kitchens</small></span></a>
             <div class="general-header-actions"><button class="general-icon-button" data-goto="alerts" type="button" aria-label="เปิดการแจ้งเตือน"><span aria-hidden="true">♧</span><i></i></button><button class="general-icon-button" id="general-profile-button" type="button" aria-label="เปิดเมนูผู้ใช้"><span aria-hidden="true">●</span></button></div>
           </header>
-          <div class="general-welcome"><div><p>สวัสดีตอนเย็น</p><button class="general-site-select" type="button" aria-label="สถานที่ปัจจุบัน Restaurant A">Restaurant A <span aria-hidden="true">⌄</span></button><small>อ.เมืองขอนแก่น, ขอนแก่น</small></div><div class="general-mascot-hello"><span>ดูแลความปลอดภัย<br>ให้คุณเสมอครับ</span><img src="assets/gasguard-mascot.png" alt="GasGuard AI ผู้ช่วยดูแลความปลอดภัย"></div></div>
+          <div class="general-welcome"><div><p>สวัสดีตอนเย็น</p><button class="general-site-select" type="button" aria-label="สถานที่ตัวอย่าง Restaurant A">Restaurant A <span aria-hidden="true">⌄</span></button><small>พื้นที่ตัวอย่าง · ข้อมูลจำลอง · Prototype</small></div><div class="general-mascot-hello"><span>ดูแลความปลอดภัย<br>ให้คุณเสมอครับ</span><img src="assets/gasguard-mascot.png" alt="GasGuard AI ผู้ช่วยดูแลความปลอดภัย"></div></div>
         </section>
         <div class="safety-hero" id="safety-hero">
           <div class="safety-shield" aria-hidden="true">✓</div><div class="safety-hero-copy"><p class="section-label">สถานะความปลอดภัยตอนนี้</p><h2 id="safety-state">กำลังประเมินความปลอดภัย</h2><p id="safety-message">กำลังจัดเตรียมข้อมูลจากเซ็นเซอร์</p><small id="safety-updated">กำลังรอข้อมูลล่าสุด</small></div><div class="score-block"><strong id="safety-score">--</strong><span>/100</span><small id="safety-score-caption">คะแนนความปลอดภัย</small></div><button class="safety-hero-link" data-goto="alerts" type="button" aria-label="ดูรายละเอียดสถานะ"><span aria-hidden="true">›</span></button>
@@ -107,7 +129,16 @@
           <div class="general-actions"><button class="button button-secondary" data-goto="alerts" type="button"><span aria-hidden="true">⌕</span> ดูรายละเอียด</button><button class="button button-primary" id="general-help-button" data-goto="assistant" type="button"><span aria-hidden="true">☎</span> ขอความช่วยเหลือ</button></div>
         </section>
 
-        <section class="technician-queue" id="technician-queue" aria-label="คิวงานช่างตามลำดับความสำคัญ"><div class="panel-heading"><div><p class="section-label">PRIORITY WORK QUEUE</p><h2>งานที่ควรทำต่อ</h2><p class="queue-copy">เรียงตามเหตุที่เปิดอยู่และเวลา โดยไม่สร้างคะแนนความสำคัญใหม่</p></div><span class="data-badge">SIMULATION</span></div><div class="queue-list" id="technician-queue-list"></div></section>
+        <section class="technician-dashboard" id="technician-dashboard" aria-label="Technician Overview">
+          <header class="gasguard-page-header"><div><p class="section-label">TECHNICIAN OVERVIEW</p><h2>งานที่ต้องตรวจและจัดการ</h2><p>เรียงสถานะงาน เหตุเร่งด่วน และความพร้อมของอุปกรณ์ก่อนข้อมูลเชิงเทคนิค</p></div><span class="gasguard-status-chip">SIMULATION · PROTOTYPE</span></header>
+          <section class="technician-priority gasguard-card" aria-labelledby="technician-work-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">▤</span><div><h3 id="technician-work-title">งานที่ต้องจัดการ</h3><p>คิวจาก incident และ service workflow ที่ยังไม่ปิด</p></div></div><button class="text-button" data-goto="reports" type="button">เปิดคิวงาน <span aria-hidden="true">→</span></button></div><div class="technician-work-summary" id="technician-work-summary"></div><div class="queue-list" id="technician-queue-list"></div></section>
+          <div class="technician-dashboard-grid">
+            <section class="gasguard-card" aria-labelledby="technician-health-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><h3 id="technician-health-title">Device Health</h3></div><button class="text-button" data-goto="devices" type="button">ดูอุปกรณ์</button></div><div class="gasguard-metric-row" id="technician-device-health"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-maintenance-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">◌</span><h3 id="technician-maintenance-title">Maintenance</h3></div><button class="text-button" data-goto="maintenance" type="button">เปิดงานดูแล</button></div><div class="gasguard-list" id="technician-maintenance-summary"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-incidents-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">!</span><h3 id="technician-incidents-title">Recent Incidents</h3></div><button class="text-button" data-goto="replay" type="button">ตรวจเหตุการณ์</button></div><div class="gasguard-list" id="technician-recent-incidents"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-progress-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">✓</span><h3 id="technician-progress-title">Verification / Task Progress</h3></div><button class="text-button" data-goto="validation" type="button">เปิด Validation</button></div><div class="gasguard-metric-row" id="technician-progress"></div></section>
+          </div>
+        </section>
 
         <div class="metric-grid" id="overview-metrics"></div>
 
@@ -120,14 +151,14 @@
       </section>
 
       <section id="page-demo" class="page" aria-label="ศูนย์ควบคุมการจำลอง">
-        <div class="events-header"><div><p class="section-label">DEVELOPER DEMO CONTROL</p><h2>เลือกสถานการณ์และควบคุม Playback</h2><p>ส่งเฉพาะ payload จำลองผ่าน Engine เดิม ไม่มีการเชื่อมต่ออุปกรณ์หรือควบคุมวาล์วจริง</p></div><span class="data-badge">SIMULATION ONLY</span></div>
+        <div class="events-header"><div><p class="section-label">DEVELOPER DEMO CONTROL</p><h2>เลือกสถานการณ์และควบคุม Playback</h2><p>ส่งเฉพาะ payload จำลองผ่าน Engine เดิม ไม่มีการเชื่อมต่ออุปกรณ์หรือควบคุมวาล์วจริง</p></div><span class="data-badge">SIMULATION / PROTOTYPE</span></div>
         <div class="demo-layout"><article class="panel"><h3>Scenario library</h3><label class="demo-field">สถานการณ์<select id="demo-scenario-select"></select></label><div class="demo-scenario-copy" id="demo-scenario-copy"></div><div class="demo-actions"><button class="button button-primary" id="demo-start" type="button">เริ่ม Scenario</button><button class="button button-secondary" id="demo-pause" type="button">พัก</button><button class="button button-secondary" id="demo-step" type="button">เดิน 1 Step</button><button class="button button-secondary" id="demo-restart" type="button">เริ่มใหม่</button></div><label class="demo-field">ความเร็ว Playback<select id="demo-speed"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select></label></article><article class="panel"><h3>สถานะการจำลอง</h3><dl class="feature-list demo-facts" id="demo-facts"></dl><div class="demo-open-list" id="demo-open-list"></div></article></div>
         <article class="panel guided-demo" id="guided-demo" hidden aria-label="S10 Guided Presentation"><div class="panel-heading"><div><p class="section-label">S10 GUIDED PRESENTATION</p><h2>ลำดับการสาธิตและจุดที่ต้องตรวจ</h2></div><span class="data-badge" id="guided-demo-stage">Stage 1 / 11</span></div><div class="guided-demo-grid"><div><p class="guided-demo-title" id="guided-demo-title">—</p><p class="guided-demo-copy" id="guided-demo-copy">—</p><dl class="feature-list guided-demo-facts" id="guided-demo-facts"></dl></div><aside class="guided-demo-check"><strong>Checklist ของ stage นี้</strong><ul id="guided-demo-checklist"></ul><p id="guided-demo-human"></p></aside></div><div class="demo-actions"><button class="button button-secondary" id="guided-demo-prev" type="button">Stage ก่อนหน้า</button><button class="button button-secondary" id="guided-demo-open" type="button">เปิดหน้าที่แนะนำ</button><button class="button button-primary" id="guided-demo-next" type="button">Stage ถัดไป</button><button class="button button-secondary" id="guided-demo-restart" type="button">เริ่ม S10 ใหม่</button></div></article>
-        <article class="panel demo-reset-panel"><div><h3>Reset Demo Session</h3><p>ลบเฉพาะข้อมูล localStorage ของ GasGuard Demo: engine draft, service workflow, role/view, setup profile และ managed sites ข้อมูล Browser อื่นจะไม่ถูกแตะ</p></div><button class="button button-secondary" id="demo-reset" type="button">Reset เฉพาะข้อมูล Demo</button></article>
+        <article class="panel demo-reset-panel"><div><h3>Reset Demo Session</h3><p>คืนค่าเฉพาะ readings, events, alerts และ service workflow ของ Demo Site โดยไม่เปลี่ยนบัญชี สิทธิ์ หรือ workspace อื่น</p><p id="demo-reset-result" class="form-note" role="status" aria-live="polite"></p></div><button class="button button-secondary" id="demo-reset" type="button">Reset เฉพาะข้อมูล Demo</button></article>
       </section>
 
       <section id="page-live" class="page" aria-label="ตรวจวัดแบบสด">
-        <div class="live-head"><div><p class="section-label">LIVE TELEMETRY</p><h2>Kitchen LPG sensor</h2><p id="live-updated">—</p></div><span class="status-pill" id="live-status">—</span></div>
+        <div class="live-head"><div><p class="section-label">TELEMETRY MONITOR</p><h2>Kitchen LPG sensor</h2><p id="live-updated">—</p></div><span class="status-pill" id="live-status">—</span></div>
         <div class="live-value"><strong id="live-ppm">—</strong><span>ppm</span><p id="live-trend-copy">—</p></div>
         <article class="panel"><svg id="live-chart" class="line-chart large-chart" viewBox="0 0 920 260" role="img" aria-label="กราฟข้อมูล LPG แบบสด"></svg></article>
         <div class="metric-grid dense-grid" id="live-metrics"></div>
@@ -174,7 +205,7 @@
       </section>
 
       <section id="page-alerts" class="page" aria-label="การแจ้งเตือน">
-        <div class="events-header"><div><p class="section-label">ALERT CENTER</p><h2>เหตุการณ์ที่ต้องติดตาม</h2></div><span class="data-badge">Rule engine v0.1</span></div>
+        <div class="events-header"><div><p class="section-label">ALERT CENTER</p><h2>เหตุการณ์ที่ต้องติดตาม</h2></div><span class="data-badge">SIMULATION · Rule engine v0.1</span></div>
         <div class="metric-grid" id="alert-metrics"></div><div class="event-list" id="alert-list"></div>
       </section>
 
@@ -229,16 +260,37 @@
       </section>
 
       <section id="page-developer" class="page" aria-label="Developer Console">
-        <div class="events-header"><div><p class="section-label">DEVELOPER CONSOLE</p><h2>Data pipeline observability</h2><p>อ่านค่าและผลวิเคราะห์ทุกชั้นแบบ read-only สำหรับตรวจสอบ Draft 1</p></div><span class="data-badge" id="developer-version">Draft 1</span></div>
-        <div class="metric-grid dense-grid" id="developer-metrics"></div>
-        <div class="developer-grid">
-          <article class="panel"><p class="section-label">CANONICAL READING</p><h2>Normalized sensor payload</h2><pre class="code-block" id="reading-json"></pre></article>
-          <article class="panel"><p class="section-label">ANALYSIS OUTPUT</p><h2>Derived features & decision</h2><pre class="code-block" id="analysis-json"></pre></article>
-          <article class="panel"><p class="section-label">PROVIDER STATE</p><h2>Source and connection</h2><dl class="feature-list" id="provider-state"></dl></article>
-          <article class="panel"><p class="section-label">INCIDENT LIFECYCLE</p><h2>Last 10 events</h2><div class="developer-events" id="developer-events"></div></article>
-          <article class="panel"><p class="section-label">RELATION EXPLORER</p><h2>Incident ↔ Service workflow</h2><p class="form-note">ความสัมพันธ์นี้ใช้ตรวจสอบ trace ของข้อมูล local browser เท่านั้น ไม่ใช่หลักฐานบริการที่ผ่านการรับรอง</p><label>เลือกข้อมูลที่ต้องการตรวจ trace<select id="relation-explorer-select"></select></label><dl class="feature-list" id="relation-explorer-labels"></dl><pre class="code-block" id="relation-explorer-json"></pre></article>
-          <article class="panel"><p class="section-label">EVIDENCE JSON</p><h2>UNVALIDATED_PROTOTYPE</h2><pre class="code-block" id="incident-evidence-json"></pre></article>
+        <header class="gasguard-page-header"><div><p class="section-label">DEVELOPER DASHBOARD</p><h2>สถานะระบบและ Data Pipeline</h2><p>ดู provider, telemetry, ingest และผลวิเคราะห์ปัจจุบันก่อนเปิด diagnostics เชิงลึก</p></div><span class="gasguard-status-chip" id="developer-version">UNVALIDATED_PROTOTYPE</span></header>
+        <section class="developer-status-strip" id="developer-system-status" aria-label="System Status"></section>
+        <section class="gasguard-card developer-pipeline-section" aria-labelledby="developer-pipeline-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><div><h3 id="developer-pipeline-title">Data Pipeline</h3><p>เส้นทางข้อมูลที่ใช้ร่วมกันใน application</p></div></div></div><div class="developer-pipeline" id="developer-pipeline"></div></section>
+        <div class="developer-dashboard-grid">
+          <section class="gasguard-card" aria-labelledby="developer-telemetry-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">▦</span><h3 id="developer-telemetry-title">Telemetry Diagnostics</h3></div></div><div class="developer-facts" id="developer-telemetry-status"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-safety-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">✓</span><h3 id="developer-safety-title">Safety Summary</h3></div></div><div class="developer-facts" id="developer-safety-summary"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-integration-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">◇</span><h3 id="developer-integration-title">Integration</h3></div></div><div class="developer-integration-list" id="developer-integrations"></div></section>
+          <section class="gasguard-card integration-readiness-card" aria-labelledby="integration-readiness-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><div><h3 id="integration-readiness-title">ESP32 Integration Readiness</h3><p>Software readiness แยกจากสถานะการเชื่อมต่ออุปกรณ์</p></div></div><span class="gasguard-status-chip" id="integration-readiness-overall">CHECKING</span></div><div class="readiness-list" id="integration-readiness-list"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-tools-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌘</span><h3 id="developer-tools-title">Quick Tools</h3></div></div><div class="quick-tool-grid"><button data-goto="hardware-lab" type="button"><strong>Hardware Lab</strong><span>ตรวจ Measurement payload</span></button><button data-goto="explorer" type="button"><strong>Explorer</strong><span>ตรวจข้อมูลทุกชั้น</span></button><button data-goto="validation" type="button"><strong>Validation</strong><span>รัน deterministic cases</span></button><button data-goto="settings" type="button"><strong>Settings</strong><span>ดู provider configuration</span></button></div></section>
         </div>
+        <details class="developer-advanced"><summary>Advanced diagnostics</summary><div class="developer-grid"><article class="panel"><p class="section-label">CANONICAL READING</p><h2>Normalized sensor payload</h2><pre class="code-block" id="reading-json"></pre></article><article class="panel"><p class="section-label">ANALYSIS OUTPUT</p><h2>Derived features &amp; decision</h2><pre class="code-block" id="analysis-json"></pre></article><article class="panel"><p class="section-label">PROVIDER STATE</p><h2>Source and connection</h2><dl class="feature-list" id="provider-state"></dl></article><article class="panel"><p class="section-label">INCIDENT LIFECYCLE</p><h2>Last 10 events</h2><div class="developer-events" id="developer-events"></div></article><article class="panel"><p class="section-label">RELATION EXPLORER</p><h2>Incident ↔ Service workflow</h2><p class="form-note">ความสัมพันธ์นี้ใช้ตรวจสอบ trace ของข้อมูล local browser เท่านั้น ไม่ใช่หลักฐานบริการที่ผ่านการรับรอง</p><label>เลือกข้อมูลที่ต้องการตรวจ trace<select id="relation-explorer-select"></select></label><dl class="feature-list" id="relation-explorer-labels"></dl><pre class="code-block" id="relation-explorer-json"></pre></article><article class="panel"><p class="section-label">EVIDENCE JSON</p><h2>UNVALIDATED_PROTOTYPE</h2><pre class="code-block" id="incident-evidence-json"></pre></article></div></details>
+      </section>
+
+      <section id="page-product" class="page" aria-label="Product and Technology">
+        <header class="product-intro"><div><p class="section-label">PRODUCT &amp; TECHNOLOGY</p><h2>GasGuard ช่วยติดตามความปลอดภัย LPG อย่างไร</h2><p>ระบบรับข้อมูลจากอุปกรณ์หรือแหล่งข้อมูลที่กำหนด วิเคราะห์สถานะ และจัดระเบียบ alerts, events และงานบริการให้ผู้ใช้แต่ละบทบาทเห็นสิ่งที่เกี่ยวข้อง</p></div><span class="data-badge">PROTOTYPE PLATFORM</span></header>
+        <section class="product-purpose" aria-labelledby="product-what"><div><h3 id="product-what">What is GasGuard?</h3><p>GasGuard คือแพลตฟอร์มสำหรับติดตาม วิเคราะห์ และช่วยจัดการข้อมูลความปลอดภัย LPG เพื่อให้ผู้ใช้เห็นสถานะล่าสุด เหตุการณ์ที่ควรติดตาม และประวัติการดำเนินงานในที่เดียว</p></div><div class="product-boundary"><strong>ขอบเขตปัจจุบัน</strong><span>Safety Engine เป็น prototype สำหรับพัฒนาและทดสอบ ยังไม่ใช่ certified safety controller และไม่แทนอุปกรณ์ป้องกันที่ผ่านการรับรอง</span></div></section>
+        <section class="panel product-flow-section" aria-labelledby="product-flow-title"><h3 id="product-flow-title">How It Works</h3><div class="product-flow" role="list" aria-label="ลำดับการทำงานของ GasGuard"><div role="listitem"><b>Sensor / Data Source</b><span>รับข้อมูล</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Measurement</b><span>ตรวจรูปแบบ</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Telemetry</b><span>จัดมาตรฐาน</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Safety Analysis</b><span>ประเมินสถานะ</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Alerts / Events</b><span>บันทึกผล</span></div><i aria-hidden="true">→</i><div role="listitem"><b>User</b><span>ติดตามและดำเนินงาน</span></div></div></section>
+        <div class="product-content-grid">
+          <section class="panel" aria-labelledby="product-tech"><h3 id="product-tech">Technology</h3><ul class="product-tech-list"><li><strong>ESP32 readiness</strong><span>เตรียม contract สำหรับเชื่อมอุปกรณ์จริง</span></li><li><strong>MQ-3 / MQ-6 architecture</strong><span>แยก adapter ตามชนิด sensor โดยยังไม่อ้างว่า calibration เสร็จแล้ว</span></li><li><strong>Measurement Layer</strong><span>ตรวจข้อมูล raw ก่อนเข้าสู่ระบบ</span></li><li><strong>Telemetry V1.1</strong><span>รูปแบบข้อมูลกลาง พร้อม boot session และเวลา receive</span></li><li><strong>Data protection</strong><span>ตรวจ stale, duplicate และ out-of-order</span></li><li><strong>Safety Engine</strong><span>สรุป safety และ risk state จากข้อมูลที่รับได้</span></li><li><strong>Data sources</strong><span>รองรับ Simulation และเตรียมขอบเขต REST / MQTT</span></li><li><strong>Role-based access</strong><span>แยกหน้าที่ General, Technician, Admin และ Developer</span></li></ul></section>
+          <section class="panel" aria-labelledby="product-intelligence"><h3 id="product-intelligence">Safety Intelligence</h3><p>ระบบพิจารณาค่าก๊าซ แนวโน้ม ความต่อเนื่อง และคุณภาพข้อมูล เพื่อสร้าง safety state และ risk สำหรับช่วยให้ผู้ใช้ติดตามสถานการณ์</p><div class="product-notice"><strong>Prototype limitation</strong><span>ผลวิเคราะห์ต้องผ่านการตรวจสอบกับ sensor, สภาพแวดล้อม และข้อกำหนดด้านความปลอดภัยจริงก่อนนำไปใช้งานภาคสนาม</span></div><h3 class="product-subheading">User Roles</h3><dl class="product-roles"><div><dt>General</dt><dd>ดูสถานะ แจ้งเตือน และขอรับบริการ</dd></div><div><dt>Technician</dt><dd>ตรวจอุปกรณ์ เหตุการณ์ และงานบำรุงรักษา</dd></div><div><dt>Admin</dt><dd>ดูภาพรวม platform, sites, devices และสถานะบริการ</dd></div><div><dt>Developer</dt><dd>ตรวจ integration, diagnostics และเครื่องมือพัฒนา</dd></div></dl></section>
+        </div>
+        <section class="panel product-status-section" aria-labelledby="product-status"><h3 id="product-status">Current Development Status</h3><div class="product-status-list"><div><span>Software Platform</span><strong>Ready for prototype</strong></div><div><span>Authentication</span><strong>Implemented</strong></div><div><span>Telemetry</span><strong>Implemented</strong></div><div><span>Measurement Layer</span><strong>Implemented</strong></div><div><span>Hardware Integration</span><strong class="attention">Preparing</strong></div><div><span>MQ Calibration</span><strong class="pending">Pending validation</strong></div></div></section>
+      </section>
+
+      <section id="page-hardware-lab" class="page" aria-label="Hardware Integration Lab">
+        <div class="events-header"><div><p class="section-label">DEVELOPER ONLY · HARDWARE INTEGRATION</p><h2>ตรวจ payload ก่อนเชื่อมอุปกรณ์จริง</h2><p>ใช้ Measurement Layer และ ingest path เดียวกับระบบจริง โดยยังไม่มีการสอบเทียบ MQ3/MQ6</p></div><span class="data-badge">Telemetry V1.1</span></div>
+        <div class="hardware-lab-grid">
+          <article class="panel hardware-input-panel"><div class="hardware-lab-head"><div><p class="section-label">INPUT PAYLOAD</p><h2>Measurement JSON</h2></div><label>Sample case<select id="hardware-sample"></select></label></div><textarea id="hardware-payload" class="hardware-payload" spellcheck="false" aria-label="Measurement JSON payload"></textarea><div class="hardware-actions"><button class="button button-secondary" id="hardware-load-sample" type="button">โหลดตัวอย่าง</button><button class="button button-secondary" id="hardware-validate" type="button">Validate Only</button><button class="button button-primary" id="hardware-ingest" type="button">Validate &amp; Ingest</button></div><p class="form-note">Validate Only ไม่เขียนข้อมูลเข้า engine. Raw-only ต้องแสดง CALIBRATION_REQUIRED และไม่อ้างว่า calibrated.</p></article>
+          <article class="panel hardware-result-panel"><div class="hardware-result-head"><div><p class="section-label">RESULT</p><h2 id="hardware-result-title">รอการตรวจสอบ</h2></div><span class="status-pill unknown" id="hardware-result-status">IDLE</span></div><p class="hardware-message" id="hardware-result-message">เลือก sample หรือแก้ JSON แล้วเริ่มตรวจสอบ</p><dl class="feature-list hardware-diagnostics" id="hardware-diagnostics"></dl></article>
+        </div>
+        <div class="hardware-output-grid"><article class="panel"><p class="section-label">CANONICAL TELEMETRY</p><h2>Telemetry V1.1 output</h2><pre class="code-block" id="hardware-telemetry">ยังไม่มี canonical telemetry</pre></article><article class="panel"><p class="section-label">INGEST TIMING</p><h2>Application receive diagnostics</h2><dl class="feature-list" id="hardware-timing"><div><dt>Status</dt><dd>ยังไม่ได้ ingest</dd></div></dl></article><article class="panel"><p class="section-label">ENGINE OUTPUT</p><h2>ผลวิเคราะห์จริงจาก engine</h2><dl class="feature-list" id="hardware-engine"><div><dt>Status</dt><dd>ยังไม่ได้ ingest</dd></div></dl></article></div>
       </section>
 
       <section id="page-explorer" class="page" aria-label="Data Explorer">
@@ -265,18 +317,26 @@
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
   <nav class="mobile-navigation" id="mobile-navigation" aria-label="เมนูหลักบนมือถือ"></nav>
   <dialog class="mobile-more-sheet" id="mobile-more-sheet" aria-labelledby="mobile-more-title">
-    <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard Demo</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
-    <p class="mobile-sheet-copy">โหมดสาธิตนี้เปลี่ยนมุมมองเพื่อทดสอบหน้าจอ ไม่ใช่การเข้าสู่ระบบหรือการกำหนดสิทธิ์จริง</p>
-    <label class="mobile-role-control">โหมดสาธิต<select id="mobile-view-mode" aria-label="เลือกโหมดสาธิต"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select></label>
-    <label class="mobile-demo-control">สถานการณ์สาธิต<select id="mobile-scenario-select" aria-label="เลือกสถานการณ์สาธิต"><option value="normal">ปกติ</option><option value="rise">เฝ้าระวัง</option><option value="critical">อันตราย</option><option value="unknown">ออฟไลน์ / ไม่ทราบสถานะ</option></select></label>
+    <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
+    <p class="mobile-sheet-copy auth-user" id="mobile-auth-user-label"></p>
+    <button class="button button-secondary" id="mobile-sign-out-button" type="button">ออกจากระบบ</button>
+    <label class="mobile-demo-control">สถานการณ์สาธิต<select id="mobile-scenario-select" aria-label="เลือกสถานการณ์สาธิต"><option value="NORMAL">NORMAL</option><option value="ATTENTION">ATTENTION</option><option value="CRITICAL">CRITICAL</option><option value="RECOVERY">RECOVERY</option><option value="OFFLINE">OFFLINE</option></select></label>
     <div class="mobile-more-list" id="mobile-more-list"></div>
   </dialog>
   <aside class="review-bar" id="review-bar" hidden aria-label="Demo review context"><span id="review-context">Review mode</span><button class="button button-secondary" id="copy-review-context" type="button">Copy review context</button><button class="button button-secondary" id="close-review" type="button">ปิด</button></aside>
   <script src="js/data.js"></script>
   <script src="js/engine.js"></script>
+  <script src="js/measurement.js"></script>
+  <script src="js/hardware-lab.js"></script>
+  <script src="js/workspaces.js"></script>
+  <script src="js/integration-status.js"></script>
+  <script src="js/demo-data.js"></script>
   <script src="js/providers.js"></script>
   <script src="js/service.js"></script>
   <script src="js/navigation.js"></script>
+  <script src="js/auth-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
   <script>if(new URLSearchParams(window.location.search).get('overlay')==='more')document.querySelector('#mobile-more-sheet')?.showModal();</script>
   <script src="js/demo-scenarios.js"></script>

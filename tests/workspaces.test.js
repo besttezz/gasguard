@@ -1,0 +1,25 @@
+const assert = require('node:assert/strict');
+const workspaces = require('../js/workspaces.js');
+
+const demo=workspaces.get('demo-site'),hardware=workspaces.get('hardware-pilot'),deviceTest=workspaces.get('device-test');
+assert.equal(demo.mode,'SIMULATION');
+assert.equal(workspaces.sourceFor(demo),'simulation');
+assert.equal(hardware.mode,'DEVICE');
+assert.equal(workspaces.sourceFor(hardware),null,'device workspace must not fall back to simulation');
+const waiting=workspaces.presentation(hardware);
+assert.equal(waiting.status,'WAITING_FOR_DEVICE');
+assert.equal(waiting.telemetry,'NO DATA');
+assert.equal(waiting.safety,'UNKNOWN');
+assert.equal(waiting.gasPpm,null,'hardware workspace must not invent gas ppm');
+assert.equal(waiting.canUseSimulation,false);
+assert.equal(hardware.expectedDevice,'ESP32-KITCHEN-01');
+assert.deepEqual([...hardware.expectedSensors],['MQ3-01','MQ6-01']);
+assert.equal(hardware.source,'REAL_DEVICE');
+assert.equal(deviceTest.source,'TEST_DEVICE');
+assert.equal(deviceTest.expectedDevice,'SIM-ESP32-KITCHEN-01');
+assert.equal(workspaces.presentation(deviceTest).isTest,true);
+const profiles=require('../js/integration-profiles.js');
+assert.deepEqual({role:profiles.hardwarePilotUser.role,workspace:profiles.hardwarePilotUser.defaultWorkspaceId},{role:'developer',workspace:'hardware-pilot'});
+assert.deepEqual({role:profiles.deviceTestUser.role,workspace:profiles.deviceTestUser.defaultWorkspaceId},{role:'developer',workspace:'device-test'});
+assert.equal(profiles.hardwarePilotUser.authType,'USER_AUTH','user auth remains distinct from device credentials');
+console.log('workspace tests passed');

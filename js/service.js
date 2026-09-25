@@ -43,6 +43,7 @@
     catch (error) { return result(false, 'storage_write_failed', 'ไม่สามารถบันทึกข้อมูลลง Browser storage; ข้อมูลอาจไม่คงอยู่หลัง Refresh'); }
   }
   function save() { return commit(clone(state)); }
+  function resetDemoState(candidate) { return commit(clone(candidate || emptyState())); }
   function requestFor(requestId, candidate = state) { return candidate.requests.find(request => request.requestId === requestId) || null; }
   function terminalFailure(request) { if (!request) return result(false, 'request_not_found', 'ไม่พบคำขอบริการนี้'); if (request.status === 'completed') return result(false, 'request_completed', 'งานนี้เสร็จสิ้นแล้ว ไม่สามารถแก้ไขเพิ่มเติมได้'); if (request.status === 'cancelled') return result(false, 'request_cancelled', 'คำขอนี้ถูกยกเลิกแล้ว เปิดอ่านประวัติได้เท่านั้น'); return null; }
   function addHistory(request, action, nextStatus, actorRole) { request.history.push({ timestamp:now(), action, previousStatus:request.status, newStatus:nextStatus, actorRole, mock:true }); }
@@ -91,5 +92,5 @@
     return { version:VERSION, selection, incidents:window.GasGuardEngine?.state.events.filter(event => all || incidentIds.has(event.eventId || event.id)) || [], requests, tasks:state.tasks.filter(task => requestIds.has(task.requestId)), verifications:state.verifications.filter(item => requestIds.has(item.requestId)), reports:state.reports.filter(item => requestIds.has(item.requestId)), warning:state.warning || null, missingRelation:!all&&!requests.length?'ไม่พบความสัมพันธ์ของรายการที่เลือก':null, source:'LOCAL_BROWSER_DATA', mock:true };
   }
   function protectedIncidentIds() { return new Set([...state.requests.filter(request => OPEN.has(request.status)).map(request => request.incidentId), ...state.tasks.filter(task => task.status !== 'completed').map(task => task.incidentId)].filter(Boolean)); }
-  window.GasGuardService = { state, KEY, VERSION, create, transition, note, task, verify, report, protectedIncidentIds, relationSnapshot, save, migrate };
+  window.GasGuardService = { state, KEY, VERSION, create, transition, note, task, verify, report, protectedIncidentIds, relationSnapshot, save, resetDemoState, migrate };
 })();

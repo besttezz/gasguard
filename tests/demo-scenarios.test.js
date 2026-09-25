@@ -43,12 +43,13 @@ engine.togglePause();
 engine.tick();
 assert.equal(engine.state.readings.length, beforePause + 1, 'a resumed tick advances one reading');
 
-// Keep reset narrowly scoped: never erase unrelated browser storage wholesale.
+// Keep reset narrowly scoped: never erase unrelated browser storage or reload auth state.
 const controller = source('demo-controller');
 assert.equal(controller.includes('localStorage.clear('), false, 'demo reset never calls localStorage.clear');
-for (const key of ['gasguard-v2-draft','gasguard-v2-service-workflow','gasguard-v2-view-mode','gasguard-v2-demo-role','gasguard-v2-setup-profile','gasguard-v2-managed-sites']) {
-  assert.ok(controller.includes(`'${key}'`), `reset allowlist includes ${key}`);
-}
+assert.ok(controller.includes('GasGuardDemoData'), 'reset delegates to the isolated demo data module');
+assert.equal(controller.includes('window.location.reload()'), false, 'reset does not reload or log out the user');
+assert.equal(controller.includes('gasguard-v2-demo-role'), false, 'reset does not touch role state');
+assert.equal(controller.includes('gasguard-v2-managed-sites'), false, 'reset does not touch managed sites');
 assert.ok(controller.includes('const guidedStages = Object.freeze(['), 'S10 has a guided stage registry');
 assert.equal((controller.match(/title:'/g) || []).length >= 11, true, 'S10 includes all presentation stages');
 for (const title of ['Normal operation','Gradual LPG rise','Danger','Unknown / fault','Recovery','General creates request','Technician investigates','Verification','Service report','Developer evidence']) {

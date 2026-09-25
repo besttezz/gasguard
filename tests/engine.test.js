@@ -25,6 +25,11 @@ function prepareCompleted(service, incidentId = null) {
   assert.equal(service.transition(id, 'completed').ok, true);
   return id;
 }
+const telemetry = (overrides = {}) => ({
+  schemaVersion:'gasguard.telemetry.v1.1', deviceId:'ESP32-TEST', sensorId:'SENSOR-TEST', sensorType:'MQ6', bootId:'boot-a', sequence:0,
+  timestamp:new Date().toISOString(), gas:{ ppm:120 }, environment:{ temperature:30, humidity:65 }, system:{ connection:'online' },
+  ...overrides
+});
 
 // Engine regression: formulas and deterministic scenarios remain unchanged.
 let { engine, service, storage } = runtime();
@@ -115,7 +120,7 @@ assert.equal(engine.analysis.risk, null);
 assert.equal(engine.analysis.confidence, 0);
 assert.equal(engine.analysis.integrityFault.code, 'storage_corrupt');
 const good = engine.analysis.current;
-assert.equal(engine.ingest({gas:{value:good.gas.value,calculatedPpm:good.gas.value},environment:good.environment,system:good.system,locationId:good.locationId,zoneId:good.zoneId,deviceId:good.deviceId,sensorId:good.sensorId}), true);
+assert.equal(engine.ingest({schemaVersion:'gasguard.telemetry.v1.1',deviceId:good.deviceId,sensorId:good.sensorId,sensorType:'SIMULATED',bootId:good.bootId,sequence:good.sequence+1,timestamp:new Date().toISOString(),gas:{ppm:good.gas.value},environment:{temperature:good.environment.temperature,humidity:good.environment.humidity},system:{connection:'online'}}), true);
 assert.equal(engine.analysis.integrityFault, null);
 assert.equal(engine.state.recoveryTransition.code, 'storage_recovery');
 assert.ok(engine.state.events.some(event => event.title.includes('กู้คืน')));
@@ -128,5 +133,45 @@ engine.state.events = Array.from({length:90},(_,i)=>({eventId:`closed-${i}`,id:`
 engine.state.events.push({eventId:'protected',id:'protected',lifecycleStatus:'resolved',technicianReview:{status:'completed'}});
 service.state.requests.push({requestId:'open',incidentId:'protected',status:'submitted'});
 assert.ok(engine.retainedEventPreview().some(event => event.eventId === 'protected'));
+
+// 11. Telemetry Contract V1.1 accepts MQ3/MQ6 and rejects missing/invalid required fields.
+({ engine } = runtime());
+assert.equal(engine.ingest(telemetry({sensorType:'MQ3',sequence:10})), true, 'valid MQ3 payload accepted');
+assert.equal(engine.analysis.current.sensorType, 'MQ3');
+assert.equal(engine.ingest(telemetry({deviceId:'ESP32-MQ6',sensorId:'MQ6-01',sensorType:'MQ6',sequence:3})), true, 'valid MQ6 payload accepted');
+const beforeInvalid=engine.state.readings.length;
+assert.equal(engine.ingest(telemetry({deviceId:undefined,sequence:11})), false, 'missing deviceId rejected');
+assert.equal(engine.ingest(telemetry({sensorType:undefined,sequence:11})), false, 'missing sensorType rejected');
+assert.equal(engine.ingest(telemetry({bootId:undefined,sequence:11})), false, 'missing bootId rejected');
+assert.equal(engine.ingest(telemetry({schemaVersion:'gasguard.telemetry.v1',sequence:11})), false, 'Telemetry V1 is not silently upgraded');
+assert.equal(engine.ingest(telemetry({timestamp:'not-a-date',sequence:11})), false, 'invalid timestamp rejected');
+assert.equal(engine.ingest(telemetry({sequence:-1})), false, 'negative sequence rejected');
+assert.equal(engine.ingest(telemetry({sequence:1.5})), false, 'non-integer sequence rejected');
+assert.equal(engine.state.readings.length,beforeInvalid,'invalid telemetry never enters state');
+
+// 12. Sequence handling is deterministic per device + sensor + boot.
+assert.equal(engine.ingest(telemetry({sequence:10})), false, 'duplicate sequence rejected');
+assert.equal(engine.state.lastIngestError.code,'duplicate_sequence');
+assert.equal(engine.ingest(telemetry({sequence:9})), false, 'out-of-order sequence rejected');
+assert.equal(engine.state.lastIngestError.code,'out_of_order_sequence');
+assert.equal(engine.ingest(telemetry({bootId:'boot-b',sequence:0})),true,'new boot accepts a reset sequence');
+assert.equal(engine.analysis.current.bootId,'boot-b');
+
+// 13. Receive time is internal, freshness uses it, and clock skew is diagnostic only.
+const hardwareReceivedAt='2000-01-01T00:00:00.000Z', measurementTime=new Date(Date.now()-60000).toISOString();
+assert.equal(engine.ingest(telemetry({deviceId:'ESP32-STALE',sensorId:'MQ6-STALE',bootId:'boot-stale',sequence:0,timestamp:measurementTime,receivedAt:hardwareReceivedAt})),true);
+assert.notEqual(engine.analysis.current.receivedAt,hardwareReceivedAt,'incoming receivedAt cannot override application receive time');
+assert.equal(engine.analysis.current.timestamp,measurementTime,'measurement timestamp is preserved');
+assert.ok(engine.analysis.clockSkewMs>=59000,'clock skew is available for diagnostics');
+assert.equal(engine.analysis.stale,false,'old measurement time alone does not make a newly received reading stale');
+engine.state.readings.at(-1).receivedAt=new Date(Date.now()-60000).toISOString();
+assert.equal(engine.analysis.stale,true);
+assert.equal(engine.analysis.safety,'unknown');
+assert.equal(engine.analysis.risk,null);
+engine.restartSimulation('normal');
+assert.equal(engine.tick().stale,false,'simulation produces fresh validated telemetry');
+assert.equal(engine.analysis.current.sensorType,'SIMULATED');
+assert.ok(engine.analysis.current.bootId,'simulation supplies a bootId');
+assert.equal(engine.analysis.current.gas.rawAdc,null,'simulation does not fabricate ADC from ppm');
 
 console.log('engine tests passed');

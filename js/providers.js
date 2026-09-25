@@ -17,8 +17,8 @@
         const response = await fetch(source.restUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json(); const rows = Array.isArray(data) ? data : (data.readings || data.data || data.sensors || [data]);
-        const accepted = rows.some(row => engine.ingest(row));
-        this.setStatus(accepted ? 'online' : 'error', accepted ? `REST connected · ${rows.length} reading(s)` : 'REST payload ไม่มี LPG reading ที่ใช้ได้');
+        const accepted = rows.reduce((count,row) => count + (engine.ingest(row) ? 1 : 0), 0);
+        this.setStatus(accepted ? 'online' : 'error', accepted ? `REST connected · ${accepted}/${rows.length} reading(s) accepted` : 'REST payload ไม่มี Telemetry V1 ที่ใช้ได้');
       } catch (error) { this.setStatus('error', `REST error · ${error.message}`); }
       return engine.analysis;
     },
