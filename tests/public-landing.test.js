@@ -33,6 +33,13 @@ assert.equal(critical.gasPpm, 420);
 assert.equal(critical.valve, 'CLOSED');
 assert.ok(critical.badge.includes('SIMULATION'));
 
+// Trend paths and accessible descriptions
+assert.ok(normal.trendPath && typeof normal.trendPath === 'string');
+assert.ok(attention.trendPath && typeof attention.trendPath === 'string');
+assert.ok(critical.trendPath && typeof critical.trendPath === 'string');
+assert.notEqual(normal.trendPath, attention.trendPath);
+assert.notEqual(attention.trendPath, critical.trendPath);
+
 // Ensure no cross-workspace leakage
 assert.equal(publicDemo.getActiveScenario().id, 'NORMAL');
 publicDemo.setScenario('ATTENTION');
@@ -73,6 +80,8 @@ const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 assert.ok(html.includes('id="public-landing"'), 'HTML contains public landing container');
 assert.ok(html.includes('id="public-hero-title"'), 'HTML contains public hero title');
 assert.ok(html.includes('id="public-demo-section"'), 'HTML contains public demo section');
+assert.ok(html.includes('id="public-demo-stage"'), 'HTML contains public demo stage window');
+assert.ok(html.includes('id="public-demo-trend-path"'), 'HTML contains public demo trend path');
 assert.ok(html.includes('id="nav-login-button"'), 'HTML contains navigation login CTA');
 assert.ok(html.includes('id="hero-login-button"'), 'HTML contains hero login CTA');
 assert.ok(html.includes('id="footer-login-button"'), 'HTML contains footer login CTA');

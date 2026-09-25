@@ -458,70 +458,146 @@
       <section class="public-section public-demo-section" id="public-demo-section" aria-labelledby="public-demo-title">
         <div class="public-container">
           <div class="public-section-head">
-            <p class="public-section-kicker">Interactive Simulation</p>
-            <h2 class="public-section-title" id="public-demo-title">Public Demo Preview — ทดลองดูการทำงาน</h2>
-            <p class="public-section-desc">สัมผัสการประเมินผลของ Safety Engine ในสภาวะต่างๆ แบบจำลอง (Simulation) โดยไม่ต้องเข้าสู่ระบบ</p>
+            <span class="public-section-kicker">INTERACTIVE DEMO</span>
+            <h2 class="public-section-title" id="public-demo-title">ลองดูว่า GasGuard<br>ตีความสถานการณ์อย่างไร</h2>
+            <p class="public-section-desc">เลือกสถานการณ์จำลองเพื่อดูว่า ข้อมูล แนวโน้ม และบริบท ถูกสรุปเป็นสถานะที่เข้าใจง่ายขึ้นอย่างไร</p>
           </div>
 
-          <div class="public-demo-wrap">
-            <div class="public-sim-banner">
-              <span class="public-sim-tag" id="public-demo-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
-              <span class="public-sim-notice">ระบบจำลองนี้แยกเป็นอิสระจาก Demo Site และ Hardware Pilot ไม่มีการอ้างอิงข้อมูลจริง</span>
+          <!-- Dominant Product Window / Demo Stage -->
+          <div class="public-demo-stage" id="public-demo-stage" role="region" aria-label="ห้องทดลองสถานการณ์จำลอง GasGuard" data-scenario-state="safe">
+            <!-- Window Topbar -->
+            <div class="demo-stage-topbar">
+              <div class="stage-window-title">
+                <span class="window-dot" aria-hidden="true"></span>
+                <strong>GasGuard Demo</strong>
+                <span class="stage-version-chip">Prototype Simulation</span>
+              </div>
+              <div class="stage-window-disclosure">
+                <span class="public-sim-tag" id="public-demo-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
+              </div>
             </div>
 
-            <div class="public-scenario-controls" role="group" aria-label="เลือกสถานการณ์จำลอง">
-              <button type="button" class="public-scenario-btn is-active" data-public-scenario="NORMAL" aria-pressed="true">
-                🟢 สภาวะปกติ (NORMAL)
-              </button>
-              <button type="button" class="public-scenario-btn" data-public-scenario="ATTENTION" aria-pressed="false">
-                🟡 เฝ้าระวัง (ATTENTION)
-              </button>
-              <button type="button" class="public-scenario-btn" data-public-scenario="CRITICAL" aria-pressed="false">
-                🔴 เสี่ยงสูง / อันตราย (CRITICAL)
-              </button>
-            </div>
-
-            <div class="public-demo-card">
-              <div class="public-demo-header">
-                <div>
-                  <h3 style="margin:0 0 4px;font-size:20px;color:var(--gg-navy);" id="public-demo-card-title">สถานะความปลอดภัย: ปกติ</h3>
-                  <small style="color:var(--gg-muted);" id="public-demo-time-label">อัปเดตล่าสุด: จำลองเวลาปัจจุบัน</small>
-                </div>
-                <span class="public-demo-state is-safe" id="public-demo-state-pill">
-                  <span aria-hidden="true">◉</span> <span id="public-demo-state-text">ปกติ</span>
-                </span>
+            <!-- Stage Body -->
+            <div class="demo-stage-body">
+              <!-- Scenario Controls: Segmented Selector -->
+              <div class="demo-scenario-selector" role="group" aria-label="เลือกสถานการณ์จำลอง">
+                <button type="button" class="demo-scenario-tab is-active" data-public-scenario="NORMAL" aria-pressed="true">
+                  <span class="tab-indicator is-normal" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">NORMAL</strong>
+                    <small class="tab-th">สภาวะปกติ</small>
+                  </span>
+                </button>
+                <button type="button" class="demo-scenario-tab" data-public-scenario="ATTENTION" aria-pressed="false">
+                  <span class="tab-indicator is-attention" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">ATTENTION</strong>
+                    <small class="tab-th">เฝ้าระวัง</small>
+                  </span>
+                </button>
+                <button type="button" class="demo-scenario-tab" data-public-scenario="CRITICAL" aria-pressed="false">
+                  <span class="tab-indicator is-critical" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">CRITICAL</strong>
+                    <small class="tab-th">ความเสี่ยงสูง</small>
+                  </span>
+                </button>
               </div>
 
-              <div class="public-demo-metrics">
-                <div class="public-metric-box">
-                  <small>LPG ปัจจุบัน</small>
-                  <strong id="public-demo-ppm">84 ppm</strong>
-                  <span id="public-demo-baseline">Baseline 84 ppm</span>
+              <!-- Product Preview Canvas -->
+              <div class="demo-product-canvas">
+                <!-- Status Hero Block -->
+                <div class="demo-status-hero">
+                  <div class="demo-status-eyebrow">สถานะความปลอดภัยจำลอง (Safety Status)</div>
+                  <div class="demo-status-main">
+                    <span class="public-demo-state is-safe" id="public-demo-state-pill" role="status" aria-live="polite">
+                      <span class="state-beacon" aria-hidden="true"></span>
+                      <span id="public-demo-state-text">ปกติ (NORMAL)</span>
+                    </span>
+                    <h3 class="demo-status-heading" id="public-demo-card-title">สถานะความปลอดภัย: ปกติ</h3>
+                  </div>
+                  <div class="demo-status-meta">
+                    <span id="public-demo-time-label">เวลาประมวลผล: ข้อมูลจำลองล่าสุด</span>
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span>Kitchen Zone A</span>
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span>Connection: <strong id="public-demo-connection">ONLINE</strong></span>
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span>Valve: <strong id="public-demo-valve">OPEN</strong></span>
+                  </div>
                 </div>
-                <div class="public-metric-box">
-                  <small>อัตราการเพิ่ม</small>
-                  <strong id="public-demo-rate">+0.2 ppm/min</strong>
-                  <span id="public-demo-rate-note">แนวโน้มคงที่</span>
+
+                <!-- Primary Metrics Strip -->
+                <div class="demo-metrics-strip">
+                  <div class="demo-metric-cell">
+                    <span class="cell-label">LPG ปัจจุบัน</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val" id="public-demo-ppm">84 ppm</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-baseline">Baseline 84 ppm</span>
+                  </div>
+
+                  <div class="demo-metric-cell">
+                    <span class="cell-label">Rate of Change</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val" id="public-demo-rate">+0.2 ppm/min</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-rate-note">แนวโน้มคงที่</span>
+                  </div>
+
+                  <div class="demo-metric-cell is-score-cell">
+                    <span class="cell-label">PROTOTYPE SAFETY SCORE</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val score-val" id="public-demo-score">92 / 100</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-risk">ความเสี่ยง: 8/100</span>
+                  </div>
                 </div>
-                <div class="public-metric-box">
-                  <small>คะแนนความปลอดภัย</small>
-                  <strong id="public-demo-score">92 / 100</strong>
-                  <span id="public-demo-risk">ความเสี่ยง: 8/100</span>
+
+                <!-- Calm Trend Visual Panel -->
+                <div class="demo-trend-card">
+                  <div class="trend-card-head">
+                    <span class="trend-caption">ภาพรวมแนวโน้มจำลอง 30 นาที (Trend Visualization)</span>
+                    <span class="trend-accessibility-text" id="public-demo-trend-desc" aria-live="polite">แนวโน้มจำลอง 30 นาที: ค่าคงที่ใกล้เคียง baseline 84 ppm (+0.2 ppm/min)</span>
+                    <div class="trend-legend" aria-hidden="true">
+                      <span class="legend-item"><span class="legend-line is-baseline"></span> Baseline</span>
+                      <span class="legend-item"><span class="legend-line is-reading"></span> Simulated Trend</span>
+                    </div>
+                  </div>
+                  <div class="trend-canvas-wrap" aria-hidden="true">
+                    <svg viewBox="0 0 680 90" class="demo-trend-svg" preserveAspectRatio="none">
+                      <line x1="0" y1="64" x2="680" y2="64" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4,4" />
+                      <path id="public-demo-trend-path" d="M 0 64 C 120 63, 240 65, 360 62 C 480 60, 560 64, 680 63" fill="none" stroke="var(--trend-color, #0878E8)" stroke-width="2.5" stroke-linecap="round" />
+                      <circle id="public-demo-trend-point" cx="680" cy="63" r="4.5" fill="var(--trend-color, #0878E8)" stroke="#FFFFFF" stroke-width="2" />
+                    </svg>
+                  </div>
                 </div>
-                <div class="public-metric-box">
-                  <small>สถานะวาล์ว &amp; ระบบ</small>
-                  <strong id="public-demo-valve">OPEN</strong>
-                  <span id="public-demo-connection">ONLINE</span>
+
+                <!-- Explanation Panel: WHY THIS STATUS -->
+                <div class="demo-why-card">
+                  <div class="why-card-header">
+                    <span class="why-eyebrow">WHY THIS STATUS</span>
+                    <h4 class="why-title">การประเมินโดย Rule-based Prototype</h4>
+                  </div>
+                  <p class="why-explanation-text" id="public-demo-summary">
+                    ในตัวอย่างจำลองนี้ ค่าค่อนข้างคงที่และใกล้รูปแบบอ้างอิง ระบบกฎต้นแบบจึงจัดสถานะเป็นปกติ
+                  </p>
+                  <div class="why-action-box">
+                    <span class="action-icon" aria-hidden="true">↳</span>
+                    <div class="action-content">
+                      <strong>แนวทางปฏิบัติจำลอง:</strong>
+                      <p id="public-demo-action">สภาวะแวดล้อมจำลองปกติ ระบบเฝ้าระวังทำงานและส่งข้อมูลตามรอบปกติ ไม่จำเป็นต้องดำเนินการใดๆ</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div class="public-demo-detail">
-                <strong>ผลการวิเคราะห์จาก Safety Engine (Simulation):</strong>
-                <p id="public-demo-summary">ระดับก๊าซ LPG อยู่ในระดับปกติ ค่าเฉลี่ยคงที่ใกล้เคียง baseline ไม่มีแนวโน้มความเสี่ยง</p>
-                <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--gg-line);">
-                  <strong style="font-size:12px;color:var(--gg-muted);">คำแนะนำการปฏิบัติงาน:</strong>
-                  <p id="public-demo-action" style="font-size:13px;color:oklch(.35 .04 250);margin-top:2px;">สภาวะแวดล้อมปลอดภัย ระบบทำงานและส่งข้อมูลตามปกติ ไม่จำเป็นต้องดำเนินการใดๆ</p>
-                </div>
+              <!-- Stage Disclosure Footer -->
+              <div class="demo-stage-footer">
+                <span class="disclosure-dot" aria-hidden="true"></span>
+                <p class="disclosure-text">
+                  <strong>ข้อชี้แจงสถานะต้นแบบ:</strong> การจำลองนี้เป็นแบบกำหนดไว้ล่วงหน้า (Deterministic Prototype Simulation) เพื่อแสดงกรอบความคิดในการประมวลผลข้อมูลหลายมิติ ไม่ใช่การเชื่อมต่อเซนเซอร์ฮาร์ดแวร์จริง ไม่ใช่ค่าจากการวัดที่ผ่านการ Calibrate และไม่ใช่ Certified Safety Controller
+                </p>
               </div>
             </div>
           </div>

@@ -230,7 +230,7 @@
     if($('public-demo-ppm'))$('public-demo-ppm').textContent=`${scenario.gasPpm} ppm`;
     if($('public-demo-baseline'))$('public-demo-baseline').textContent=`Baseline ${scenario.baseline} ppm`;
     if($('public-demo-rate'))$('public-demo-rate').textContent=`${scenario.ratePpmMin} ppm/min`;
-    if($('public-demo-rate-note'))$('public-demo-rate-note').textContent=scenario.safety==='safe'?'แนวโน้มคงที่':'เพิ่มขึ้นต่อเนื่อง';
+    if($('public-demo-rate-note'))$('public-demo-rate-note').textContent=scenario.safety==='safe'?'แนวโน้มคงที่':(scenario.safety==='attention'?'เพิ่มขึ้นปานกลาง':'เพิ่มขึ้นรวดเร็ว');
     if($('public-demo-score'))$('public-demo-score').textContent=`${scenario.safetyScore} / 100`;
     if($('public-demo-risk'))$('public-demo-risk').textContent=`ความเสี่ยง: ${scenario.riskScore}/100`;
     if($('public-demo-valve'))$('public-demo-valve').textContent=scenario.valve;
@@ -238,6 +238,17 @@
     if($('public-demo-summary'))$('public-demo-summary').textContent=scenario.summary;
     if($('public-demo-action'))$('public-demo-action').textContent=scenario.action;
     if($('public-demo-badge'))$('public-demo-badge').textContent=scenario.badge;
+    const trendPath=$('public-demo-trend-path');
+    if(trendPath && scenario.trendPath) trendPath.setAttribute('d', scenario.trendPath);
+    const trendPoint=$('public-demo-trend-point');
+    if(trendPoint && scenario.trendPoint) {
+      trendPoint.setAttribute('cx', scenario.trendPoint.cx);
+      trendPoint.setAttribute('cy', scenario.trendPoint.cy);
+    }
+    const trendDesc=$('public-demo-trend-desc');
+    if(trendDesc && scenario.trendDesc) trendDesc.textContent=scenario.trendDesc;
+    const stage=$('public-demo-stage');
+    if(stage) stage.setAttribute('data-scenario-state', scenario.safety);
     document.querySelectorAll('[data-public-scenario]').forEach(btn=>{
       const active=btn.dataset.publicScenario===scenario.id;
       btn.classList.toggle('is-active',active);
