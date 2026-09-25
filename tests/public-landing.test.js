@@ -136,4 +136,38 @@ assert.ok(html.includes('“Data pipeline และ integration ทำงาน�
 assert.ok(css.includes('.roles-interactive-layout'), 'CSS contains roles interactive layout');
 assert.ok(css.includes('.role-story-grid'), 'CSS contains role story grid');
 
+// 9. Test Sprint 5: Technology 3 Pillars
+assert.ok(html.includes('id="public-tech-section"'), 'HTML contains public tech section');
+assert.ok(html.includes('RELIABLE DATA'), 'Pillar 1: RELIABLE DATA exists');
+assert.ok(html.includes('PROTECTED PIPELINE'), 'Pillar 2: PROTECTED PIPELINE exists');
+assert.ok(html.includes('HARDWARE INTEGRATION PATH'), 'Pillar 3: HARDWARE INTEGRATION PATH exists');
+assert.ok(html.includes('Measurement Layer'), 'Reliable Data mentions Measurement Layer');
+assert.ok(html.includes('Telemetry V1.1'), 'Reliable Data mentions Telemetry V1.1');
+assert.ok(html.includes('HTTP Ingress') || html.includes('HTTP Device Ingress'), 'Hardware path mentions HTTP Ingress');
+assert.ok(css.includes('.public-tech-pillars'), 'CSS contains public tech pillars layout');
+
+// 10. Test Sprint 5: Trust & Transparency 3 Maturity Stages
+assert.ok(html.includes('id="public-trust-section"'), 'HTML contains public trust section');
+assert.ok(html.includes('IMPLEMENTED IN SOFTWARE'), 'Stage 1: IMPLEMENTED IN SOFTWARE exists');
+assert.ok(html.includes('READY FOR DEVICE INTEGRATION'), 'Stage 2: READY FOR DEVICE INTEGRATION exists');
+assert.ok(html.includes('PENDING VALIDATION'), 'Stage 3: PENDING VALIDATION exists');
+assert.ok(html.includes('Physical ESP32 Validation'), 'Pending validation lists physical ESP32');
+assert.ok(html.includes('MQ-3 Calibration'), 'Pending validation lists MQ-3 Calibration');
+assert.ok(html.includes('MQ-6 Calibration'), 'Pending validation lists MQ-6 Calibration');
+assert.ok(css.includes('.public-trust-grid'), 'CSS contains public trust grid layout');
+
+// 11. Test Sprint 5: Final CTA dual actions
+assert.ok(html.includes('id="footer-demo-button"'), 'Footer contains primary demo button');
+assert.ok(html.includes('href="#public-demo-section"'), 'Footer demo button links to public demo section');
+assert.ok(html.includes('id="footer-login-button"'), 'Footer contains secondary login button');
+assert.ok(css.includes('.public-footer-cta'), 'CSS contains footer CTA styles');
+
+// 12. Test Sprint 5: Public Truthfulness Checks (No misleading hardware states)
+const publicSectionHtml = html.split('<main id="public-content">')[1].split('</main>')[0];
+assert.equal(publicSectionHtml.includes('Valve: OPEN'), false, 'Public landing does not state Valve: OPEN');
+assert.equal(publicSectionHtml.includes('Valve: CLOSED'), false, 'Public landing does not state Valve: CLOSED');
+assert.equal(publicSectionHtml.includes('Connection: ONLINE'), false, 'Public landing does not state Connection: ONLINE');
+assert.equal(publicSectionHtml.includes('Sensor: Active'), false, 'Public landing does not state Sensor: Active');
+assert.ok(publicSectionHtml.includes('Data Source: <strong>SIMULATION</strong>'), 'Hero preview footer displays simulation data source');
+
 console.log('public landing tests passed');

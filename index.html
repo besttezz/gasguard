@@ -61,6 +61,7 @@
             <a href="#public-flow-section" class="public-nav-link">How It Works</a>
             <a href="#public-roles-section" class="public-nav-link">Roles</a>
             <a href="#public-tech-section" class="public-nav-link">Technology</a>
+            <a href="#public-trust-section" class="public-nav-link">Trust</a>
           </div>
           <div class="public-nav-actions">
             <button type="button" class="public-btn-login" id="nav-login-button">
@@ -82,6 +83,7 @@
           <a href="#public-flow-section" class="public-mobile-link">How It Works</a>
           <a href="#public-roles-section" class="public-mobile-link">Roles</a>
           <a href="#public-tech-section" class="public-mobile-link">Technology</a>
+          <a href="#public-trust-section" class="public-mobile-link">Trust</a>
           <div class="public-mobile-actions">
             <button type="button" class="public-btn-login is-full" id="mobile-login-button">
               Sign In
@@ -173,9 +175,9 @@
                     </svg>
                   </div>
                   <div class="trend-panel-footer">
-                    <span>Sensor: Active</span>
-                    <span>Valve: OPEN (เปิดปกติ)</span>
-                    <span>Connection: ONLINE</span>
+                    <span>Data Source: <strong>SIMULATION</strong></span>
+                    <span>System Mode: <strong>MONITORING</strong></span>
+                    <span>Preview State: <strong>AVAILABLE</strong></span>
                   </div>
                 </div>
 
@@ -282,7 +284,7 @@
                     <span class="fragment-metric-title">Kitchen A · LPG</span>
                     <strong class="fragment-metric-val">84 <small>ppm</small></strong>
                   </div>
-                  <div class="fragment-status-chip">Valve: OPEN</div>
+                  <div class="fragment-status-chip">Mode: MONITORING</div>
                 </div>
                 <span class="fragment-disclose">ภาพจำลองสถานะต้นแบบ</span>
               </div>
@@ -995,97 +997,326 @@
         </div>
       </section>
 
-      <!-- Technology Highlights -->
+      <!-- Technology Highlights / Pillars -->
       <section class="public-section" id="public-tech-section" aria-labelledby="public-tech-title">
         <div class="public-container">
           <div class="public-section-head">
-            <p class="public-section-kicker">Core Technology</p>
-            <h2 class="public-section-title" id="public-tech-title">Technology &amp; Architecture</h2>
-            <p class="public-section-desc">องค์ประกอบทางเทคนิคที่ขับเคลื่อนระบบ GasGuard</p>
+            <p class="public-section-kicker">TECHNOLOGY</p>
+            <h2 class="public-section-title" id="public-tech-title">
+              ออกแบบให้ข้อมูลแต่ละชั้น<br>ตรวจสอบและพัฒนาได้อย่างเป็นระบบ
+            </h2>
+            <p class="public-section-desc">
+              GasGuard แยกชั้นการรับข้อมูล การตรวจสอบข้อมูล และการวิเคราะห์ออกจากกัน เพื่อให้แต่ละส่วนสามารถทดสอบ ตรวจสอบ และพัฒนาต่อได้โดยไม่ปะปนกัน.
+            </p>
           </div>
-          <div class="public-tech-grid">
-            <div class="public-tech-card">
-              <strong>ESP32 Ingress Readiness</strong>
-              <p>รองรับการส่ง Telemetry ผ่าน HTTP POST พร้อมระบบตรวจสอบ Device Key และแยกระดับ Registry ชัดเจน</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>MQ-3 / MQ-6 Architecture</strong>
-              <p>ออกแบบโครงสร้างรองรับเซ็นเซอร์ก๊าซและแอลกอฮอล์ โดยแยกกระบวนการ Calibration ออกจาก Raw Reading</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Measurement Layer</strong>
-              <p>ตรวจสอบความถูกต้องของ payload ดิบก่อนเข้าสู่ระบบ ป้องกันข้อมูลผิดพลาดที่อาจกระทบต่อ Engine</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Telemetry V1.1 Standard</strong>
-              <p>มาตรฐานข้อมูลกลาง กำกับ session ด้วย bootId และ sequence แบบ monotonic เพื่อความแม่นยำ</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Data Protection Engine</strong>
-              <p>ตรวจจับและปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) และข้อมูลที่มาสลับลำดับ (Out-of-order)</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Explainable Safety Scoring</strong>
-              <p>คำนวณคะแนนความปลอดภัยและระดับความเสี่ยง (0-100) พร้อมเหตุผลประกอบที่ตรวจสอบย้อนกลับได้</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Multi-Source Pipeline</strong>
-              <p>รองรับทั้งการจำลองในเบราว์เซอร์ (Simulation), การเชื่อมต่อผ่าน REST API และ MQTT Protocol</p>
-            </div>
-            <div class="public-tech-card">
-              <strong>Strict Workspace Isolation</strong>
-              <p>แยกพื้นที่จำลอง (Demo Site), พื้นที่ทดสอบ (Device Test) และฮาร์ดแวร์จริง (Hardware Pilot) ไม่ปะปนกัน</p>
-            </div>
+
+          <div class="public-tech-pillars">
+            <!-- Pillar 1: RELIABLE DATA -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-1-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">01</span>
+                  <span class="tech-pillar-tag">RELIABLE DATA</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-1-title">ข้อมูลมีโครงสร้างที่ตรวจสอบได้</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                ข้อมูลที่เข้าสู่ระบบต้องผ่านโครงสร้างและการตรวจสอบที่กำหนดไว้ ก่อนถูกส่งต่อไปยังการวิเคราะห์.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="ผังขั้นตอน Reliable Data">
+                <div class="tech-mini-flow">
+                  <span class="mini-node">Raw Data</span>
+                  <span class="mini-arrow" aria-hidden="true">→</span>
+                  <span class="mini-node is-highlight">Measurement Layer</span>
+                  <span class="mini-arrow" aria-hidden="true">→</span>
+                  <span class="mini-node is-highlight">Telemetry V1.1</span>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>Identity Validation:</strong> ตรวจสอบ deviceId และ deviceKey ก่อนรับข้อมูล</li>
+                  <li><strong>Boot-aware Sequence:</strong> กำกับ session ด้วย bootId และ sequence แบบ monotonic</li>
+                  <li><strong>receivedAt Timestamp:</strong> บันทึกเวลาที่เซิร์ฟเวอร์รับข้อมูลจริงเพื่อป้องกัน time drift</li>
+                  <li><strong>Schema Validation:</strong> ตรวจสอบรูปแบบ payload และชนิดข้อมูลตาม Telemetry V1.1</li>
+                </ul>
+              </details>
+            </article>
+
+            <!-- Pillar 2: PROTECTED PIPELINE -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-2-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">02</span>
+                  <span class="tech-pillar-tag">PROTECTED PIPELINE</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-2-title">ป้องกันข้อมูลที่ไม่ควรถูกนำไปใช้</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                ระบบไม่ควรตีความข้อมูลเก่า ข้อมูลซ้ำ หรือข้อมูลที่มาผิดลำดับ เหมือนเป็นข้อมูลใหม่ที่เชื่อถือได้.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="ผังการคัดกรองข้อมูล Pipeline">
+                <div class="tech-pipeline-filter">
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Sequence In-Order</div>
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Non-Stale Window</div>
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Workspace Isolation</div>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>Stale-data Handling:</strong> ตรวจจับและคัดกรองข้อมูลที่ค้างหรือส่งช้ากว่าเกณฑ์ที่กำหนด</li>
+                  <li><strong>Duplicate Rejection:</strong> ปฏิเสธ payload ซ้ำด้วย bootId + sequence tracking</li>
+                  <li><strong>Out-of-order Rejection:</strong> ป้องกันข้อมูลที่มาสลับลำดับไม่ให้กระทบต่อ Rate of Rise</li>
+                  <li><strong>Workspace Isolation:</strong> แยกพื้นที่ Demo, Device Test และ Hardware ไม่ให้ข้อมูลปนเปื้อน</li>
+                </ul>
+              </details>
+            </article>
+
+            <!-- Pillar 3: HARDWARE INTEGRATION PATH -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-3-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">03</span>
+                  <span class="tech-pillar-tag">HARDWARE INTEGRATION PATH</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-3-title">เตรียมเส้นทางเชื่อมต่อกับอุปกรณ์จริง</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                เตรียมช่องทางรับข้อมูลระดับซอฟต์แวร์ที่พร้อมเชื่อมต่อกับฮาร์ดแวร์ โดยการทดสอบจริงกับเซ็นเซอร์ยังอยู่ระหว่างการพัฒนา.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="เส้นทางเชื่อมต่อฮาร์ดแวร์">
+                <div class="tech-hardware-route">
+                  <span class="hw-node">ESP32 / Virtual</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node is-active">HTTP Ingress</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Measurement</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Telemetry</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Analysis</span>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>HTTP Device Ingress:</strong> เส้นทางหลัก (Primary Ingress Path) สำหรับส่ง telemetry เข้าระบบ</li>
+                  <li><strong>Trusted Device Registry:</strong> ตรวจสอบสิทธิ์และสถานะการลงทะเบียนของอุปกรณ์</li>
+                  <li><strong>Virtual ESP32 Testing:</strong> ทดสอบเส้นทาง ingress เดียวกันกับอุปกรณ์จริงในสภาพแวดล้อมจำลอง</li>
+                  <li><strong>Pending Sensor Calibration:</strong> การเชื่อมต่อ ESP32 จริงและการสอบเทียบ MQ-3 / MQ-6 ยังอยู่ระหว่างรอการทดสอบ</li>
+                </ul>
+              </details>
+            </article>
           </div>
         </div>
       </section>
 
-      <!-- Development Status Section -->
-      <section class="public-section" id="public-status-section" aria-labelledby="public-status-title">
+      <!-- Trust & Transparency Section -->
+      <section class="public-section" id="public-trust-section" aria-labelledby="public-trust-title">
+        <div id="public-status-section" class="anchor-compat" aria-hidden="true"></div>
         <div class="public-container">
           <div class="public-section-head">
-            <p class="public-section-kicker">Project Roadmap</p>
-            <h2 class="public-section-title" id="public-status-title">Current Development Status</h2>
-            <p class="public-section-desc">สถานะความพร้อมของแต่ละโมดูลในระบบ GasGuard</p>
+            <p class="public-section-kicker">TRUST &amp; TRANSPARENCY</p>
+            <h2 class="public-section-title" id="public-trust-title">
+              บอกให้ชัดว่าส่วนไหนพร้อม<br>และส่วนไหนยังอยู่ระหว่างการตรวจสอบ
+            </h2>
+            <p class="public-section-desc">
+              GasGuard แยกความสามารถที่พัฒนาแล้ว ออกจากส่วนที่ยังต้องทดสอบกับฮาร์ดแวร์จริง Calibration และมาตรฐานด้านความปลอดภัย เพื่อไม่ให้สถานะ Prototype ถูกเข้าใจว่าเป็นระบบที่ผ่านการรับรองแล้ว.
+            </p>
           </div>
-          <div class="public-status-grid">
-            <div class="public-status-card">
-              <span>Software Platform</span>
-              <span class="public-status-chip is-ready">Ready for prototype</span>
-            </div>
-            <div class="public-status-card">
-              <span>Authentication (Supabase)</span>
-              <span class="public-status-chip is-ready">Architecture Implemented</span>
-            </div>
-            <div class="public-status-card">
-              <span>Telemetry V1.1 Protocol</span>
-              <span class="public-status-chip is-ready">Implemented</span>
-            </div>
-            <div class="public-status-card">
-              <span>Measurement Layer</span>
-              <span class="public-status-chip is-ready">Implemented</span>
-            </div>
-            <div class="public-status-card">
-              <span>Hardware Ingress (Local)</span>
-              <span class="public-status-chip is-ready">Ready for Device</span>
-            </div>
-            <div class="public-status-card">
-              <span>MQ Sensor Calibration</span>
-              <span class="public-status-chip is-pending">Pending Validation</span>
-            </div>
+
+          <div class="public-trust-grid">
+            <!-- Group 1: IMPLEMENTED IN SOFTWARE -->
+            <article class="trust-stage-card" aria-labelledby="trust-stage-1-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-implemented">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  IMPLEMENTED IN SOFTWARE
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-1-title">ซอฟต์แวร์และโครงสร้างระบบ</h3>
+              </div>
+              <p class="trust-stage-desc">
+                ฟังก์ชันการทำงานส่วนซอฟต์แวร์ที่พัฒนาและผ่านการทดสอบระดับโค้ดแล้ว
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Public / Role-based Software Experience</strong>
+                    <span>หน้าเว็บสาธารณะและพื้นที่ทำงาน 4 บทบาทพร้อมระบบแยกสิทธิ์</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Deterministic Simulation</strong>
+                    <span>ระบบจำลองสถานการณ์ 3 รูปแบบเพื่อสาธิตแนวคิดการทำงาน</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Measurement Layer Boundary</strong>
+                    <span>ชั้นตรวจสอบความสมบูรณ์และ validate payload ดิบ</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Telemetry V1.1 Standard</strong>
+                    <span>มาตรฐานข้อมูลพร้อม boot-aware sequence และ receivedAt</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Prototype Rule-based Analysis</strong>
+                    <span>การประเมิน Rate of Rise และความเสี่ยงตามกฎเกณฑ์ต้นแบบ</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Alerts / Events Software Workflows</strong>
+                    <span>การจัดกลุ่มระดับความสนใจและบันทึกประวัติเหตุการณ์</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
+
+            <!-- Group 2: READY FOR DEVICE INTEGRATION -->
+            <article class="trust-stage-card" aria-labelledby="trust-stage-2-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-ready">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  READY FOR DEVICE INTEGRATION
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-2-title">ช่องทางเชื่อมต่ออุปกรณ์</h3>
+              </div>
+              <p class="trust-stage-desc">
+                สถาปัตยกรรมพร้อมรับการเชื่อมต่อจากฮาร์ดแวร์ แต่ยังไม่ใช่การใช้งานจริงระดับโปรดักชัน
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Local HTTP Device Ingress</strong>
+                    <span>Endpoint รับ Telemetry ผ่าน HTTP POST พร้อมตรวจสอบ identity</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Trusted Device Registry</strong>
+                    <span>ทะเบียนควบคุมอุปกรณ์ที่ได้รับอนุญาตและการผูกเข้ากับ Workspace</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Virtual ESP32 Path</strong>
+                    <span>เครื่องมือทดสอบการส่ง payload ผ่าน ingress เดียวกับอุปกรณ์จริง</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>ESP32 Handshake Readiness</strong>
+                    <span>สเปกการเชื่อมต่อระดับซอฟต์แวร์พร้อมสำหรับการเริ่มทดสอบฮาร์ดแวร์</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
+
+            <!-- Group 3: PENDING VALIDATION -->
+            <article class="trust-stage-card is-pending-stage" aria-labelledby="trust-stage-3-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-pending">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  PENDING VALIDATION
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-3-title">สิ่งที่ยังต้องทดสอบและตรวจสอบ</h3>
+              </div>
+              <p class="trust-stage-desc">
+                ส่วนที่ต้องผ่านการทดสอบทางกายภาพและการรับรองก่อนพิจารณาใช้งานจริง
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Physical ESP32 Validation</strong>
+                    <span>การทดสอบเสถียรภาพและ packet delivery กับบอร์ดฮาร์ดแวร์จริงในภาคสนาม</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>MQ-3 Calibration</strong>
+                    <span>การสอบเทียบค่าความต้านทานเซ็นเซอร์กับสารตัวอย่างจริงในห้องทดลอง</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>MQ-6 Calibration</strong>
+                    <span>การสอบเทียบความไวต่อก๊าซ LPG และแปลงเป็น ppm ที่ผ่านการรับรอง</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Safety Threshold Validation</strong>
+                    <span>การทดสอบเกณฑ์ระดับความปลอดภัยร่วมกับผู้เชี่ยวชาญด้านก๊าซ</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Certification &amp; Real Deployment</strong>
+                    <span>การรับรองตามมาตรฐานความปลอดภัยอุตสาหกรรมก่อนการติดตั้งใช้งานจริง</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
           </div>
         </div>
       </section>
 
-      <!-- Footer CTA -->
-      <section class="public-footer-cta">
+      <!-- Final CTA Section -->
+      <section class="public-footer-cta" aria-labelledby="public-cta-title">
         <div class="public-container">
           <div class="public-footer-card">
-            <h2>พร้อมเข้าสู่ระบบเพื่อใช้งาน Workspaces?</h2>
-            <p>เข้าสู่ระบบด้วยบัญชีผู้ใช้ของคุณเพื่อเริ่มทดลองใช้งานระบบตามบทบาทที่ได้รับมอบหมาย</p>
-            <button type="button" class="public-btn-footer-login" id="footer-login-button">
-              เข้าสู่ระบบ (Sign In)
-            </button>
+            <div class="footer-cta-content">
+              <h2 id="public-cta-title" class="footer-cta-title">
+                พร้อมลองดูว่า GasGuard<br>นำเสนอข้อมูลอย่างไร?
+              </h2>
+              <p class="footer-cta-desc">
+                ทดลองสถานการณ์จำลองได้ทันที หรือเข้าสู่ Workspace หากคุณมีบัญชีที่ได้รับสิทธิ์แล้ว.
+              </p>
+              <div class="footer-cta-actions">
+                <a href="#public-demo-section" class="public-btn-primary" id="footer-demo-button">
+                  ทดลองระบบ
+                </a>
+                <button type="button" class="public-btn-secondary" id="footer-login-button">
+                  เข้าสู่ระบบ
+                </button>
+              </div>
+            </div>
+            <!-- Small brand companion accent (~10-15% visual weight) -->
+            <div class="footer-cta-companion" aria-hidden="true">
+              <img src="assets/gasguard-mascot.png" alt="" class="footer-companion-img">
+              <span class="footer-companion-label">GasGuard Prototype</span>
+            </div>
           </div>
         </div>
       </section>
