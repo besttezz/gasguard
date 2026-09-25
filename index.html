@@ -47,20 +47,43 @@
   <div class="public-landing" id="public-landing">
     <header class="public-header">
       <div class="public-container">
-        <div class="public-nav">
+        <nav class="public-nav" aria-label="เมนูหลัก">
           <a href="#" class="public-brand" aria-label="GasGuard หน้าหลัก">
-            <span class="public-brand-mark"><img src="assets/gasguard-mascot.png" alt=""></span>
-            <div>
+            <span class="public-brand-mark"><img src="assets/gasguard-mascot.png" alt="" aria-hidden="true"></span>
+            <span class="public-brand-text">
               <strong>GasGuard</strong>
               <small>Autonomous LPG Safety</small>
-            </div>
+            </span>
           </a>
+          <div class="public-nav-links" id="public-desktop-links">
+            <a href="#public-product-section" class="public-nav-link">Product</a>
+            <a href="#public-demo-section" class="public-nav-link">Demo</a>
+            <a href="#public-tech-section" class="public-nav-link">Technology</a>
+            <a href="#public-roles-section" class="public-nav-link">Roles</a>
+          </div>
           <div class="public-nav-actions">
-            <a href="#public-demo-section" class="public-btn-demo" id="nav-demo-button">
-              <span>◉</span> ดูตัวอย่างระบบ
-            </a>
             <button type="button" class="public-btn-login" id="nav-login-button">
-              เข้าสู่ระบบ
+              Sign In
+            </button>
+            <button type="button" class="public-mobile-toggle" id="public-mobile-toggle" aria-expanded="false" aria-controls="public-mobile-drawer" aria-label="เปิดเมนูนำทาง">
+              <span class="toggle-bar"></span>
+              <span class="toggle-bar"></span>
+              <span class="toggle-bar"></span>
+            </button>
+          </div>
+        </nav>
+      </div>
+      <!-- Mobile navigation drawer -->
+      <div class="public-mobile-drawer" id="public-mobile-drawer" hidden>
+        <div class="public-mobile-drawer-inner">
+          <a href="#public-product-section" class="public-mobile-link">Product</a>
+          <a href="#public-demo-section" class="public-mobile-link">Demo</a>
+          <a href="#public-flow-section" class="public-mobile-link">How It Works</a>
+          <a href="#public-tech-section" class="public-mobile-link">Technology</a>
+          <a href="#public-roles-section" class="public-mobile-link">Roles</a>
+          <div class="public-mobile-actions">
+            <button type="button" class="public-btn-login is-full" id="mobile-login-button">
+              Sign In
             </button>
           </div>
         </div>
@@ -71,34 +94,100 @@
       <!-- Hero Section -->
       <section class="public-hero" aria-labelledby="public-hero-title">
         <div class="public-container">
-          <div class="public-hero-card">
+          <div class="public-hero-grid">
+            <!-- Left: Hero Text (~55%) -->
             <div class="public-hero-content">
-              <span class="public-badge">PROTOTYPE &amp; TECHNOLOGY PREVIEW · LPG SAFETY</span>
-              <h1 id="public-hero-title">GasGuard — แพลตฟอร์มติดตามและวิเคราะห์ความปลอดภัย LPG อัตโนมัติ</h1>
+              <div class="public-hero-eyebrow">SAFETY INTELLIGENCE FOR LPG</div>
+              <h1 class="public-hero-title" id="public-hero-title">
+                เข้าใจสถานะ LPG<br>ไม่ใช่แค่ดูตัวเลข
+              </h1>
               <p class="public-hero-copy">
-                ยกระดับความปลอดภัยจากการรั่วไหลของก๊าซหุงต้ม (LPG) ด้วยระบบตรวจจับและวิเคราะห์เชิงลึก (Rate of Rise, Baseline Drift, Anomaly) พร้อมการจำแนกการเข้าถึงตามบทบาทผู้ใช้งานชัดเจน
+                GasGuard ช่วยเปลี่ยนข้อมูลจากเซนเซอร์ ให้เป็นสถานะ แนวโน้ม และเหตุการณ์ ที่ผู้ใช้และทีมเทคนิคเข้าใจได้ง่ายขึ้น
               </p>
-              <div class="public-cta-group">
-                <button type="button" class="public-cta-primary" id="hero-login-button">
-                  เข้าสู่ระบบ (Sign In)
-                </button>
-                <a href="#public-demo-section" class="public-cta-secondary" id="hero-demo-button">
-                  ดูตัวอย่างระบบ (Live Simulation)
+              <div class="public-hero-actions">
+                <a href="#public-demo-section" class="public-hero-btn-primary" id="hero-demo-button">
+                  ทดลองระบบ
+                </a>
+                <a href="#public-flow-section" class="public-hero-btn-secondary" id="hero-flow-link">
+                  ดูวิธีการทำงาน <span aria-hidden="true">→</span>
                 </a>
               </div>
-              <div class="public-highlights">
-                <span class="public-pill">✓ Telemetry V1.1 Protocol</span>
-                <span class="public-pill">✓ Multi-Role Workspaces</span>
-                <span class="public-pill">✓ Measurement Layer</span>
-                <span class="public-pill">✓ Isolated Hardware &amp; Simulation</span>
+              <div class="public-hero-signin-hint">
+                <span>มีบัญชีผู้ดูแลระบบหรือเจ้าหน้าที่?</span>
+                <button type="button" class="public-hero-signin-link" id="hero-login-button">
+                  เข้าสู่ระบบที่นี่
+                </button>
               </div>
             </div>
-            <div class="public-hero-visual">
-              <div class="public-mascot-circle">
-                <img src="assets/gasguard-mascot.png" alt="GasGuard Mascot">
-              </div>
-              <div class="public-mascot-speech">
-                <span>ยินดีต้อนรับสู่ระบบจำลอง GasGuard</span>
+
+            <!-- Right: Product UI Preview Stage (~45%) -->
+            <div class="public-hero-stage">
+              <div class="public-product-preview-card" aria-label="ตัวอย่างการแสดงผลระบบ GasGuard">
+                <div class="preview-card-header">
+                  <div class="preview-location">
+                    <svg class="preview-pin-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <div>
+                      <strong>Restaurant A</strong>
+                      <small>พื้นที่ตัวอย่าง</small>
+                    </div>
+                  </div>
+                  <div class="preview-state-badge is-safe">
+                    <span class="state-dot" aria-hidden="true"></span>
+                    <span>NORMAL / ปกติ</span>
+                  </div>
+                </div>
+
+                <div class="preview-metrics-grid">
+                  <div class="preview-metric-box">
+                    <span class="metric-caption">ระดับ LPG ปัจจุบัน</span>
+                    <div class="metric-value-row">
+                      <strong class="metric-number">84</strong>
+                      <span class="metric-unit">ppm</span>
+                    </div>
+                    <span class="metric-subtext">Baseline 84 ppm · คงที่</span>
+                  </div>
+                  <div class="preview-metric-box is-highlight">
+                    <span class="metric-caption">Safety Score</span>
+                    <div class="metric-value-row">
+                      <strong class="metric-number">92</strong>
+                      <span class="metric-unit">/ 100</span>
+                    </div>
+                    <span class="metric-subtext is-safe-text">สภาวะปลอดภัย</span>
+                  </div>
+                </div>
+
+                <div class="preview-trend-panel">
+                  <div class="trend-panel-header">
+                    <span class="trend-label">แนวโน้ม 30 นาทีล่าสุด</span>
+                    <span class="trend-rate-tag">+0.2 ppm/min</span>
+                  </div>
+                  <div class="trend-chart-stage" aria-hidden="true">
+                    <svg viewBox="0 0 320 54" class="trend-svg" preserveAspectRatio="none">
+                      <line x1="0" y1="36" x2="320" y2="36" class="trend-baseline" stroke-dasharray="3,3" />
+                      <path d="M 0 36 C 40 35, 80 37, 120 34 C 160 31, 200 37, 240 35 C 280 34, 300 35, 320 34" class="trend-line" />
+                      <circle cx="320" cy="34" r="4" class="trend-point" />
+                    </svg>
+                  </div>
+                  <div class="trend-panel-footer">
+                    <span>Sensor: Active</span>
+                    <span>Valve: OPEN (เปิดปกติ)</span>
+                    <span>Connection: ONLINE</span>
+                  </div>
+                </div>
+
+                <div class="preview-disclosure">
+                  <span class="disclosure-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
+                  <span class="disclosure-desc">ภาพตัวอย่างการแสดงผลจำลอง ไม่ใช่ค่าจากอุปกรณ์จริง</span>
+                </div>
+
+                <!-- Small Brand Companion Mascot (~10-15% visual weight) -->
+                <div class="preview-mascot-companion" aria-hidden="true">
+                  <img src="assets/gasguard-mascot.png" alt="" class="companion-avatar">
+                  <span class="companion-speech">ระบบทำงานปกติครับ</span>
+                </div>
               </div>
             </div>
           </div>
@@ -106,7 +195,7 @@
       </section>
 
       <!-- Product Purpose & Boundary -->
-      <section class="public-section" aria-labelledby="public-purpose-title">
+      <section class="public-section" id="public-product-section" aria-labelledby="public-purpose-title">
         <div class="public-container">
           <div class="public-section-head">
             <p class="public-section-kicker">Product Overview</p>
@@ -127,7 +216,7 @@
       </section>
 
       <!-- How It Works Pipeline -->
-      <section class="public-section" aria-labelledby="public-flow-title">
+      <section class="public-section" id="public-flow-section" aria-labelledby="public-flow-title">
         <div class="public-container">
           <div class="public-section-head">
             <p class="public-section-kicker">Data Flow</p>
@@ -170,7 +259,7 @@
       </section>
 
       <!-- Technology Highlights -->
-      <section class="public-section" aria-labelledby="public-tech-title">
+      <section class="public-section" id="public-tech-section" aria-labelledby="public-tech-title">
         <div class="public-container">
           <div class="public-section-head">
             <p class="public-section-kicker">Core Technology</p>
@@ -289,7 +378,7 @@
       </section>
 
       <!-- User Roles Section -->
-      <section class="public-section" aria-labelledby="public-roles-title">
+      <section class="public-section" id="public-roles-section" aria-labelledby="public-roles-title">
         <div class="public-container">
           <div class="public-section-head">
             <p class="public-section-kicker">Role Matrix</p>
@@ -322,7 +411,7 @@
       </section>
 
       <!-- Development Status Section -->
-      <section class="public-section" aria-labelledby="public-status-title">
+      <section class="public-section" id="public-status-section" aria-labelledby="public-status-title">
         <div class="public-container">
           <div class="public-section-head">
             <p class="public-section-kicker">Project Roadmap</p>

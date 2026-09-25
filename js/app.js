@@ -265,9 +265,23 @@
   async function acceptSession(session){if(!session){showPublicView();return;}try{const user=await window.GasGuardAuth.getCurrentUser(),role=window.GasGuardAuth.getRole(user);if(!role){showAuthState('auth-denied','บัญชีนี้ไม่มี role ที่อนุญาตใน app_metadata');return;}startApplication(role,user);}catch(error){showAuthState('auth-signed-out','ตรวจสอบ session ไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');}}
   $('login-form').addEventListener('submit',async event=>{event.preventDefault();const button=$('login-submit');button.disabled=true;button.textContent='กำลังเข้าสู่ระบบ…';$('auth-message').textContent='';try{const result=await window.GasGuardAuth.signIn($('login-email').value,$('login-password').value);$('login-password').value='';if(!result.role){showAuthState('auth-denied','บัญชีนี้ไม่มี role ที่อนุญาตใน app_metadata');return;}await acceptSession(result.session);}catch(error){showAuthState('auth-signed-out',error?.code==='config_missing'?error.message:'อีเมลหรือรหัสผ่านไม่ถูกต้อง');}finally{button.disabled=false;button.textContent='เข้าสู่ระบบ';}});
   async function logout(){try{await window.GasGuardAuth.signOut();}catch(error){toast('ออกจากระบบไม่สำเร็จ',error.message,'warning');}showPublicView();}
-  $('sign-out-button').addEventListener('click',logout);$('mobile-sign-out-button').addEventListener('click',logout);$('denied-sign-out').addEventListener('click',logout);
-  document.querySelectorAll('#nav-login-button, #hero-login-button, #footer-login-button').forEach(btn=>btn.addEventListener('click',showLoginView));
+   $('sign-out-button').addEventListener('click',logout);$('mobile-sign-out-button').addEventListener('click',logout);$('denied-sign-out').addEventListener('click',logout);
+  document.querySelectorAll('#nav-login-button, #hero-login-button, #footer-login-button, #mobile-login-button').forEach(btn=>btn?.addEventListener('click',showLoginView));
   $('login-back-button')?.addEventListener('click',showPublicView);
+  const mobileToggle = $('public-mobile-toggle');
+  const mobileDrawer = $('public-mobile-drawer');
+  if(mobileToggle && mobileDrawer){
+    mobileToggle.addEventListener('click',()=>{
+      const open=mobileDrawer.classList.toggle('is-open');
+      mobileToggle.setAttribute('aria-expanded',open?'true':'false');
+    });
+    mobileDrawer.querySelectorAll('a, button').forEach(el=>{
+      el.addEventListener('click',()=>{
+        mobileDrawer.classList.remove('is-open');
+        mobileToggle.setAttribute('aria-expanded','false');
+      });
+    });
+  }
   document.querySelectorAll('[data-public-scenario]').forEach(btn=>btn.addEventListener('click',()=>renderPublicDemo(btn.dataset.publicScenario)));
   window.GasGuardPublicFlow={showPublicView,showLoginView,renderPublicDemo};
   renderPublicDemo();
