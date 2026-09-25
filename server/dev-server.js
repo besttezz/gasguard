@@ -7,6 +7,7 @@ const registry=require('./device-registry.js');
 const {createDeviceIngress}=require('./device-ingress.js');
 const {createPipeline}=require('./pipeline-runtime.js');
 const integrationStatus=require('../js/integration-status.js');
+const {publicAuthConfig}=require('../tools/build-static.js');
 
 const root=path.resolve(__dirname,'..');
 const contentTypes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8'};
@@ -37,6 +38,17 @@ function createDevServer({env=process.env,ingress}={}){
       json(response,200,{ok:true,...deviceIngress.status(workspaceId)});return;
     }
     if(request.method!=='GET'&&request.method!=='HEAD'){json(response,405,{ok:false,code:'METHOD_NOT_ALLOWED'});return;}
+    if(url.pathname==='/js/auth-config.js'){
+      try{
+        const script=publicAuthConfig(env);
+        response.writeHead(200,{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'});
+        if(request.method==='HEAD')response.end();else response.end(script);
+      }catch(error){
+        response.writeHead(500,{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'});
+        response.end('Auth configuration error: '+error.message);
+      }
+      return;
+    }
     const pathname=decodeURIComponent(url.pathname),relative=pathname==='/'?'index.html':pathname.replace(/^\/+/,''),file=path.resolve(root,relative);
     if(!file.startsWith(root+path.sep)&&file!==root){response.writeHead(403);response.end('Forbidden');return;}
     fs.readFile(file,(error,body)=>{if(error){response.writeHead(404);response.end('Not found');return;}response.writeHead(200,{'content-type':contentTypes[path.extname(file)]||'application/octet-stream','cache-control':'no-store'});if(request.method==='HEAD')response.end();else response.end(body);});

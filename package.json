@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "scripts": {
     "build": "node tools/build-static.js",
+    "build:auth": "node --env-file=.env.local tools/build-static.js",
     "dev": "node server/dev-server.js",
+    "dev:auth": "node --env-file=.env.local server/dev-server.js",
     "dev:lan": "node tools/dev-lan.js",
     "integration:check": "node tools/integration-preflight.js",
     "integration:verify": "node tools/integration-verify.js",

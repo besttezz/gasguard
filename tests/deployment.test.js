@@ -18,4 +18,40 @@ assert.throws(() => publicAuthConfig({ GASGUARD_SUPABASE_ANON_KEY:'service_role-
 assert.equal(/GASGUARD_(REAL|TEST)_DEVICE_KEY/.test(hostedConfig), false, 'device credentials are never emitted');
 const app = fs.readFileSync('js/app.js', 'utf8');
 assert.equal(/[A-Z]:\\/.test(app), false, 'frontend runtime has no Windows absolute path');
-console.log('deployment readiness tests passed');
+const { createDevServer } = require('../server/dev-server.js');
+const http = require('node:http');
+
+(async () => {
+  const devServer = createDevServer({
+    env: {
+      GASGUARD_PORT: '5599',
+      GASGUARD_HOST: '127.0.0.1',
+      GASGUARD_SUPABASE_URL: 'https://dev.supabase.co',
+      GASGUARD_SUPABASE_ANON_KEY: 'sb_publishable_dev_key'
+    }
+  });
+
+  await new Promise(resolve => devServer.listen(5599, '127.0.0.1', resolve));
+  const port = devServer.address().port;
+
+  const res = await new Promise((resolve, reject) => {
+    http.get(`http://127.0.0.1:${port}/js/auth-config.js`, (r) => {
+      let data = '';
+      r.on('data', chunk => data += chunk);
+      r.on('end', () => resolve({ status: r.statusCode, headers: r.headers, body: data }));
+    }).on('error', reject);
+  });
+
+  await new Promise(resolve => devServer.close(resolve));
+
+  assert.equal(res.status, 200);
+  assert.equal(res.headers['content-type'], 'text/javascript; charset=utf-8');
+  assert.equal(res.headers['cache-control'], 'no-store');
+  assert.ok(res.body.includes('https://dev.supabase.co'));
+  assert.ok(res.body.includes('sb_publishable_dev_key'));
+
+  console.log('deployment readiness tests passed');
+})().catch(err => {
+  console.error(err);
+  process.exitCode = 1;
+});

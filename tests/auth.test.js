@@ -16,6 +16,20 @@ const servicePayload = Buffer.from(JSON.stringify({ role:'service_role' })).toSt
 assert.equal(auth.isUnsafeClientKey(`header.${servicePayload}.signature`), true, 'legacy service_role JWT is rejected');
 
 (async () => {
+  // Test missing config rejects
+  globalThis.GASGUARD_AUTH_CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' };
+  globalThis.supabase = { createClient: () => ({}) };
+  await assert.rejects(async () => {
+    await auth.initialize();
+  }, (err) => err.code === 'config_missing');
+
+  // Test unsafe key rejects
+  globalThis.GASGUARD_AUTH_CONFIG = { SUPABASE_URL: 'https://test.supabase.co', SUPABASE_ANON_KEY: 'sb_secret_bad' };
+  globalThis.supabase = { createClient: () => ({}) };
+  await assert.rejects(async () => {
+    await auth.initialize();
+  }, (err) => err.code === 'unsafe_key');
+
   const restoredUser = { id:'user-1', email:'general@example.invalid', app_metadata:{ role:'general' } };
   const restoredSession = { user:restoredUser, access_token:'test-token' };
   let signOutOptions = null;
