@@ -239,7 +239,9 @@
     if($('public-demo-action'))$('public-demo-action').textContent=scenario.action;
     if($('public-demo-badge'))$('public-demo-badge').textContent=scenario.badge;
     document.querySelectorAll('[data-public-scenario]').forEach(btn=>{
-      btn.classList.toggle('is-active',btn.dataset.publicScenario===scenario.id);
+      const active=btn.dataset.publicScenario===scenario.id;
+      btn.classList.toggle('is-active',active);
+      btn.setAttribute('aria-pressed',active?'true':'false');
     });
   }
   function showPublicView(){

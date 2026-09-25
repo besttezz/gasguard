@@ -646,6 +646,7 @@ body.authenticated .app-shell { display: block !important; }
   margin-bottom: 10px;
 }
 
+.public-role-card h3,
 .public-role-card h4 {
   margin: 0 0 6px;
   font-size: 17px;
@@ -779,6 +780,17 @@ body.authenticated .app-shell { display: block !important; }
 .login-back-button:hover {
   background: oklch(.96 .02 245);
   border-color: var(--gg-blue);
+}
+
+.public-btn-login:focus-visible,
+.public-btn-demo:focus-visible,
+.public-cta-primary:focus-visible,
+.public-cta-secondary:focus-visible,
+.public-scenario-btn:focus-visible,
+.public-btn-footer-login:focus-visible,
+.login-back-button:focus-visible {
+  outline: 3px solid var(--gg-blue);
+  outline-offset: 2px;
 }
 
 /* Responsive Breakpoints */

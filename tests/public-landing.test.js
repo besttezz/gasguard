@@ -77,6 +77,7 @@ assert.ok(html.includes('id="nav-login-button"'), 'HTML contains navigation logi
 assert.ok(html.includes('id="hero-login-button"'), 'HTML contains hero login CTA');
 assert.ok(html.includes('id="footer-login-button"'), 'HTML contains footer login CTA');
 assert.ok(html.includes('id="login-back-button"'), 'HTML contains login back button to return to public landing');
+assert.ok(html.includes('aria-pressed="true"'), 'HTML contains aria-pressed on active scenario button');
 assert.ok(html.includes('SIMULATION / PROTOTYPE / ข้อมูลจำลอง'), 'HTML displays simulation prototype label');
 assert.ok(html.includes('js/public-demo.js'), 'HTML loads public-demo script');
 assert.ok(html.includes('css/public-landing.css'), 'HTML loads public-landing stylesheet');

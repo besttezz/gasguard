@@ -230,13 +230,13 @@
             </div>
 
             <div class="public-scenario-controls" role="group" aria-label="เลือกสถานการณ์จำลอง">
-              <button type="button" class="public-scenario-btn is-active" data-public-scenario="NORMAL">
+              <button type="button" class="public-scenario-btn is-active" data-public-scenario="NORMAL" aria-pressed="true">
                 🟢 สภาวะปกติ (NORMAL)
               </button>
-              <button type="button" class="public-scenario-btn" data-public-scenario="ATTENTION">
+              <button type="button" class="public-scenario-btn" data-public-scenario="ATTENTION" aria-pressed="false">
                 🟡 เฝ้าระวัง (ATTENTION)
               </button>
-              <button type="button" class="public-scenario-btn" data-public-scenario="CRITICAL">
+              <button type="button" class="public-scenario-btn" data-public-scenario="CRITICAL" aria-pressed="false">
                 🔴 เสี่ยงสูง / อันตราย (CRITICAL)
               </button>
             </div>
@@ -299,22 +299,22 @@
           <div class="public-roles-grid">
             <div class="public-role-card">
               <span class="public-role-tag">GENERAL</span>
-              <h4>ผู้ใช้งานทั่วไป</h4>
+              <h3>ผู้ใช้งานทั่วไป</h3>
               <p>ดูภาพรวมความปลอดภัยของสถานที่ตนเอง รับการแจ้งเตือนฉุกเฉิน และสร้างคำขอบริการตรวจสอบระบบ</p>
             </div>
             <div class="public-role-card">
               <span class="public-role-tag">TECHNICIAN</span>
-              <h4>ช่างเทคนิค</h4>
+              <h3>ช่างเทคนิค</h3>
               <p>ตรวจวัดค่าอุปกรณ์แบบละเอียด จัดการคิวงานซ่อมบำรุง ยืนยันผลการติดตั้ง และจัดทำรายงานบริการ</p>
             </div>
             <div class="public-role-card">
               <span class="public-role-tag">ADMIN</span>
-              <h4>ผู้ดูแลระบบ</h4>
+              <h3>ผู้ดูแลระบบ</h3>
               <p>ดูแลภาพรวมทุกสถานที่ (Sites), ตรวจสอบสถานะการเชื่อมต่อของอุปกรณ์ทั้งหมด และบริหารสิทธิ์การใช้งาน</p>
             </div>
             <div class="public-role-card">
               <span class="public-role-tag">DEVELOPER</span>
-              <h4>นักพัฒนา / วิศวกร</h4>
+              <h3>นักพัฒนา / วิศวกร</h3>
               <p>ทดสอบ Raw Ingress, ใช้งาน Hardware Lab, วิเคราะห์โมเดลความเสี่ยง และจำลองสภาวะแวดล้อม</p>
             </div>
           </div>
