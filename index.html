@@ -155,7 +155,7 @@
                       <strong class="metric-number">92</strong>
                       <span class="metric-unit">/ 100</span>
                     </div>
-                    <span class="metric-subtext is-safe-text">สภาวะปลอดภัย</span>
+                    <span class="metric-subtext is-safe-text">สถานะจำลอง: ปกติ</span>
                   </div>
                 </div>
 
@@ -233,7 +233,7 @@
                 <div class="signal-body">
                   <div class="signal-tag">CHANGE</div>
                   <h3 class="signal-heading">ค่ากำลังเพิ่มขึ้นหรือลดลงเร็วแค่ไหน</h3>
-                  <p class="signal-desc">คำนวณ Rate of Rise เพื่อแยกแยะการเพิ่มขึ้นชั่วขณะออกจากการรั่วไหลต่อเนื่อง</p>
+                  <p class="signal-desc">ใช้ Rate of Rise เพื่อช่วยสังเกตว่าค่ากำลังเปลี่ยนเร็วเพียงใด และใช้ประกอบการวิเคราะห์รูปแบบการเปลี่ยนแปลง</p>
                 </div>
               </div>
 
@@ -244,7 +244,7 @@
                 <div class="signal-body">
                   <div class="signal-tag">CONTEXT</div>
                   <h3 class="signal-heading">ค่าปัจจุบันแตกต่างจากรูปแบบปกติอย่างไร</h3>
-                  <p class="signal-desc">เปรียบเทียบกับ Rolling Baseline และช่วงเวลาการใช้งานของสถานที่</p>
+                  <p class="signal-desc">เปรียบเทียบกับ Rolling Baseline และรูปแบบข้อมูลก่อนหน้าที่ระบบมี</p>
                 </div>
               </div>
             </div>
@@ -258,7 +258,7 @@
           <div class="public-section-head">
             <span class="public-section-kicker">Core Capabilities</span>
             <h2 class="public-section-title" id="public-capabilities-title">4 เสาหลักในการเฝ้าระวังความปลอดภัย</h2>
-            <p class="public-section-desc">สถาปัตยกรรมการดูแลความปลอดภัยที่ผสานข้อมูลหลายมิติสู่การตัดสินใจที่แม่นยำ</p>
+            <p class="public-section-desc">ผสานข้อมูลหลายมิติ เพื่อช่วยให้ผู้ใช้เห็นภาพสถานการณ์ได้ชัดเจนขึ้น</p>
           </div>
 
           <div class="public-capabilities-grid">
@@ -273,7 +273,7 @@
               </div>
               <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล MONITOR">
                 <div class="fragment-head">
-                  <span class="fragment-label">Live Overview</span>
+                  <span class="fragment-label">Status Overview</span>
                   <span class="fragment-status-pill is-safe">NORMAL / ปกติ</span>
                 </div>
                 <div class="fragment-metric-row">
@@ -332,7 +332,7 @@
                 </div>
                 <div class="fragment-reason-box">
                   <strong>เหตุผลการประเมิน:</strong>
-                  <p>ระดับก๊าซใกล้เคียง Baseline อัตราคงที่ ไม่มีหลักฐานความเสี่ยงเร่งด่วน</p>
+                  <p>ในตัวอย่างจำลองนี้ ค่าค่อนข้างคงที่และใกล้ Baseline ระบบกฎต้นแบบจึงจัดสถานะเป็นปกติ</p>
                 </div>
                 <span class="fragment-disclose">Safety Rule Engine v0.1 (Rule-based)</span>
               </div>
@@ -350,7 +350,7 @@
               <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล RESPOND">
                 <div class="fragment-head">
                   <span class="fragment-label">Timeline &amp; Audit Trail</span>
-                  <span class="fragment-audit-badge">Verified</span>
+                  <span class="fragment-audit-badge">Recorded</span>
                 </div>
                 <div class="fragment-timeline-item">
                   <span class="timeline-dot is-safe"></span>
@@ -383,7 +383,7 @@
             <div class="public-pipe-step" role="listitem">
               <div class="public-pipe-num">2</div>
               <strong>Measurement Layer</strong>
-              <small>ตรวจสอบโครงสร้างข้อมูล Bounds และแปลงสัญญาณดิบเป็น Physical ppm</small>
+              <small>ตรวจสอบโครงสร้างข้อมูล และเตรียมข้อมูลสำหรับการแปลงเป็น ppm ตามสถานะการ Calibration</small>
             </div>
             <div class="public-pipe-step" role="listitem">
               <div class="public-pipe-num">3</div>
@@ -398,7 +398,7 @@
             <div class="public-pipe-step" role="listitem">
               <div class="public-pipe-num">5</div>
               <strong>Alerts &amp; Events</strong>
-              <small>จำแนกระดับความเสี่ยง บันทึก Timeline และสร้าง Evidence Package</small>
+              <small>จำแนกระดับความเสี่ยง บันทึก Timeline และบันทึกเหตุการณ์และข้อมูลประกอบการตรวจสอบย้อนหลัง</small>
             </div>
             <div class="public-pipe-step" role="listitem">
               <div class="public-pipe-num">6</div>

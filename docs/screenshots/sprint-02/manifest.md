@@ -26,3 +26,4 @@
 - **Secrets & Credentials**: Checked — zero credentials, API keys, or private tokens present.
 - **Personal Data**: Checked — zero personal or sensitive user data present.
 - **Prototype / Demo Disclosures**: Clearly visible on all fragments (`ภาพจำลองสถานะต้นแบบ`, `วิเคราะห์จากข้อมูลอนุกรมเวลาจำลอง`, `Safety Rule Engine v0.1 (Rule-based)`, `เก็บบันทึกหลักฐานเพื่อตรวจสอบย้อนหลัง`).
+- **Product Truthfulness & Prototype Alignment**: Verified — claims aligned with prototype readiness (`Status Overview`, prototype rule-based reasoning, `Recorded` badge, no uncalibrated physical ppm or unbacked leak diagnosis claims).
