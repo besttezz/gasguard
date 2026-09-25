@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/general-home.css">
     <link rel="stylesheet" href="css/role-workspaces.css">
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/public-landing.css">
     <style>
       @media (min-width: 761px) {
         .sidebar { display: flex; flex-direction: column; }
@@ -41,9 +42,346 @@
       @media (max-width: 760px) { .general-status-grid { grid-template-columns: 1fr 1fr; } .source-badge { align-self: auto; } }
     </style>
   </head>
-<body class="auth-pending">
+<body class="public-view">
+  <!-- Public Product Landing (Shown before login) -->
+  <div class="public-landing" id="public-landing">
+    <header class="public-header">
+      <div class="public-container">
+        <div class="public-nav">
+          <a href="#" class="public-brand" aria-label="GasGuard หน้าหลัก">
+            <span class="public-brand-mark"><img src="assets/gasguard-mascot.png" alt=""></span>
+            <div>
+              <strong>GasGuard</strong>
+              <small>Autonomous LPG Safety</small>
+            </div>
+          </a>
+          <div class="public-nav-actions">
+            <a href="#public-demo-section" class="public-btn-demo" id="nav-demo-button">
+              <span>◉</span> ดูตัวอย่างระบบ
+            </a>
+            <button type="button" class="public-btn-login" id="nav-login-button">
+              เข้าสู่ระบบ
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="public-content">
+      <!-- Hero Section -->
+      <section class="public-hero" aria-labelledby="public-hero-title">
+        <div class="public-container">
+          <div class="public-hero-card">
+            <div class="public-hero-content">
+              <span class="public-badge">PROTOTYPE &amp; TECHNOLOGY PREVIEW · LPG SAFETY</span>
+              <h1 id="public-hero-title">GasGuard — แพลตฟอร์มติดตามและวิเคราะห์ความปลอดภัย LPG อัตโนมัติ</h1>
+              <p class="public-hero-copy">
+                ยกระดับความปลอดภัยจากการรั่วไหลของก๊าซหุงต้ม (LPG) ด้วยระบบตรวจจับและวิเคราะห์เชิงลึก (Rate of Rise, Baseline Drift, Anomaly) พร้อมการจำแนกการเข้าถึงตามบทบาทผู้ใช้งานชัดเจน
+              </p>
+              <div class="public-cta-group">
+                <button type="button" class="public-cta-primary" id="hero-login-button">
+                  เข้าสู่ระบบ (Sign In)
+                </button>
+                <a href="#public-demo-section" class="public-cta-secondary" id="hero-demo-button">
+                  ดูตัวอย่างระบบ (Live Simulation)
+                </a>
+              </div>
+              <div class="public-highlights">
+                <span class="public-pill">✓ Telemetry V1.1 Protocol</span>
+                <span class="public-pill">✓ Multi-Role Workspaces</span>
+                <span class="public-pill">✓ Measurement Layer</span>
+                <span class="public-pill">✓ Isolated Hardware &amp; Simulation</span>
+              </div>
+            </div>
+            <div class="public-hero-visual">
+              <div class="public-mascot-circle">
+                <img src="assets/gasguard-mascot.png" alt="GasGuard Mascot">
+              </div>
+              <div class="public-mascot-speech">
+                <span>ยินดีต้อนรับสู่ระบบจำลอง GasGuard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product Purpose & Boundary -->
+      <section class="public-section" aria-labelledby="public-purpose-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Product Overview</p>
+            <h2 class="public-section-title" id="public-purpose-title">What is GasGuard?</h2>
+            <p class="public-section-desc">แพลตฟอร์มต้นแบบสำหรับตรวจสอบ วิเคราะห์ และแจ้งเตือนความปลอดภัยของก๊าซหุงต้มอย่างเป็นระบบ</p>
+          </div>
+          <div class="public-purpose-card">
+            <h3>เป้าหมายของแพลตฟอร์ม</h3>
+            <p>
+              GasGuard ถูกพัฒนาขึ้นเพื่อเปลี่ยนการเฝ้าระวังการรั่วไหลของก๊าซ LPG จากการแจ้งเตือนแบบธรรมดา เป็นการวิเคราะห์ข้อมูลหลายมิติแบบต่อเนื่อง ไม่ว่าจะเป็นอัตราการเพิ่มขึ้นของก๊าซ (Rate of Rise), การเปลี่ยนแปลงของระดับพื้นฐาน (Baseline Drift), และการจำแนกเหตุการณ์จริงออกจากสัญญาณรบกวน เพื่อช่วยให้ผู้ดูแลสถานที่และช่างเทคนิคตอบสนองต่อเหตุการณ์ได้อย่างทันท่วงที
+            </p>
+            <div class="public-scope-box">
+              <strong>⚠️ ขอบเขตการพัฒนาปัจจุบัน (Development Scope):</strong>
+              ระบบในปัจจุบันเป็นซอฟต์แวร์ต้นแบบ (Prototype) สำหรับการทดสอบ data pipeline, UI workflow และ Safety Engine ยังไม่ใช่ certified safety controller ในระดับอุตสาหกรรม และไม่สามารถทดแทนอุปกรณ์ป้องกันอัคคีภัยหรือวาล์วตัดแก๊สมาตรฐานได้
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works Pipeline -->
+      <section class="public-section" aria-labelledby="public-flow-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Data Flow</p>
+            <h2 class="public-section-title" id="public-flow-title">How It Works — การทำงานของระบบ</h2>
+            <p class="public-section-desc">สถาปัตยกรรมการประมวลผลข้อมูลตั้งแต่ระดับ Sensor ไปจนถึงผู้ใช้งาน</p>
+          </div>
+          <div class="public-pipeline" role="list">
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">1</div>
+              <strong>Sensor / Hardware</strong>
+              <small>รับสัญญาณ Raw ADC &amp; Voltage จากบอร์ด ESP32 หรือตัวจำลอง</small>
+            </div>
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">2</div>
+              <strong>Measurement Layer</strong>
+              <small>ตรวจสอบโครงสร้างข้อมูล Bounds และแปลงสัญญาณดิบเป็น Physical ppm</small>
+            </div>
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">3</div>
+              <strong>Telemetry V1.1</strong>
+              <small>กำหนด Boot ID, Sequence Tracking และกรองข้อมูลตกหล่นหรือซ้ำ</small>
+            </div>
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">4</div>
+              <strong>Safety Engine</strong>
+              <small>วิเคราะห์ Rate of Rise, Variance, Baseline และคำนวณ Safety State</small>
+            </div>
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">5</div>
+              <strong>Alerts &amp; Events</strong>
+              <small>จำแนกระดับความเสี่ยง บันทึก Timeline และสร้าง Evidence Package</small>
+            </div>
+            <div class="public-pipe-step" role="listitem">
+              <div class="public-pipe-num">6</div>
+              <strong>Role Workspaces</strong>
+              <small>นำเสนอข้อมูลตรงตามบทบาท (General, Technician, Admin, Developer)</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technology Highlights -->
+      <section class="public-section" aria-labelledby="public-tech-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Core Technology</p>
+            <h2 class="public-section-title" id="public-tech-title">Technology &amp; Architecture</h2>
+            <p class="public-section-desc">องค์ประกอบทางเทคนิคที่ขับเคลื่อนระบบ GasGuard</p>
+          </div>
+          <div class="public-tech-grid">
+            <div class="public-tech-card">
+              <strong>ESP32 Ingress Readiness</strong>
+              <p>รองรับการส่ง Telemetry ผ่าน HTTP POST พร้อมระบบตรวจสอบ Device Key และแยกระดับ Registry ชัดเจน</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>MQ-3 / MQ-6 Architecture</strong>
+              <p>ออกแบบโครงสร้างรองรับเซ็นเซอร์ก๊าซและแอลกอฮอล์ โดยแยกกระบวนการ Calibration ออกจาก Raw Reading</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Measurement Layer</strong>
+              <p>ตรวจสอบความถูกต้องของ payload ดิบก่อนเข้าสู่ระบบ ป้องกันข้อมูลผิดพลาดที่อาจกระทบต่อ Engine</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Telemetry V1.1 Standard</strong>
+              <p>มาตรฐานข้อมูลกลาง กำกับ session ด้วย bootId และ sequence แบบ monotonic เพื่อความแม่นยำ</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Data Protection Engine</strong>
+              <p>ตรวจจับและปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) และข้อมูลที่มาสลับลำดับ (Out-of-order)</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Explainable Safety Scoring</strong>
+              <p>คำนวณคะแนนความปลอดภัยและระดับความเสี่ยง (0-100) พร้อมเหตุผลประกอบที่ตรวจสอบย้อนกลับได้</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Multi-Source Pipeline</strong>
+              <p>รองรับทั้งการจำลองในเบราว์เซอร์ (Simulation), การเชื่อมต่อผ่าน REST API และ MQTT Protocol</p>
+            </div>
+            <div class="public-tech-card">
+              <strong>Strict Workspace Isolation</strong>
+              <p>แยกพื้นที่จำลอง (Demo Site), พื้นที่ทดสอบ (Device Test) และฮาร์ดแวร์จริง (Hardware Pilot) ไม่ปะปนกัน</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Public Demo Preview Section -->
+      <section class="public-section public-demo-section" id="public-demo-section" aria-labelledby="public-demo-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Interactive Simulation</p>
+            <h2 class="public-section-title" id="public-demo-title">Public Demo Preview — ทดลองดูการทำงาน</h2>
+            <p class="public-section-desc">สัมผัสการประเมินผลของ Safety Engine ในสภาวะต่างๆ แบบจำลอง (Simulation) โดยไม่ต้องเข้าสู่ระบบ</p>
+          </div>
+
+          <div class="public-demo-wrap">
+            <div class="public-sim-banner">
+              <span class="public-sim-tag" id="public-demo-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
+              <span class="public-sim-notice">ระบบจำลองนี้แยกเป็นอิสระจาก Demo Site และ Hardware Pilot ไม่มีการอ้างอิงข้อมูลจริง</span>
+            </div>
+
+            <div class="public-scenario-controls" role="group" aria-label="เลือกสถานการณ์จำลอง">
+              <button type="button" class="public-scenario-btn is-active" data-public-scenario="NORMAL">
+                🟢 สภาวะปกติ (NORMAL)
+              </button>
+              <button type="button" class="public-scenario-btn" data-public-scenario="ATTENTION">
+                🟡 เฝ้าระวัง (ATTENTION)
+              </button>
+              <button type="button" class="public-scenario-btn" data-public-scenario="CRITICAL">
+                🔴 เสี่ยงสูง / อันตราย (CRITICAL)
+              </button>
+            </div>
+
+            <div class="public-demo-card">
+              <div class="public-demo-header">
+                <div>
+                  <h3 style="margin:0 0 4px;font-size:20px;color:var(--gg-navy);" id="public-demo-card-title">สถานะความปลอดภัย: ปกติ</h3>
+                  <small style="color:var(--gg-muted);" id="public-demo-time-label">อัปเดตล่าสุด: จำลองเวลาปัจจุบัน</small>
+                </div>
+                <span class="public-demo-state is-safe" id="public-demo-state-pill">
+                  <span aria-hidden="true">◉</span> <span id="public-demo-state-text">ปกติ</span>
+                </span>
+              </div>
+
+              <div class="public-demo-metrics">
+                <div class="public-metric-box">
+                  <small>LPG ปัจจุบัน</small>
+                  <strong id="public-demo-ppm">84 ppm</strong>
+                  <span id="public-demo-baseline">Baseline 84 ppm</span>
+                </div>
+                <div class="public-metric-box">
+                  <small>อัตราการเพิ่ม</small>
+                  <strong id="public-demo-rate">+0.2 ppm/min</strong>
+                  <span id="public-demo-rate-note">แนวโน้มคงที่</span>
+                </div>
+                <div class="public-metric-box">
+                  <small>คะแนนความปลอดภัย</small>
+                  <strong id="public-demo-score">92 / 100</strong>
+                  <span id="public-demo-risk">ความเสี่ยง: 8/100</span>
+                </div>
+                <div class="public-metric-box">
+                  <small>สถานะวาล์ว &amp; ระบบ</small>
+                  <strong id="public-demo-valve">OPEN</strong>
+                  <span id="public-demo-connection">ONLINE</span>
+                </div>
+              </div>
+
+              <div class="public-demo-detail">
+                <strong>ผลการวิเคราะห์จาก Safety Engine (Simulation):</strong>
+                <p id="public-demo-summary">ระดับก๊าซ LPG อยู่ในระดับปกติ ค่าเฉลี่ยคงที่ใกล้เคียง baseline ไม่มีแนวโน้มความเสี่ยง</p>
+                <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--gg-line);">
+                  <strong style="font-size:12px;color:var(--gg-muted);">คำแนะนำการปฏิบัติงาน:</strong>
+                  <p id="public-demo-action" style="font-size:13px;color:oklch(.35 .04 250);margin-top:2px;">สภาวะแวดล้อมปลอดภัย ระบบทำงานและส่งข้อมูลตามปกติ ไม่จำเป็นต้องดำเนินการใดๆ</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- User Roles Section -->
+      <section class="public-section" aria-labelledby="public-roles-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Role Matrix</p>
+            <h2 class="public-section-title" id="public-roles-title">User Roles — บทบาทการใช้งาน</h2>
+            <p class="public-section-desc">GasGuard แยกพื้นที่ทำงานและการมองเห็นข้อมูลอย่างเข้มงวดตามหน้าที่</p>
+          </div>
+          <div class="public-roles-grid">
+            <div class="public-role-card">
+              <span class="public-role-tag">GENERAL</span>
+              <h4>ผู้ใช้งานทั่วไป</h4>
+              <p>ดูภาพรวมความปลอดภัยของสถานที่ตนเอง รับการแจ้งเตือนฉุกเฉิน และสร้างคำขอบริการตรวจสอบระบบ</p>
+            </div>
+            <div class="public-role-card">
+              <span class="public-role-tag">TECHNICIAN</span>
+              <h4>ช่างเทคนิค</h4>
+              <p>ตรวจวัดค่าอุปกรณ์แบบละเอียด จัดการคิวงานซ่อมบำรุง ยืนยันผลการติดตั้ง และจัดทำรายงานบริการ</p>
+            </div>
+            <div class="public-role-card">
+              <span class="public-role-tag">ADMIN</span>
+              <h4>ผู้ดูแลระบบ</h4>
+              <p>ดูแลภาพรวมทุกสถานที่ (Sites), ตรวจสอบสถานะการเชื่อมต่อของอุปกรณ์ทั้งหมด และบริหารสิทธิ์การใช้งาน</p>
+            </div>
+            <div class="public-role-card">
+              <span class="public-role-tag">DEVELOPER</span>
+              <h4>นักพัฒนา / วิศวกร</h4>
+              <p>ทดสอบ Raw Ingress, ใช้งาน Hardware Lab, วิเคราะห์โมเดลความเสี่ยง และจำลองสภาวะแวดล้อม</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Development Status Section -->
+      <section class="public-section" aria-labelledby="public-status-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">Project Roadmap</p>
+            <h2 class="public-section-title" id="public-status-title">Current Development Status</h2>
+            <p class="public-section-desc">สถานะความพร้อมของแต่ละโมดูลในระบบ GasGuard</p>
+          </div>
+          <div class="public-status-grid">
+            <div class="public-status-card">
+              <span>Software Platform</span>
+              <span class="public-status-chip is-ready">Ready for prototype</span>
+            </div>
+            <div class="public-status-card">
+              <span>Authentication (Supabase)</span>
+              <span class="public-status-chip is-ready">Architecture Implemented</span>
+            </div>
+            <div class="public-status-card">
+              <span>Telemetry V1.1 Protocol</span>
+              <span class="public-status-chip is-ready">Implemented</span>
+            </div>
+            <div class="public-status-card">
+              <span>Measurement Layer</span>
+              <span class="public-status-chip is-ready">Implemented</span>
+            </div>
+            <div class="public-status-card">
+              <span>Hardware Ingress (Local)</span>
+              <span class="public-status-chip is-ready">Ready for Device</span>
+            </div>
+            <div class="public-status-card">
+              <span>MQ Sensor Calibration</span>
+              <span class="public-status-chip is-pending">Pending Validation</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer CTA -->
+      <section class="public-footer-cta">
+        <div class="public-container">
+          <div class="public-footer-card">
+            <h2>พร้อมเข้าสู่ระบบเพื่อใช้งาน Workspaces?</h2>
+            <p>เข้าสู่ระบบด้วยบัญชีผู้ใช้ของคุณเพื่อเริ่มทดลองใช้งานระบบตามบทบาทที่ได้รับมอบหมาย</p>
+            <button type="button" class="public-btn-footer-login" id="footer-login-button">
+              เข้าสู่ระบบ (Sign In)
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="public-footer">
+      <div class="public-container">
+        <p>GasGuard V2 · Autonomous LPG Safety Project · Prototype Platform 2026</p>
+      </div>
+    </footer>
+  </div>
+
   <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
     <div class="auth-card">
+      <button type="button" class="login-back-button" id="login-back-button">← กลับหน้าหลัก (Back to Home)</button>
       <div class="auth-brand"><img src="assets/gasguard-mascot.png" alt=""><span><strong>GasGuard</strong><small>Autonomous LPG Safety</small></span></div>
       <h1 id="auth-title">เข้าสู่ระบบ</h1>
       <p class="auth-copy" id="auth-copy">ใช้บัญชีที่ผู้ดูแลระบบสร้างให้เพื่อเข้าสู่พื้นที่ทำงาน</p>
@@ -337,6 +675,7 @@
   <script src="js/auth-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/public-demo.js"></script>
   <script src="js/app.js"></script>
   <script>if(new URLSearchParams(window.location.search).get('overlay')==='more')document.querySelector('#mobile-more-sheet')?.showModal();</script>
   <script src="js/demo-scenarios.js"></script>

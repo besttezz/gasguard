@@ -220,13 +220,70 @@
   function setSetupMode(isOpen){document.body.classList.toggle('setup-mode',isOpen);if(isOpen){hydrateSetup();renderSetup(engine.analysis);$('close-setup').focus();}else $('open-setup').focus();}
   $('open-setup').addEventListener('click',()=>{if(activeRole!=='technician'){goToPage(roleNavigation[activeRole].landing);return;}setSetupMode(true)});$('close-setup').addEventListener('click',()=>setSetupMode(false));$('setup-form').addEventListener('submit',e=>{e.preventDefault();setupProfile={...setupProfile,facility:$('setup-facility').value,name:$('setup-name').value.trim(),owner:$('setup-owner').value.trim(),contact:$('setup-contact').value.trim(),area:$('setup-area').value,ventilation:$('setup-ventilation').value,savedAt:new Date().toISOString(),registeredAt:null};$('layout-select').value=setupProfile.facility;persistSetup();toast('บันทึกข้อมูลระบบแล้ว',setupProfile.name||'ใช้สำหรับ session ติดตั้งนี้');render()});$('pairing-form').addEventListener('submit',e=>{e.preventDefault();const mode=$('setup-source').value,endpoint=$('setup-endpoint').value.trim();setupProfile={...setupProfile,deviceId:$('setup-device-id').value.trim(),source:mode,endpoint,registeredAt:null};persistSetup();engine.saveSource({mode,restUrl:mode==='rest'?endpoint:'',mqttUrl:mode==='mqtt'?endpoint:'',topic:engine.state.source.topic});providers.reset();toast('บันทึกการเชื่อมต่อแล้ว',mode==='simulation'?'พร้อมทดสอบด้วย mock provider':'ระบบจะตรวจ endpoint/broker ตามการตั้งค่า');render()});$('capture-reference').addEventListener('click',()=>{const f=engine.analysis;setupProfile={...setupProfile,reference:{ppm:f.current.gas.value,baseline:f.baseline,capturedAt:new Date().toISOString()}};persistSetup();toast('บันทึก Reference Baseline แล้ว',`${f.current.gas.value} ppm · baseline ${f.baseline} ppm`);render()});$('run-setup-validation').addEventListener('click',()=>{latestValidationRun=engine.runValidation();toast('Commissioning test complete',`${latestValidationRun.passed}/${latestValidationRun.total} mock cases passed`);render()});$('register-managed-site').addEventListener('click',()=>{if(!setupProfile.name||!setupProfile.owner||!setupProfile.deviceId){toast('ลงทะเบียนยังไม่ได้','กรอกชื่อระบบ, ผู้ดูแล และ Device ID ก่อน','warning');return;}const ready=Boolean(setupProfile.reference&&latestValidationRun&&engine.analysis.current.system.connection==='online'),record={id:`site-${Date.now()}`,name:setupProfile.name,owner:setupProfile.owner,contact:setupProfile.contact,facility:setupProfile.facility,area:setupProfile.area,ventilation:setupProfile.ventilation,deviceId:setupProfile.deviceId,source:setupProfile.source,connection:engine.analysis.current.system.connection,ready,registeredAt:new Date().toISOString()};managedSites=[record,...managedSites.filter(x=>x.deviceId!==record.deviceId)];try{localStorage.setItem(MANAGED_SITES_KEY,JSON.stringify(managedSites))}catch(e){}setupProfile={...setupProfile,registeredAt:record.registeredAt};persistSetup();toast('ลงทะเบียนเข้าสู่ระบบดูแลแล้ว',ready?'ระบบพร้อมติดตาม':'บันทึกเป็นระบบที่ต้องตรวจต่อ','warning');render()});document.querySelectorAll('[data-setup-scenario]').forEach(b=>b.addEventListener('click',()=>{const s=b.dataset.setupScenario;engine.setScenario(s);toast('เปลี่ยนสถานการณ์ทดสอบ',data.scenarios[s].label,'warning');render()}));
   const captureParams=new URLSearchParams(window.location.search),captureScenarioMap={S01:'normal',S02:'rise',S03:'critical',S04:'unknown',S05:'network',S06:'valveFailure',S07:'drift',S08:'normal',S09:'normal',S10:'normal'},captureScenario=captureParams.get('scenario'),capturePage=captureParams.get('page');
-  let appStarted=false;
+  let appStarted=false, authAvailable=true;
+  function renderPublicDemo(scenarioName){
+    const demo=window.GasGuardPublicDemo;if(!demo)return;
+    const scenario=scenarioName?demo.setScenario(scenarioName):demo.getActiveScenario();
+    const statePill=$('public-demo-state-pill');if(statePill)statePill.className=`public-demo-state is-${scenario.safety}`;
+    if($('public-demo-state-text'))$('public-demo-state-text').textContent=scenario.statusLabel;
+    if($('public-demo-card-title'))$('public-demo-card-title').textContent=`สถานะความปลอดภัย: ${scenario.statusLabel}`;
+    if($('public-demo-ppm'))$('public-demo-ppm').textContent=`${scenario.gasPpm} ppm`;
+    if($('public-demo-baseline'))$('public-demo-baseline').textContent=`Baseline ${scenario.baseline} ppm`;
+    if($('public-demo-rate'))$('public-demo-rate').textContent=`${scenario.ratePpmMin} ppm/min`;
+    if($('public-demo-rate-note'))$('public-demo-rate-note').textContent=scenario.safety==='safe'?'แนวโน้มคงที่':'เพิ่มขึ้นต่อเนื่อง';
+    if($('public-demo-score'))$('public-demo-score').textContent=`${scenario.safetyScore} / 100`;
+    if($('public-demo-risk'))$('public-demo-risk').textContent=`ความเสี่ยง: ${scenario.riskScore}/100`;
+    if($('public-demo-valve'))$('public-demo-valve').textContent=scenario.valve;
+    if($('public-demo-connection'))$('public-demo-connection').textContent=scenario.connection;
+    if($('public-demo-summary'))$('public-demo-summary').textContent=scenario.summary;
+    if($('public-demo-action'))$('public-demo-action').textContent=scenario.action;
+    if($('public-demo-badge'))$('public-demo-badge').textContent=scenario.badge;
+    document.querySelectorAll('[data-public-scenario]').forEach(btn=>{
+      btn.classList.toggle('is-active',btn.dataset.publicScenario===scenario.id);
+    });
+  }
+  function showPublicView(){
+    document.body.classList.remove('auth-view','auth-pending','auth-signed-out','auth-denied','authenticated');
+    document.body.classList.add('public-view');
+    renderPublicDemo();
+  }
+  function showLoginView(){
+    document.body.classList.remove('public-view','authenticated');
+    document.body.classList.add('auth-view');
+    if(!authAvailable){
+      showAuthUnavailable('ยังไม่ได้ตั้งค่า Supabase URL และ public anon key');
+    }else{
+      showAuthState('auth-signed-out','');
+    }
+    $('login-email')?.focus();
+  }
   function showAuthState(state,message){document.body.classList.remove('auth-pending','auth-signed-out','auth-denied','authenticated');document.body.classList.add(state);$('auth-message').textContent=message||'';$('auth-message').classList.toggle('is-info',state==='auth-pending');$('auth-title').textContent=state==='auth-denied'?'ไม่สามารถเข้าสู่พื้นที่ทำงานได้':'เข้าสู่ระบบ';$('auth-copy').textContent=state==='auth-denied'?'บัญชีนี้ไม่มี role ที่ GasGuard รองรับ กรุณาติดต่อผู้ดูแลระบบ':'ใช้บัญชีที่ผู้ดูแลระบบสร้างให้เพื่อเข้าสู่พื้นที่ทำงาน';}
   function showAuthUnavailable(message){showAuthState('auth-signed-out',message);$('auth-title').textContent='Auth ยังไม่พร้อมใช้งาน';$('auth-copy').textContent='Hosted Demo นี้ยังไม่ได้ตั้งค่า Supabase public configuration กรุณาติดต่อ Project Owner';$('login-email').disabled=true;$('login-password').disabled=true;$('login-submit').disabled=true;}
-  function startApplication(role,user){if(!applyRole(role))return;const identity=`${user.email||'Authenticated user'} · ${role}`;$('auth-user-label').textContent=identity;$('mobile-auth-user-label').textContent=identity;document.body.classList.remove('auth-pending','auth-signed-out','auth-denied');document.body.classList.add('authenticated');const storedPage=capturePage||(()=>{try{return localStorage.getItem(PAGE_KEY)}catch(e){return null}})();if(storedPage)goToPage(storedPage);if(capturePage==='setup'&&role==='technician')setSetupMode(true);if(!appStarted){appStarted=true;if(activeWorkspace.id==='demo-site'&&!demoHasStoredState&&demoData)demoData.reset({workspaceId:activeWorkspace.id,engine,service:window.GasGuardService});if(activeWorkspace.mode==='SIMULATION'&&captureScenario&&captureScenarioMap[captureScenario]){engine.restartSimulation(captureScenarioMap[captureScenario]);for(let index=0;index<(captureScenario==='S03'?7:captureScenario==='S04'?1:0);index+=1)engine.tick();}hydrateSetup();window.GasGuardAppRefresh=render;render();refreshIntegrationHealth();setInterval(refreshIntegrationHealth,5000);if(activeWorkspace.mode==='SIMULATION')setInterval(async()=>{const before=engine.analysis.safety,after=await providers.tick();render();if(before!==after.safety&&after.safety!=='safe')toast('Safety state changed',statusText(after.safety),after.safety==='critical'?'critical':'warning')},2000);else{refreshDeviceWorkspaceStatus();setInterval(refreshDeviceWorkspaceStatus,3000);}}}
-  async function acceptSession(session){if(!session){showAuthState('auth-signed-out','');return;}try{const user=await window.GasGuardAuth.getCurrentUser(),role=window.GasGuardAuth.getRole(user);if(!role){showAuthState('auth-denied','บัญชีนี้ไม่มี role ที่อนุญาตใน app_metadata');return;}startApplication(role,user);}catch(error){showAuthState('auth-signed-out','ตรวจสอบ session ไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');}}
+  function startApplication(role,user){if(!applyRole(role))return;const identity=`${user.email||'Authenticated user'} · ${role}`;$('auth-user-label').textContent=identity;$('mobile-auth-user-label').textContent=identity;document.body.classList.remove('public-view','auth-view','auth-pending','auth-signed-out','auth-denied');document.body.classList.add('authenticated');const storedPage=capturePage||(()=>{try{return localStorage.getItem(PAGE_KEY)}catch(e){return null}})();if(storedPage)goToPage(storedPage);if(capturePage==='setup'&&role==='technician')setSetupMode(true);if(!appStarted){appStarted=true;if(activeWorkspace.id==='demo-site'&&!demoHasStoredState&&demoData)demoData.reset({workspaceId:activeWorkspace.id,engine,service:window.GasGuardService});if(activeWorkspace.mode==='SIMULATION'&&captureScenario&&captureScenarioMap[captureScenario]){engine.restartSimulation(captureScenarioMap[captureScenario]);for(let index=0;index<(captureScenario==='S03'?7:captureScenario==='S04'?1:0);index+=1)engine.tick();}hydrateSetup();window.GasGuardAppRefresh=render;render();refreshIntegrationHealth();setInterval(refreshIntegrationHealth,5000);if(activeWorkspace.mode==='SIMULATION')setInterval(async()=>{const before=engine.analysis.safety,after=await providers.tick();render();if(before!==after.safety&&after.safety!=='safe')toast('Safety state changed',statusText(after.safety),after.safety==='critical'?'critical':'warning')},2000);else{refreshDeviceWorkspaceStatus();setInterval(refreshDeviceWorkspaceStatus,3000);}}}
+  async function acceptSession(session){if(!session){showPublicView();return;}try{const user=await window.GasGuardAuth.getCurrentUser(),role=window.GasGuardAuth.getRole(user);if(!role){showAuthState('auth-denied','บัญชีนี้ไม่มี role ที่อนุญาตใน app_metadata');return;}startApplication(role,user);}catch(error){showAuthState('auth-signed-out','ตรวจสอบ session ไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');}}
   $('login-form').addEventListener('submit',async event=>{event.preventDefault();const button=$('login-submit');button.disabled=true;button.textContent='กำลังเข้าสู่ระบบ…';$('auth-message').textContent='';try{const result=await window.GasGuardAuth.signIn($('login-email').value,$('login-password').value);$('login-password').value='';if(!result.role){showAuthState('auth-denied','บัญชีนี้ไม่มี role ที่อนุญาตใน app_metadata');return;}await acceptSession(result.session);}catch(error){showAuthState('auth-signed-out',error?.code==='config_missing'?error.message:'อีเมลหรือรหัสผ่านไม่ถูกต้อง');}finally{button.disabled=false;button.textContent='เข้าสู่ระบบ';}});
-  async function logout(){try{await window.GasGuardAuth.signOut();}catch(error){toast('ออกจากระบบไม่สำเร็จ',error.message,'warning');}showAuthState('auth-signed-out','');$('login-email').focus();}
+  async function logout(){try{await window.GasGuardAuth.signOut();}catch(error){toast('ออกจากระบบไม่สำเร็จ',error.message,'warning');}showPublicView();}
   $('sign-out-button').addEventListener('click',logout);$('mobile-sign-out-button').addEventListener('click',logout);$('denied-sign-out').addEventListener('click',logout);
-  window.GasGuardAuth.initialize((_event,session)=>setTimeout(()=>acceptSession(session),0)).then(acceptSession).catch(error=>error?.code==='config_missing'?showAuthUnavailable(error.message):showAuthState('auth-signed-out',error.message));
+  document.querySelectorAll('#nav-login-button, #hero-login-button, #footer-login-button').forEach(btn=>btn.addEventListener('click',showLoginView));
+  $('login-back-button')?.addEventListener('click',showPublicView);
+  document.querySelectorAll('[data-public-scenario]').forEach(btn=>btn.addEventListener('click',()=>renderPublicDemo(btn.dataset.publicScenario)));
+  window.GasGuardPublicFlow={showPublicView,showLoginView,renderPublicDemo};
+  renderPublicDemo();
+  window.GasGuardAuth.initialize((_event,session)=>setTimeout(()=>acceptSession(session),0)).then(session=>{
+    if(session)acceptSession(session);
+    else{
+      const initialView=new URLSearchParams(window.location.search).get('view');
+      if(initialView==='login')showLoginView();
+      else showPublicView();
+    }
+  }).catch(error=>{
+    if(error?.code==='config_missing'||error?.code==='unsafe_key'){
+      authAvailable=false;
+      const initialView=new URLSearchParams(window.location.search).get('view');
+      if(initialView==='login')showLoginView();
+      else showPublicView();
+    }else{
+      showAuthState('auth-signed-out',error.message);
+    }
+  });
 })();
