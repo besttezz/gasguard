@@ -1038,7 +1038,7 @@
                   <span class="disclosure-chevron" aria-hidden="true">⌄</span>
                 </summary>
                 <ul class="tech-spec-list">
-                  <li><strong>Identity Validation:</strong> ตรวจสอบ deviceId และ deviceKey ก่อนรับข้อมูล</li>
+                  <li><strong>Identity Validation:</strong> ตรวจสอบ deviceId, sensorId, bootId และโครงสร้างข้อมูลตาม contract</li>
                   <li><strong>Boot-aware Sequence:</strong> กำกับ session ด้วย bootId และ sequence แบบ monotonic</li>
                   <li><strong>receivedAt Timestamp:</strong> บันทึกเวลาที่เซิร์ฟเวอร์รับข้อมูลจริงเพื่อป้องกัน time drift</li>
                   <li><strong>Schema Validation:</strong> ตรวจสอบรูปแบบ payload และชนิดข้อมูลตาม Telemetry V1.1</li>
@@ -1111,7 +1111,7 @@
                 </summary>
                 <ul class="tech-spec-list">
                   <li><strong>HTTP Device Ingress:</strong> เส้นทางหลัก (Primary Ingress Path) สำหรับส่ง telemetry เข้าระบบ</li>
-                  <li><strong>Trusted Device Registry:</strong> ตรวจสอบสิทธิ์และสถานะการลงทะเบียนของอุปกรณ์</li>
+                  <li><strong>Device Key Authentication:</strong> ตรวจสอบอุปกรณ์ก่อนเข้าสู่ trusted ingestion path</li>
                   <li><strong>Virtual ESP32 Testing:</strong> ทดสอบเส้นทาง ingress เดียวกันกับอุปกรณ์จริงในสภาพแวดล้อมจำลอง</li>
                   <li><strong>Pending Sensor Calibration:</strong> การเชื่อมต่อ ESP32 จริงและการสอบเทียบ MQ-3 / MQ-6 ยังอยู่ระหว่างรอการทดสอบ</li>
                 </ul>
@@ -1255,35 +1255,35 @@
                   <span class="trust-item-icon" aria-hidden="true">○</span>
                   <div>
                     <strong>Physical ESP32 Validation</strong>
-                    <span>การทดสอบเสถียรภาพและ packet delivery กับบอร์ดฮาร์ดแวร์จริงในภาคสนาม</span>
+                    <span>การทดสอบเสถียรภาพและการส่งข้อมูลกับบอร์ดฮาร์ดแวร์จริงยังอยู่ระหว่างรอการทดสอบ</span>
                   </div>
                 </li>
                 <li class="trust-item is-pending-item">
                   <span class="trust-item-icon" aria-hidden="true">○</span>
                   <div>
                     <strong>MQ-3 Calibration</strong>
-                    <span>การสอบเทียบค่าความต้านทานเซ็นเซอร์กับสารตัวอย่างจริงในห้องทดลอง</span>
+                    <span>การสอบเทียบเซ็นเซอร์ MQ-3 กับสารตัวอย่างจริงยังอยู่ระหว่างรอการทดสอบ</span>
                   </div>
                 </li>
                 <li class="trust-item is-pending-item">
                   <span class="trust-item-icon" aria-hidden="true">○</span>
                   <div>
                     <strong>MQ-6 Calibration</strong>
-                    <span>การสอบเทียบความไวต่อก๊าซ LPG และแปลงเป็น ppm ที่ผ่านการรับรอง</span>
+                    <span>การสอบเทียบเซ็นเซอร์ MQ-6 เพื่อแปลงค่าเป็น ppm อย่างเป็นทางการยังอยู่ระหว่างรอการทดสอบ</span>
                   </div>
                 </li>
                 <li class="trust-item is-pending-item">
                   <span class="trust-item-icon" aria-hidden="true">○</span>
                   <div>
                     <strong>Safety Threshold Validation</strong>
-                    <span>การทดสอบเกณฑ์ระดับความปลอดภัยร่วมกับผู้เชี่ยวชาญด้านก๊าซ</span>
+                    <span>เกณฑ์การประเมินความปลอดภัยยังอยู่ระหว่างรอการทดสอบและทบทวน</span>
                   </div>
                 </li>
                 <li class="trust-item is-pending-item">
                   <span class="trust-item-icon" aria-hidden="true">○</span>
                   <div>
                     <strong>Certification &amp; Real Deployment</strong>
-                    <span>การรับรองตามมาตรฐานความปลอดภัยอุตสาหกรรมก่อนการติดตั้งใช้งานจริง</span>
+                    <span>ยังไม่ผ่านการรับรองมาตรฐานความปลอดภัยใดๆ และยังไม่พร้อมสำหรับการใช้งานจริง</span>
                   </div>
                 </li>
               </ul>
