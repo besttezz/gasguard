@@ -45,11 +45,22 @@ Visitor
 
 *Clearly simulated/prototype*: Isolated deterministic client-side evaluation with persistent `SIMULATION / PROTOTYPE / ข้อมูลจำลอง` badge.
 
+## Product Maturity
+
+- **Public Landing V1**: Complete / Demo Ready (Review Ready)
+- **Software Prototype**: Implemented for demonstration and testing
+- **Device Integration Software**: Ready for device integration testing
+- **Physical ESP32**: Pending validation
+- **MQ-3 / MQ-6 Calibration**: Pending physical calibration and validation
+- **Safety Thresholds**: Pending validation
+- **Certification**: Not completed
+- **Production Safety Deployment**: Not approved / not claimed
+
 ## Product Boundaries
 
 - **Not Certified**: GasGuard is a software prototype and safety intelligence platform, not a certified industrial safety controller.
 - **Physical ESP32 Pending**: Hardware packet delivery and physical wireless testing remain pending field validation.
-- **MQ Calibration Pending**: Physical sensor resistance calibration and formal ppm conversion curves for MQ-3/MQ-6 remain pending laboratory testing.
+- **MQ Calibration Pending**: Physical sensor resistance calibration and formal ppm conversion curves for MQ-3/MQ-6 remain pending physical calibration and validation.
 - **No Autonomous Shutoff**: Valve closures and safety interventions remain advisory; no direct automated actuator control is claimed.
 
 ## Responsive Targets
@@ -69,4 +80,4 @@ Visitor
 
 - **Branch**: `feature/public-product-landing`
 - **Baseline Checkpoint**: `988ea48` (Sprint 05 screenshot archive)
-- **Status**: Final QA 100% Complete & Verified
+- **Status**: PASS — Public Landing V1 Verified for Demo & Review
