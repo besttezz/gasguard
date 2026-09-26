@@ -80,4 +80,22 @@ assert.ok(/security\s+definer/i.test(handleNewAuthUserBlock), 'handle_new_auth_u
 assert.ok(/set\s+search_path\s*=\s*''/i.test(handleNewAuthUserBlock), 'handle_new_auth_user must set empty search_path');
 assert.ok(/public\.profiles/i.test(handleNewAuthUserBlock), 'handle_new_auth_user must use fully-qualified public.profiles');
 
+// 14. Follow-up trigger function privilege hardening migration assertions
+const hardeningMigrationPath = path.join(__dirname, '..', 'supabase', 'migrations', '20260926070000_harden_trigger_function_privileges.sql');
+assert.ok(fs.existsSync(hardeningMigrationPath), 'Trigger function privilege hardening migration must exist');
+
+const hardeningSql = fs.readFileSync(hardeningMigrationPath, 'utf8');
+
+assert.ok(/revoke\s+execute\s+on\s+function\s+public\.handle_new_auth_user\(\)/i.test(hardeningSql), 'Must revoke execute on handle_new_auth_user()');
+assert.ok(/revoke\s+execute\s+on\s+function\s+public\.handle_updated_at\(\)/i.test(hardeningSql), 'Must revoke execute on handle_updated_at()');
+
+assert.ok(/\bfrom\s+[^;]*\bpublic\b/i.test(hardeningSql), 'Must include PUBLIC in REVOKE target');
+assert.ok(/\bfrom\s+[^;]*\banon\b/i.test(hardeningSql), 'Must include anon in REVOKE target');
+assert.ok(/\bfrom\s+[^;]*\bauthenticated\b/i.test(hardeningSql), 'Must include authenticated in REVOKE target');
+
+assert.ok(!/grant\s+execute/i.test(hardeningSql), 'Must NOT contain GRANT EXECUTE');
+assert.ok(!/create\s+table/i.test(hardeningSql), 'Must NOT contain table schema changes');
+assert.ok(!/alter\s+table/i.test(hardeningSql), 'Must NOT contain table schema changes');
+assert.ok(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(hardeningSql), 'No hardcoded secrets or UUIDs allowed');
+
 console.log('core schema tests passed');
