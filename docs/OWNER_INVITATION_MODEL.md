@@ -50,7 +50,7 @@ public.site_memberships (membership_type = 'owner', status = 'active')
 - `expired`: Invalidated due to passing `expires_at` timestamp.
 
 ## E. Commissioning Dependency
-Site claim validation strictly depends on `public.sites.lifecycle_status = 'commissioned'`. An invitation cannot be claimed for a site that is still in `draft`, `installed`, or `decommissioned` states.
+Site claim validation strictly depends on `public.sites.lifecycle_status = 'commissioned'`. An invitation cannot be claimed while the Site is not commissioned, including states such as: `unverified`, `commissioning`, or `suspended`.
 
 ## F. Explicitly NOT IMPLEMENTED in Phase 6E-1
 This phase establishes **database storage and security foundation ONLY**. The following are explicitly out of scope and NOT implemented:

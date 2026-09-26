@@ -9,7 +9,7 @@ revoke usage on schema private from public, anon, authenticated;
 revoke create on schema private from public, anon, authenticated;
 
 -- 2. Create private owner_invitations table
-create table if not exists private.owner_invitations (
+create table private.owner_invitations (
     id uuid primary key default gen_random_uuid(),
     site_id uuid not null references public.sites(id) on delete cascade,
     token_hash text not null unique,
@@ -34,9 +34,9 @@ create trigger handle_updated_at_private_owner_invitations
     execute function public.handle_updated_at();
 
 -- 4. Create useful performance indexes
-create index if not exists owner_invitations_site_id_idx on private.owner_invitations(site_id);
-create index if not exists owner_invitations_status_idx on private.owner_invitations(status);
-create index if not exists owner_invitations_expires_at_idx on private.owner_invitations(expires_at);
+create index owner_invitations_site_id_idx on private.owner_invitations(site_id);
+create index owner_invitations_status_idx on private.owner_invitations(status);
+create index owner_invitations_expires_at_idx on private.owner_invitations(expires_at);
 
 -- 5. Enable Row Level Security (zero client RLS policies created)
 alter table private.owner_invitations enable row level security;
