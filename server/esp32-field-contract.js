@@ -17,7 +17,9 @@ const NODE_STATES = Object.freeze([
   'DEVICE_ENROLLMENT_REQUIRED',
   'CALIBRATION_REQUIRED',
   'OFFLINE',
-  'CONFIG_ERROR'
+  'CONFIG_ERROR',
+  'PROVISIONING_SECURITY_UNAVAILABLE',
+  'PROVISIONING_IDENTITY_UNAVAILABLE'
 ]);
 
 const FORBIDDEN_DEFAULT_POPS = Object.freeze([
@@ -43,6 +45,9 @@ function validateProvisioningConfig(config = {}) {
   if (config.securityMode !== 1) {
     return { ok: false, code: 'UNSUPPORTED_SECURITY_MODE', reason: 'Security 1 (X25519 + PoP + AES-CTR) required' };
   }
+  if (config.security1Available === false) {
+    return { ok: false, code: 'PROVISIONING_SECURITY_UNAVAILABLE', reason: 'Security 1 is unavailable in this build' };
+  }
   if (!config.proofOfPossession || typeof config.proofOfPossession !== 'string' || !config.proofOfPossession.trim()) {
     return { ok: false, code: 'MISSING_POP', reason: 'Device-specific Proof of Possession (PoP) required' };
   }
@@ -60,11 +65,11 @@ function validateProvisioningConfig(config = {}) {
 
 function generateProvisioningServiceName(macOrDeviceSuffix = '') {
   let suffix = String(macOrDeviceSuffix || '').trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (!suffix || suffix === '000000') {
+    return '';
+  }
   if (suffix.length > 6) {
     suffix = suffix.slice(-6);
-  }
-  if (!suffix) {
-    suffix = '000000';
   }
   return `PROV_GG_${suffix}`;
 }

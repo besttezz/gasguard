@@ -74,6 +74,14 @@ Unprovisioned ESP32 Node
 
 ## 6. Development Status & Wording
 
-- **IMPLEMENTED IN SOURCE**: Wi-Fi provisioning architecture, state machine, native `wifi_prov_mgr` calls, PoP validation, and contract functions exist in codebase.
-- **NOT FIRMWARE-COMPILED**: Compiler toolchain execution has not been run.
-- **NOT PHYSICALLY TESTED**: Physical hardware bench testing pending physical board arrival.
+- **IMPLEMENTED IN SOURCE**: Wi-Fi provisioning architecture, state machine, native `network_prov_mgr` / `wifi_prov_mgr` compatibility boundary, event callbacks, PoP validation, and contract functions exist in codebase.
+- **HOST CONTRACT TESTED**: Host-side JS contract tests verify state transitions, PoP validation, and secret redaction.
+- **FIRMWARE COMPILE NOT TESTED**: Compiler toolchain execution has not been run.
+- **PHYSICAL SOFTAP NOT TESTED**: Physical hardware bench testing pending physical board arrival.
+
+---
+
+## 7. Build & Framework Security Considerations
+
+- **Application Logging**: GasGuard C++ runtime source never logs PoP, service key, Wi-Fi password, or device key at any log level.
+- **Framework Verbose Logging**: The underlying Arduino/ESP-IDF framework network stack may emit provisioned SSID/password if core debug level is set to `VERBOSE`. Field production builds must ensure framework debug logging is disabled (`CORE_DEBUG_LEVEL=0`).

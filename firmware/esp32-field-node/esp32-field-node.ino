@@ -44,16 +44,29 @@ String getUtcTimestampIso() {
     return String(buf);
 }
 
+static String g_serviceNameStr;
+
 void setup() {
     Serial.begin(GASGUARD_SERIAL_BAUD);
     delay(500);
 
-    bootId = "esp32-" + String((uint32_t)(ESP.getEfuseMac() >> 32), HEX) + "-" + String(esp_random(), HEX);
+    uint64_t chipMac = 0;
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+    chipMac = ESP.getEfuseMac();
+#endif
+    char macSuffixBuf[7] = {0};
+    if (chipMac != 0) {
+        snprintf(macSuffixBuf, sizeof(macSuffixBuf), "%06X", (uint32_t)(chipMac & 0xFFFFFF));
+    } else {
+        snprintf(macSuffixBuf, sizeof(macSuffixBuf), "A1B2C3"); // Mock hardware MAC fallback for contract testing
+    }
+
+    bootId = "esp32-" + String((uint32_t)(chipMac >> 32), HEX) + "-" + String(esp_random(), HEX);
     initBackoff(networkBackoff, 1000, 30000);
 
     // Setup Wi-Fi provisioning configuration with Security 1 + PoP
-    String serviceNameStr = generateProvisioningServiceName(DEVICE_ID);
-    provConfig.serviceName = serviceNameStr.c_str();
+    g_serviceNameStr = generateProvisioningServiceName(macSuffixBuf);
+    provConfig.serviceName = g_serviceNameStr.c_str();
     provConfig.proofOfPossession = GASGUARD_PROV_POP;
     provConfig.serviceKey = GASGUARD_PROV_SERVICE_KEY;
     provConfig.securityMode = GASGUARD_PROV_SECURITY_MODE;
@@ -64,18 +77,19 @@ void setup() {
 
     Serial.printf("\n[GasGuard Node] Starting %s (BootId: %s)\n", FIRMWARE_VERSION, bootId.c_str());
 
-    // Native Wi-Fi provisioning state inspection
+    // Native Wi-Fi provisioning state inspection & manager lifecycle
     if (isWiFiProvisioned()) {
         currentState = NODE_STATE_CONNECTING_WIFI;
         WiFi.mode(WIFI_STA);
+        WiFi.begin();
     } else {
         String err;
         if (!validateProvisioningConfig(provConfig, err)) {
             currentState = NODE_STATE_PROVISIONING_CONFIG_REQUIRED;
             Serial.printf("[GasGuard Node] PROVISIONING_CONFIG_REQUIRED: %s\n", err.c_str());
         } else {
-            currentState = NODE_STATE_PROVISIONING;
             initWiFiProvisioning(provConfig);
+            currentState = getWiFiProvisioningStatus().state;
         }
     }
 

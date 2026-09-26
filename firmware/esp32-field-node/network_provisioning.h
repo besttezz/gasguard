@@ -15,7 +15,9 @@ enum NodeState {
     NODE_STATE_DEVICE_ENROLLMENT_REQUIRED = 8,
     NODE_STATE_CALIBRATION_REQUIRED = 9,
     NODE_STATE_OFFLINE = 10,
-    NODE_STATE_CONFIG_ERROR = 11
+    NODE_STATE_CONFIG_ERROR = 11,
+    NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE = 12,
+    NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE = 13
 };
 
 const char* nodeStateToString(NodeState state);
@@ -27,10 +29,18 @@ struct ProvisioningConfig {
     uint8_t securityMode; // 1 = Security 1 + PoP (Required). 0 = Forbidden.
 };
 
+enum ProvisioningManagerState {
+    PROV_MGR_UNINITIALIZED = 0,
+    PROV_MGR_INITIALIZED = 1,
+    PROV_MGR_RUNNING = 2,
+    PROV_MGR_STOPPED = 3
+};
+
 struct ProvisioningStatus {
     bool provisioningSupported;
     bool provisioned;
     NodeState state;
+    ProvisioningManagerState managerState;
     String serviceName;
     uint8_t securityMode;
     const char* lastProvisioningEvent;
@@ -47,6 +57,7 @@ void initBackoff(BoundedBackoff& backoff, uint32_t initialMs = 1000, uint32_t ma
 uint32_t calculateNextBackoffMs(BoundedBackoff& backoff);
 void resetBackoff(BoundedBackoff& backoff);
 
+void registerProvisioningEventHandler();
 void initWiFiProvisioning(const ProvisioningConfig& config);
 bool isWiFiProvisioned();
 String generateProvisioningServiceName(const char* macOrDeviceSuffix);
