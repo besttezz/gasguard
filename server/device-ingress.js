@@ -11,12 +11,12 @@ const equalSecret = (left, right) => {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
 
-function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000, now = Date.now }) {
+function createDeviceIngress({ registry, credentials = {}, pipelines, authManager = null, staleMs = 15000, now = Date.now }) {
   const packetState = new Map();
   const knownSensors = new Map();
   const latestMeasurementsBySensorMap = new Map();
 
-  const keyOwner = key => Object.entries(credentials).find(([, candidate]) => equalSecret(key, candidate))?.[0] || null;
+  const keyOwner = key => Object.entries(credentials || {}).find(([, candidate]) => equalSecret(key, candidate))?.[0] || null;
 
   function status(workspaceId) {
     const packet = packetState.get(workspaceId);
@@ -61,13 +61,7 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     };
   }
 
-  function ingest({ headers = {}, payload }) {
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return response(400, { ok: false, code: 'INVALID_PAYLOAD' });
-    const device = registry.resolve(payload.deviceId);
-    if (!device) return response(401, { ok: false, code: 'UNKNOWN_DEVICE' });
-    const key = suppliedKey(headers), owner = keyOwner(key);
-    if (!owner) return response(401, { ok: false, code: 'INVALID_DEVICE_KEY' });
-    if (owner !== device.deviceId) return response(403, { ok: false, code: 'DEVICE_KEY_MISMATCH' });
+  function processIngestion(device, headers, payload) {
     const pipeline = pipelines[device.workspaceId];
     if (!pipeline?.measurement?.ingest || !pipeline?.engine) return response(503, { ok: false, code: 'PIPELINE_UNAVAILABLE' });
 
@@ -77,11 +71,9 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     if (!result.ok && result.code === 'CALIBRATION_REQUIRED') {
       const rawValidation = pipeline.measurement.validateRaw(payload);
       if (!rawValidation.ok) {
-        // REJECT: ZERO state mutation!
         return response(422, { ok: false, code: rawValidation.code, errors: rawValidation.errors, workspaceId: device.workspaceId, source: device.source });
       }
 
-      // ACCEPTED VALID RAW MEASUREMENT: NOW update observable device state
       const receivedAtMs = now();
       if (!knownSensors.has(device.workspaceId)) knownSensors.set(device.workspaceId, new Set());
       if (payload.sensorId) knownSensors.get(device.workspaceId).add(payload.sensorId);
@@ -124,7 +116,6 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     }
 
     if (!result.ok) {
-      // REJECT: ZERO state mutation!
       return response(result.code === 'ENGINE_REJECTED' ? 409 : 422, { ok: false, code: result.code, errors: result.errors || result.engineError || null, workspaceId: device.workspaceId, source: device.source });
     }
 
@@ -168,6 +159,48 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
 
     packetState.set(device.workspaceId, { receivedAtMs, public: publicState });
     return response(202, { ok: true, code: 'INGESTED', ...status(device.workspaceId) });
+  }
+
+  function ingest({ headers = {}, payload }) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return response(400, { ok: false, code: 'INVALID_PAYLOAD' });
+    const payloadDeviceId = payload.deviceId || payload.deviceUid;
+    const key = suppliedKey(headers);
+
+    if (authManager && typeof authManager.authenticateIngressRequest === 'function') {
+      return (async () => {
+        const authRes = await authManager.authenticateIngressRequest({
+          deviceUid: payloadDeviceId,
+          payloadDeviceId,
+          xDeviceKey: key
+        });
+
+        if (!authRes || !authRes.authenticated) {
+          const statusCode = authRes?.code === 'DEVICE_IDENTITY_MISMATCH' || authRes?.code === 'WORKSPACE_OVERRIDE_FORBIDDEN' ? 403 : 401;
+          return response(statusCode, { ok: false, code: authRes?.code || 'INVALID_DEVICE_KEY' });
+        }
+
+        const device = {
+          deviceId: authRes.deviceId || authRes.deviceUid,
+          deviceUid: authRes.deviceUid,
+          siteId: authRes.siteId,
+          zoneId: authRes.zoneId,
+          deviceType: authRes.deviceType || 'gateway',
+          lifecycleStatus: authRes.lifecycleStatus,
+          workspaceId: authRes.workspaceId,
+          source: authRes.source
+        };
+
+        return processIngestion(device, headers, payload);
+      })();
+    }
+
+    const resolved = registry.resolve(payloadDeviceId);
+    if (!resolved) return response(401, { ok: false, code: 'UNKNOWN_DEVICE' });
+    const owner = keyOwner(key);
+    if (!owner) return response(401, { ok: false, code: 'INVALID_DEVICE_KEY' });
+    if (owner !== resolved.deviceId) return response(403, { ok: false, code: 'DEVICE_KEY_MISMATCH' });
+
+    return processIngestion(resolved, headers, payload);
   }
 
   return Object.freeze({ ingest, status });
