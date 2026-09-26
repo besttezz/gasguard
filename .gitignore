@@ -35,3 +35,4 @@ firmware/**/provisioning_secrets.h
 *.njsproj
 *.sln
 *.sw?
+supabase/.temp/

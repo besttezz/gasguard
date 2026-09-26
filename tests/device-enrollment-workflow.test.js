@@ -37,9 +37,11 @@ assert.ok(/revoke\s+execute\s+on\s+function\s+public\.claim_device_enrollment[\s
 assert.ok(/grant\s+execute\s+on\s+function\s+public\.claim_device_enrollment[\s\S]*?to\s+service_role/i.test(sql), 'claim function EXECUTE must be granted ONLY to service_role');
 
 // Checks in claim function
+assert.ok(sql.includes('^[0-9a-fA-F]{64}$'), 'Requires 64 hex character token format validation via regex');
 assert.ok(sql.includes('extensions.digest'), 'Computes SHA-256 digest using extensions.digest');
 assert.ok(sql.includes('ENROLLMENT_ALREADY_CLAIMED'), 'Checks claimed token error');
-assert.ok(sql.includes('ENROLLMENT_EXPIRED'), 'Checks expired token status and marks expired');
+assert.ok(sql.includes('ENROLLMENT_EXPIRED'), 'Checks expired token status');
+assert.ok(!sql.includes("set status = 'expired'"), 'Does not pretend to persist status=expired before exception rollback');
 assert.ok(sql.includes('ACTIVE_CREDENTIAL_EXISTS'), 'Prevents claim if active credential already exists');
 assert.ok(sql.includes("lifecycle_status = 'commissioning'"), 'Transitions device lifecycle to commissioning');
 assert.ok(sql.includes("status = 'claimed'"), 'Marks token status as claimed with claimed_at timestamp');
@@ -47,22 +49,39 @@ assert.ok(sql.includes("status = 'claimed'"), 'Marks token status as claimed wit
 // 4. Crypto and Secret Redaction Tests
 const validRawToken = '1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff';
 assert.equal(service.validateRawTokenFormat(validRawToken), true);
-assert.equal(service.validateRawTokenFormat('invalid-short-token'), false);
+assert.equal(service.validateRawTokenFormat('INVALID_SHORT_TOKEN'), false);
+assert.equal(service.validateRawTokenFormat('z'.repeat(64)), false);
 
 const hashed = service.hashToken(validRawToken);
 assert.equal(hashed.length, 64);
 assert.equal(/^[0-9a-f]{64}$/.test(hashed), true);
 
-const rawData = {
-  raw_enrollment_token: validRawToken,
-  raw_device_credential: 'a'.repeat(64),
-  token_hash: hashed,
-  device_id: 'dev-123'
+// Test recursive secret redaction
+const nestedData = {
+  data: {
+    raw_enrollment_token: validRawToken,
+    result: {
+      raw_device_credential: 'a'.repeat(64),
+      token_hash: hashed,
+      device_id: 'dev-123'
+    }
+  }
 };
-const redacted = service.redactEnrollmentSecrets(rawData);
-assert.equal(redacted.raw_enrollment_token, '[REDACTED]');
-assert.equal(redacted.raw_device_credential, '[REDACTED]');
-assert.equal(redacted.token_hash, '[REDACTED]');
-assert.equal(redacted.device_id, 'dev-123');
+const redacted = service.redactEnrollmentSecrets(nestedData);
+assert.equal(redacted.data.raw_enrollment_token, '[REDACTED]');
+assert.equal(redacted.data.result.raw_device_credential, '[REDACTED]');
+assert.equal(redacted.data.result.token_hash, '[REDACTED]');
+assert.equal(redacted.data.result.device_id, 'dev-123');
+
+// Test error normalization
+const knownErr = new Error('ENROLLMENT_EXPIRED: Token has expired');
+const normKnown = service.normalizeEnrollmentError(knownErr);
+assert.equal(normKnown.code, 'ENROLLMENT_EXPIRED');
+assert.equal(normKnown.error, 'Token has expired');
+
+const dbSecretErr = new Error('pg_catalog.devices_site_id_fkey constraint violation in schema public');
+const normSecret = service.normalizeEnrollmentError(dbSecretErr);
+assert.equal(normSecret.code, 'INTERNAL_ENROLLMENT_ERROR');
+assert.equal(normSecret.error, 'An internal enrollment error occurred');
 
 console.log('device enrollment workflow static contract & service tests passed!');

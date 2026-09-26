@@ -1,7 +1,7 @@
 -- Migration: device_enrollment_workflow
 -- Description: Phase HW-3B Controlled Device Enrollment Issuance & Atomic Claim Functions
 
--- 1. Helper function for pgcrypto digest if extensions not in path
+-- 1. Helper function for issuance
 create or replace function public.issue_device_enrollment_token(
     p_device_id uuid,
     p_installation_job_id uuid,
@@ -45,7 +45,7 @@ begin
         raise exception 'INVALID_EXPIRATION: Expiration duration must be between 1 and 60 minutes' using errcode = 'P0001';
     end if;
 
-    -- 3. Lock device row & verify existence & site & lifecycle
+    -- 3. Lock DEVICE row first (consistent global lock order: DEVICE -> JOB -> TOKEN)
     select site_id, lifecycle_status
     into v_device_site_id, v_device_lifecycle
     from public.devices
@@ -60,11 +60,12 @@ begin
         raise exception 'DEVICE_NOT_ELIGIBLE: Device lifecycle status must be registered' using errcode = 'P0001';
     end if;
 
-    -- 4. Verify installation job existence, type, site, and status
+    -- 4. Lock INSTALLATION JOB row second
     select site_id, job_type, status
     into v_job_site_id, v_job_type, v_job_status
     from public.installation_jobs
-    where id = p_installation_job_id;
+    where id = p_installation_job_id
+    for update;
 
     if v_job_site_id is null then
         raise exception 'JOB_NOT_FOUND: Installation job does not exist' using errcode = 'P0001';
@@ -154,6 +155,8 @@ set search_path = ''
 as $$
 declare
     v_incoming_hash text;
+    v_lookup_device_id uuid;
+    v_lookup_job_id uuid;
     v_token_rec record;
     v_device_rec record;
     v_job_rec record;
@@ -162,15 +165,47 @@ declare
     v_cred_id uuid;
     v_now timestamptz := now();
 begin
-    -- 1. Validate raw token input
-    if p_raw_enrollment_token is null or length(trim(p_raw_enrollment_token)) != 64 then
+    -- 1. Validate raw token format (exactly 64 hex characters)
+    if p_raw_enrollment_token is null or p_raw_enrollment_token !~ '^[0-9a-fA-F]{64}$' then
         raise exception 'INVALID_TOKEN_FORMAT: Raw enrollment token must be 64 hex characters' using errcode = 'P0001';
     end if;
 
-    -- Compute SHA-256 hash of incoming raw token
+    -- Compute SHA-256 hash of incoming raw token (case-insensitively normalized)
     v_incoming_hash := encode(extensions.digest(lower(trim(p_raw_enrollment_token)), 'sha256'), 'hex');
 
-    -- 2. Lock and fetch matching enrollment token row
+    -- 2. Non-locking lookup to discover device_id and installation_job_id for global lock ordering
+    select device_id, installation_job_id
+    into v_lookup_device_id, v_lookup_job_id
+    from private.device_enrollment_tokens
+    where token_hash = v_incoming_hash;
+
+    if v_lookup_device_id is null then
+        raise exception 'ENROLLMENT_NOT_FOUND: Invalid or unrecognized enrollment token' using errcode = 'P0001';
+    end if;
+
+    -- 3. Lock DEVICE row first (global lock ordering step 1)
+    select id, site_id, device_uid, lifecycle_status
+    into v_device_rec
+    from public.devices
+    where id = v_lookup_device_id
+    for update;
+
+    if v_device_rec.id is null then
+        raise exception 'DEVICE_NOT_FOUND: Associated device does not exist' using errcode = 'P0001';
+    end if;
+
+    -- 4. Lock INSTALLATION JOB row second (global lock ordering step 2)
+    select id, site_id, job_type, status
+    into v_job_rec
+    from public.installation_jobs
+    where id = v_lookup_job_id
+    for update;
+
+    if v_job_rec.id is null then
+        raise exception 'JOB_NOT_FOUND: Associated installation job does not exist' using errcode = 'P0001';
+    end if;
+
+    -- 5. Lock ENROLLMENT TOKEN row third (global lock ordering step 3)
     select id, device_id, installation_job_id, status, expires_at
     into v_token_rec
     from private.device_enrollment_tokens
@@ -181,7 +216,7 @@ begin
         raise exception 'ENROLLMENT_NOT_FOUND: Invalid or unrecognized enrollment token' using errcode = 'P0001';
     end if;
 
-    -- 3. Check status and expiration
+    -- 6. REVALIDATE all conditions after authoritative row locks are held
     if v_token_rec.status = 'claimed' then
         raise exception 'ENROLLMENT_ALREADY_CLAIMED: Token has already been consumed' using errcode = 'P0001';
     end if;
@@ -191,11 +226,7 @@ begin
     end if;
 
     if v_token_rec.expires_at <= v_now then
-        -- Atomically mark expired
-        update private.device_enrollment_tokens
-        set status = 'expired', updated_at = v_now
-        where id = v_token_rec.id;
-
+        -- Direct exception without unpersisted status update (transaction aborts on exception)
         raise exception 'ENROLLMENT_EXPIRED: Token has expired' using errcode = 'P0001';
     end if;
 
@@ -203,15 +234,8 @@ begin
         raise exception 'ENROLLMENT_NOT_AVAILABLE: Token status is not pending' using errcode = 'P0001';
     end if;
 
-    -- 4. Lock & verify Device
-    select id, site_id, device_uid, lifecycle_status
-    into v_device_rec
-    from public.devices
-    where id = v_token_rec.device_id
-    for update;
-
-    if v_device_rec.id is null then
-        raise exception 'DEVICE_NOT_FOUND: Associated device does not exist' using errcode = 'P0001';
+    if v_token_rec.device_id != v_device_rec.id or v_token_rec.installation_job_id != v_job_rec.id then
+        raise exception 'ENROLLMENT_NOT_AVAILABLE: Token bindings altered' using errcode = 'P0001';
     end if;
 
     if p_expected_device_uid is not null and p_expected_device_uid != '' then
@@ -224,21 +248,10 @@ begin
         raise exception 'DEVICE_NOT_ELIGIBLE: Device lifecycle status is not registered' using errcode = 'P0001';
     end if;
 
-    -- 5. Lock & verify Installation Job
-    select id, site_id, job_type, status
-    into v_job_rec
-    from public.installation_jobs
-    where id = v_token_rec.installation_job_id;
-
-    if v_job_rec.id is null then
-        raise exception 'JOB_NOT_FOUND: Associated installation job does not exist' using errcode = 'P0001';
-    end if;
-
     if v_job_rec.job_type != 'installation' or v_job_rec.status not in ('scheduled', 'in_progress') then
         raise exception 'JOB_NOT_ELIGIBLE: Associated installation job is not eligible' using errcode = 'P0001';
     end if;
 
-    -- 6. Strict Site Binding Verification
     if v_device_rec.site_id != v_job_rec.site_id then
         raise exception 'SITE_MISMATCH: Device site does not match installation job site' using errcode = 'P0001';
     end if;
