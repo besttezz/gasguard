@@ -11,7 +11,9 @@ String formatFieldDiagnosticsJson(const FieldDiagnostics& diag) {
     json += "\"rssi\":" + String(diag.rssi) + ",";
     json += "\"ipAddress\":\"" + diag.ipAddress + "\",";
     json += "\"ingressReachable\":" + String(diag.ingressReachable ? "true" : "false") + ",";
-    json += "\"lastHttpStatus\":" + String(diag.lastHttpStatus) + ",";
+    json += "\"mq6LastHttpStatus\":" + String(diag.mq6LastHttpStatus) + ",";
+    json += "\"mq3LastHttpStatus\":" + String(diag.mq3LastHttpStatus) + ",";
+    json += "\"nextIngressAttemptInMs\":" + String(diag.nextIngressAttemptInMs) + ",";
     json += "\"softApProvisioning\":\"" + String(diag.softApStatus ? diag.softApStatus : "PLANNED / INTERFACE PREPARED - NOT YET IMPLEMENTED") + "\",";
     json += "\"mq6\":{";
     json += "\"rawAdc\":" + String(diag.mq6Reading.rawAdc) + ",";
@@ -47,7 +49,8 @@ void printFieldDiagnosticsSerial(const FieldDiagnostics& diag) {
     Serial.printf("Profile Confirmed: %s | State: %s | BootID: %s | FW: %s\n",
                   diag.profileConfirmed ? "YES" : "NO (UNCONFIRMED)", nodeStateToString(diag.currentState), diag.bootId.c_str(), diag.firmwareVersion);
     Serial.printf("Wi-Fi: %s (RSSI %d dBm) | IP: %s\n", diag.wifiConnected ? "CONNECTED" : "DISCONNECTED", diag.rssi, diag.ipAddress.c_str());
-    Serial.printf("Ingress Reachable: %s | Last HTTP Status: %d\n", diag.ingressReachable ? "YES" : "NO", diag.lastHttpStatus);
+    Serial.printf("Ingress Reachable: %s | MQ6 HTTP: %d | MQ3 HTTP: %d | Retry In: %u ms\n",
+                  diag.ingressReachable ? "YES" : "NO", diag.mq6LastHttpStatus, diag.mq3LastHttpStatus, diag.nextIngressAttemptInMs);
     Serial.printf("SoftAP Status: %s\n", diag.softApStatus ? diag.softApStatus : "PLANNED / INTERFACE PREPARED - NOT YET IMPLEMENTED");
     Serial.printf("MQ-6 Primary LPG  : ADC=%u | Vpin=%.3fV | Vao=%s | Status=%s | Seq=%u\n",
                   diag.mq6Reading.rawAdc, diag.mq6Reading.sensorVoltage,

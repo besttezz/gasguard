@@ -26,12 +26,49 @@ SensorDescriptor g_mq3Sensor = {
 };
 
 void initSensorChannels() {
-    // Sensor channel initialization hook
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+    analogReadResolution(12);
+    if (g_mq6Sensor.enabled) {
+        analogSetPinAttenuation(g_mq6Sensor.pin, g_mq6Sensor.adcAttenuation);
+    }
+    if (g_mq3Sensor.enabled) {
+        analogSetPinAttenuation(g_mq3Sensor.pin, g_mq3Sensor.adcAttenuation);
+    }
+#endif
+}
+
+bool validateBoardProfile() {
+    if (!GASGUARD_HARDWARE_PROFILE_CONFIRMED) {
+        return false;
+    }
+    if (String(GASGUARD_BOARD_VARIANT) == "ESP32_GENERIC_UNVERIFIED" || String(GASGUARD_BOARD_VARIANT).length() == 0) {
+        return false;
+    }
+
+    if (!g_mq6Sensor.enabled || !g_mq6Sensor.profileConfirmed) {
+        return false;
+    }
+    if (g_mq6Sensor.pin < 32 || g_mq6Sensor.pin > 39) {
+        return false;
+    }
+    if (g_mq6Sensor.inputScale <= 0.0f) {
+        return false;
+    }
+
+    if (g_mq3Sensor.enabled) {
+        if (!g_mq3Sensor.profileConfirmed) return false;
+        if (g_mq3Sensor.pin < 32 || g_mq3Sensor.pin > 39) return false;
+        if (g_mq3Sensor.pin == g_mq6Sensor.pin) return false;
+        if (g_mq3Sensor.inputScale <= 0.0f) return false;
+    }
+
+    return true;
 }
 
 bool validateSensorConfig(const SensorDescriptor& desc) {
     if (!desc.enabled) return false;
-    if (!desc.profileConfirmed) return false; // Must be physically confirmed before running
-    if (desc.pin < 32 || desc.pin > 39) return false; // Must be ADC1 pins
+    if (!desc.profileConfirmed) return false;
+    if (desc.pin < 32 || desc.pin > 39) return false;
+    if (desc.inputScale <= 0.0f) return false;
     return true;
 }

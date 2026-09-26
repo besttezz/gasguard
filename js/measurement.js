@@ -22,7 +22,11 @@
     if (!Number.isInteger(input.sequence) || input.sequence < 0) errors.push('sequence must be an integer >= 0');
     if (!nonEmpty(input.timestamp) || Number.isNaN(Date.parse(input.timestamp))) errors.push('timestamp must be parseable');
     if (!input.raw || typeof input.raw !== 'object' || Array.isArray(input.raw)) errors.push('raw must be an object');
-    else { checkFinite(input.raw,'adc','raw.adc',errors); checkFinite(input.raw,'sensorVoltage','raw.sensorVoltage',errors); }
+    else {
+      if (!Number.isInteger(input.raw.adc) || input.raw.adc < 0 || input.raw.adc > 4095) errors.push('raw.adc must be an integer between 0 and 4095');
+      if (input.raw.sensorVoltage != null && (!Number.isFinite(input.raw.sensorVoltage) || input.raw.sensorVoltage < 0)) errors.push('raw.sensorVoltage must be a non-negative finite number');
+      if (input.raw.inputAdjustedVoltage != null && (!Number.isFinite(input.raw.inputAdjustedVoltage) || input.raw.inputAdjustedVoltage < 0)) errors.push('raw.inputAdjustedVoltage must be null or a non-negative finite number');
+    }
     if (input.upstreamPpm != null && !Number.isFinite(input.upstreamPpm)) errors.push('upstreamPpm must be a finite number');
     checkFinite(input.environment,'temperature','environment.temperature',errors);
     checkFinite(input.environment,'humidity','environment.humidity',errors);

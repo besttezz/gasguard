@@ -15,13 +15,15 @@ struct FieldDiagnostics {
     int32_t rssi;
     String ipAddress;
     bool ingressReachable;
-    int lastHttpStatus;
+    int mq6LastHttpStatus;
+    int mq3LastHttpStatus;
     const char* softApStatus;
     MeasurementReading mq6Reading;
     MeasurementReading mq3Reading;
     uint32_t mq6Sequence;
     uint32_t mq3Sequence;
     uint32_t uptimeMs;
+    uint32_t nextIngressAttemptInMs;
 };
 
 String formatFieldDiagnosticsJson(const FieldDiagnostics& diag);

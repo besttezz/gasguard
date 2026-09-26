@@ -14,13 +14,18 @@ const equalSecret = (left, right) => {
 function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000, now = Date.now }) {
   const packetState = new Map();
   const knownSensors = new Map();
+  const latestMeasurementsBySensorMap = new Map();
 
   const keyOwner = key => Object.entries(credentials).find(([, candidate]) => equalSecret(key, candidate))?.[0] || null;
 
   function status(workspaceId) {
     const packet = packetState.get(workspaceId);
     const sensors = Array.from(knownSensors.get(workspaceId) || []);
-    if (!packet) return { workspaceId, status: 'WAITING_FOR_DEVICE', connection: 'WAITING_FOR_DEVICE', telemetry: 'NO DATA', safety: 'UNKNOWN', gasPpm: null, lastTelemetry: null, ingress: 'READY', packetStatus: 'NO DATA', sensors };
+    const sensorMap = latestMeasurementsBySensorMap.get(workspaceId);
+    const latestMeasurementsBySensor = sensorMap ? Object.fromEntries(sensorMap) : {};
+    const latestMeasurement = sensorMap ? (sensorMap.get('MQ6-01') || sensorMap.values().next().value || null) : null;
+
+    if (!packet) return { workspaceId, status: 'WAITING_FOR_DEVICE', connection: 'WAITING_FOR_DEVICE', telemetry: 'NO DATA', safety: 'UNKNOWN', gasPpm: null, lastTelemetry: null, ingress: 'READY', packetStatus: 'NO DATA', sensors, latestMeasurement, latestMeasurementsBySensor };
     const stale = now() - packet.receivedAtMs > staleMs;
     return {
       ...packet.public,
@@ -30,7 +35,9 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
       safety: stale ? 'UNKNOWN' : packet.public.safety,
       gasPpm: stale ? null : packet.public.gasPpm,
       lastTelemetry: new Date(packet.receivedAtMs).toISOString(),
-      sensors
+      sensors,
+      latestMeasurement: stale ? null : latestMeasurement,
+      latestMeasurementsBySensor: stale ? {} : latestMeasurementsBySensor
     };
   }
 
@@ -45,6 +52,22 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     if (!pipeline?.measurement?.ingest || !pipeline?.engine) return response(503, { ok: false, code: 'PIPELINE_UNAVAILABLE' });
 
     const result = pipeline.measurement.ingest(payload, pipeline.engine);
+
+    // Record non-secret raw measurement projection by sensor for Hardware Pilot
+    if (payload.raw && typeof payload.raw === 'object') {
+      if (!latestMeasurementsBySensorMap.has(device.workspaceId)) {
+        latestMeasurementsBySensorMap.set(device.workspaceId, new Map());
+      }
+      const sensorId = payload.sensorId || 'MQ6-01';
+      latestMeasurementsBySensorMap.get(device.workspaceId).set(sensorId, Object.freeze({
+        sensorId,
+        sensorType: payload.sensorType || 'MQ6',
+        rawAdc: payload.raw.adc ?? null,
+        sensorVoltage: payload.raw.sensorVoltage ?? null,
+        inputAdjustedVoltage: payload.raw.inputAdjustedVoltage ?? null,
+        calibrationStatus: payload.raw.calibrationStatus ?? (result.code === 'CALIBRATION_REQUIRED' ? 'CALIBRATION_REQUIRED' : 'CALIBRATED')
+      }));
+    }
 
     // Handle Raw-only uncalibrated measurement input (CALIBRATION_REQUIRED)
     if (!result.ok && result.code === 'CALIBRATION_REQUIRED') {

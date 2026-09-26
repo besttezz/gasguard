@@ -54,7 +54,7 @@ Until physical multi-point gas chamber calibration is performed:
 
 ---
 
-## 4. Electrical Verification Checklist
+## 4. Electrical Verification Checklist & ADC Range
 
 Before connecting any MQ sensor module to an ESP32 board, perform the following bench checks:
 
@@ -62,8 +62,9 @@ Before connecting any MQ sensor module to an ESP32 board, perform the following 
 2. **MQ Module Model & Datasheet**: Verify exact module manufacturer/model. Winsen MQ-6 and MQ-3B datasheets specify preheating over/not less than **48 hours**.
 3. **Common Ground**: Ensure ESP32 GND and MQ module GND are connected to a single common ground plane.
 4. **Supply Voltage**: Verify dedicated 5V power supply capacity for sensor heaters (ESP32 3.3V rail must NOT be used for MQ heaters).
-5. **Voltage Divider / Signal Conditioning**: Measure AO maximum output. If AO > 3.3V, verify resistor divider ($R_1, R_2$) reduces maximum pin voltage to $\le 3.3V$.
-6. **ADC Pin Verification**: Confirm AO signals connect strictly to **ADC1 pins** confirmed by board profile validation. Do NOT use ADC2 pins due to Wi-Fi driver conflicts.
+5. **Voltage Divider / Signal Conditioning**: Measure AO maximum output. Resistor divider ($R_1, R_2$) must keep maximum ESP32 pin voltage strictly $\le 3.3V$ for electrical safety.
+6. **ADC Attenuation & Measurable Range**: Configure `ADC_11db` attenuation. Note that final measurable voltage range depends on the exact ESP32 variant and configured attenuation (for classic ESP32, `ADC_11db` measurable range is approximately 150 mV to 3100 mV). Distinguish electrical safety maximum limit ($\le 3.3V$) from ADC calibrated linear range.
+7. **ADC Pin Verification**: Confirm AO signals connect strictly to **ADC1 pins** confirmed by board profile validation. Do NOT use ADC2 pins due to Wi-Fi driver conflicts.
 
 ---
 
@@ -75,7 +76,7 @@ Before connecting any MQ sensor module to an ESP32 board, perform the following 
 4. **Network Verification**: Verify Wi-Fi connection and local IP assignment (`NODE_STATE_WIFI_CONNECTED`).
 5. **Ingress Reachability**: Verify HTTP/HTTPS POST reachability to GasGuard ingress URL (`NODE_STATE_CONNECTING_INGRESS` -> `NODE_STATE_READY`).
 6. **Raw Telemetry Stream**: Confirm raw measurement packets arrive with `raw.adc` and `calibrationStatus = "CALIBRATION_REQUIRED"`.
-7. **Hardware Pilot UI Verification**: Inspect Hardware Pilot workspace; confirm device connection status displays `DEVICE ONLINE`, `safety = UNKNOWN`, and `gasPpm = null`.
+7. **Hardware Pilot UI Verification**: Inspect Hardware Pilot workspace; confirm device connection status displays `DEVICE ONLINE`, `safety = UNKNOWN`, `gasPpm = null`, and latest raw measurements by sensor are visible.
 
 ---
 

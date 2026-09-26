@@ -2,6 +2,7 @@
 #define GASGUARD_BOARD_CONFIG_H
 
 #include <stdint.h>
+#include <Arduino.h>
 
 // =============================================================================
 // UNVERIFIED HARDWARE PROFILE WARNING
@@ -17,8 +18,9 @@
 #define MQ6_ADC_PIN_PLACEHOLDER 34
 #define MQ3_ADC_PIN_PLACEHOLDER 35
 
-// Default Attenuation: ADC_11db (0 to ~3.3V input range)
-#define GASGUARD_DEFAULT_ADC_ATTENUATION 3 // ADC_11db
+// Default Attenuation: ADC_11db (approx 150mV to 3100mV measurable input voltage range on classic ESP32)
+// Note: Final measurable voltage range depends on exact ESP32 variant and configured attenuation.
+#define GASGUARD_DEFAULT_ADC_ATTENUATION ADC_11db
 
 // Default Input Scale (0.0f = Unconfirmed / Not set)
 #define GASGUARD_DEFAULT_INPUT_SCALE 0.0f

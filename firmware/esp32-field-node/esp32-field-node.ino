@@ -23,8 +23,10 @@ uint32_t mq3Sequence = 0;
 unsigned long lastSampleAt = 0;
 unsigned long lastDiagAt = 0;
 
-int lastHttpStatus = -1;
+int mq6LastHttpStatus = -1;
+int mq3LastHttpStatus = -1;
 bool ingressReachable = false;
+unsigned long nextIngressAttemptAtMs = 0;
 
 NodeState currentState = NODE_STATE_UNPROVISIONED;
 BoundedBackoff networkBackoff;
@@ -67,18 +69,18 @@ void setup() {
 
 void loop() {
     if (currentState == NODE_STATE_CONFIG_ERROR) {
-        // Safe refusal mode due to unconfirmed hardware profile
         delay(1000);
         return;
     }
 
     unsigned long now = millis();
 
-    // 1. Maintain Connection & Backoff State Machine
+    // 1. Connection & Backoff State Machine
     if (WiFi.status() == WL_CONNECTED) {
         if (currentState == NODE_STATE_CONNECTING_WIFI || currentState == NODE_STATE_OFFLINE) {
             currentState = NODE_STATE_CONNECTING_INGRESS;
             resetBackoff(networkBackoff);
+            nextIngressAttemptAtMs = 0;
         }
     } else {
         if (currentState != NODE_STATE_UNPROVISIONED && currentState != NODE_STATE_PROVISIONING) {
@@ -86,7 +88,7 @@ void loop() {
         }
     }
 
-    // 2. Periodic Sensor Sampling & Telemetry Push
+    // 2. Sensor Sampling & Telemetry Push with Retry Gate
     if (now - lastSampleAt >= SAMPLING_INTERVAL_MS) {
         lastSampleAt = now;
 
@@ -96,38 +98,37 @@ void loop() {
         if (mq6Reading.isValid) {
             String timestampStr = getUtcTimestampIso();
             if (timestampStr.length() == 0) {
-                // DO NOT send packet with hardcoded timestamp fallback if NTP is unavailable
                 Serial.println("[GasGuard Node] TIME_UNAVAILABLE: NTP timestamp not ready. Skipping transmission.");
-            } else {
-                String payload = buildRawMeasurementPayload(DEVICE_ID, mq6Reading, bootId, mq6Sequence, timestampStr);
-
-                if (currentState == NODE_STATE_CONNECTING_INGRESS || currentState == NODE_STATE_READY) {
+            } else if (currentState == NODE_STATE_CONNECTING_INGRESS || currentState == NODE_STATE_READY) {
+                // Retry gate check
+                bool networkAllowed = (nextIngressAttemptAtMs == 0) || ((long)(now - nextIngressAttemptAtMs) >= 0);
+                if (networkAllowed) {
+                    String payload = buildRawMeasurementPayload(DEVICE_ID, mq6Reading, bootId, mq6Sequence, timestampStr);
                     int status = sendTelemetryPacket(transportConfig, payload);
-                    lastHttpStatus = status;
+                    mq6LastHttpStatus = status;
                     if (status == 202) {
                         currentState = NODE_STATE_READY;
                         ingressReachable = true;
                         mq6Sequence++;
                         resetBackoff(networkBackoff);
+                        nextIngressAttemptAtMs = 0;
                     } else {
                         ingressReachable = false;
-                        if (status > 0) {
-                            // HTTP failure from ingress
-                        } else {
-                            // Unreachable transport
-                        }
-                        calculateNextBackoffMs(networkBackoff);
+                        uint32_t delayMs = calculateNextBackoffMs(networkBackoff);
+                        nextIngressAttemptAtMs = now + delayMs;
                     }
                 }
             }
         }
 
-        // MQ-3 auxiliary packet sent independently if valid
+        // MQ-3 Auxiliary Transmission
         if (mq3Reading.isValid && g_mq3Sensor.enabled) {
             String timestampStr = getUtcTimestampIso();
-            if (timestampStr.length() > 0 && (currentState == NODE_STATE_CONNECTING_INGRESS || currentState == NODE_STATE_READY)) {
+            bool networkAllowed = (nextIngressAttemptAtMs == 0) || ((long)(now - nextIngressAttemptAtMs) >= 0);
+            if (timestampStr.length() > 0 && networkAllowed && (currentState == NODE_STATE_CONNECTING_INGRESS || currentState == NODE_STATE_READY)) {
                 String auxPayload = buildRawMeasurementPayload(DEVICE_ID, mq3Reading, bootId, mq3Sequence, timestampStr);
                 int status = sendTelemetryPacket(transportConfig, auxPayload);
+                mq3LastHttpStatus = status;
                 if (status == 202) {
                     mq3Sequence++;
                 }
@@ -135,7 +136,7 @@ void loop() {
         }
     }
 
-    // 3. Periodic Field Diagnostics Output
+    // 3. Periodic Field Diagnostics
     if (now - lastDiagAt >= DIAGNOSTICS_INTERVAL_MS) {
         lastDiagAt = now;
 
@@ -149,13 +150,15 @@ void loop() {
         diag.rssi = diag.wifiConnected ? WiFi.RSSI() : 0;
         diag.ipAddress = diag.wifiConnected ? WiFi.localIP().toString() : "0.0.0.0";
         diag.ingressReachable = ingressReachable;
-        diag.lastHttpStatus = lastHttpStatus;
+        diag.mq6LastHttpStatus = mq6LastHttpStatus;
+        diag.mq3LastHttpStatus = mq3LastHttpStatus;
         diag.softApStatus = "PLANNED / INTERFACE PREPARED - NOT YET IMPLEMENTED";
         diag.mq6Reading = sampleSensorChannel(g_mq6Sensor);
         diag.mq3Reading = sampleSensorChannel(g_mq3Sensor);
         diag.mq6Sequence = mq6Sequence;
         diag.mq3Sequence = mq3Sequence;
         diag.uptimeMs = now;
+        diag.nextIngressAttemptInMs = ((long)(nextIngressAttemptAtMs - now) > 0) ? (nextIngressAttemptAtMs - now) : 0;
 
         printFieldDiagnosticsSerial(diag);
     }
