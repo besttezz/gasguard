@@ -7,7 +7,7 @@
 #include "measurement.h"
 #include "telemetry.h"
 #include "network_provisioning.h"
-#include "provisioning_config.example.h"
+#include "provisioning_config.h"
 #include "transport.h"
 #include "diagnostics.h"
 
@@ -52,9 +52,9 @@ void setup() {
     initBackoff(networkBackoff, 1000, 30000);
 
     // Setup Wi-Fi provisioning configuration with Security 1 + PoP
-    String serviceNameStr = generateProvisioningServiceName((DEVICE_ID));
+    String serviceNameStr = generateProvisioningServiceName(DEVICE_ID);
     provConfig.serviceName = serviceNameStr.c_str();
-    provConfig.proofOfPossession = GASGUARD_PROV_POP_PLACEHOLDER;
+    provConfig.proofOfPossession = GASGUARD_PROV_POP;
     provConfig.serviceKey = GASGUARD_PROV_SERVICE_KEY;
     provConfig.securityMode = GASGUARD_PROV_SECURITY_MODE;
 
@@ -64,8 +64,8 @@ void setup() {
 
     Serial.printf("\n[GasGuard Node] Starting %s (BootId: %s)\n", FIRMWARE_VERSION, bootId.c_str());
 
-    // Wi-Fi provisioning state inspection
-    if (WiFi.SSID().length() > 0) {
+    // Native Wi-Fi provisioning state inspection
+    if (isWiFiProvisioned()) {
         currentState = NODE_STATE_CONNECTING_WIFI;
         WiFi.mode(WIFI_STA);
     } else {

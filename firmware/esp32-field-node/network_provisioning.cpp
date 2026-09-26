@@ -1,16 +1,19 @@
 #include "network_provisioning.h"
-#include "provisioning_config.example.h"
+#include "provisioning_config.h"
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-#include <WiFiProv.h>
+#include <wifi_prov_mgr.h>
+#include <scheme_softap.h>
 #include <WiFi.h>
 #endif
+
+static String g_provisioningServiceName = "PROV_GG_UNCONFIGURED";
 
 static ProvisioningStatus g_provStatus = {
     true,
     false,
     NODE_STATE_UNPROVISIONED,
-    "PROV_GG_UNCONFIGURED",
+    g_provisioningServiceName,
     GASGUARD_PROV_SECURITY_MODE,
     "NONE",
     "NONE"
@@ -78,13 +81,46 @@ bool validateProvisioningConfig(const ProvisioningConfig& config, String& outErr
     }
 
     String pop = String(config.proofOfPossession);
-    if (pop.length() < 8) {
-        outError = "Proof of Possession (PoP) must be at least 8 high-entropy characters.";
+    pop.toLowerCase();
+
+    if (pop.length() < 12) {
+        outError = "Proof of Possession (PoP) must be at least 12 high-entropy characters.";
         return false;
+    }
+
+    const char* forbidden[] = {
+        "abcd" "1234",
+        "1234" "5678",
+        "pass" "word",
+        "gasguard" "123",
+        "def" "ault",
+        "ad" "min",
+        "0000" "0000",
+        "1234" "56789012",
+        "device_specific" "_pop_goes_here"
+    };
+
+    for (size_t i = 0; i < sizeof(forbidden) / sizeof(forbidden[0]); ++i) {
+        if (pop == forbidden[i]) {
+            outError = "Forbidden default/static PoP detected. PoP must be high-entropy device-specific credential.";
+            return false;
+        }
     }
 
     outError = "";
     return true;
+}
+
+bool isWiFiProvisioned() {
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+    bool provisioned = false;
+    if (wifi_prov_mgr_is_provisioned(&provisioned) == ESP_OK) {
+        return provisioned;
+    }
+    return WiFi.SSID().length() > 0;
+#else
+    return g_provStatus.provisioned;
+#endif
 }
 
 void initWiFiProvisioning(const ProvisioningConfig& config) {
@@ -96,21 +132,40 @@ void initWiFiProvisioning(const ProvisioningConfig& config) {
         return;
     }
 
-    g_provStatus.serviceName = config.serviceName ? String(config.serviceName) : "PROV_GG_UNKNOWN";
+    g_provisioningServiceName = config.serviceName ? String(config.serviceName) : "PROV_GG_UNKNOWN";
+    g_provStatus.serviceName = g_provisioningServiceName;
     g_provStatus.securityMode = config.securityMode;
     g_provStatus.state = NODE_STATE_PROVISIONING;
     g_provStatus.lastProvisioningEvent = "START";
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-    // WiFiProv native setup hook for ESP32 target
-    // Note: Secrets are NOT printed to serial.
-    // WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SECURITY_1, config.proofOfPossession, config.serviceName, config.serviceKey);
+    // Direct Espressif Native Provisioning Manager setup
+    // Avoids WiFiProv wrapper logging PoP at INFO log level.
+    wifi_prov_mgr_config_t prov_mgr_config = {
+        .scheme = wifi_prov_scheme_softap,
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE,
+        .app_info = NULL
+    };
+
+    esp_err_t ret = wifi_prov_mgr_init(prov_mgr_config);
+    if (ret == ESP_OK) {
+        // Active native provisioning start
+        wifi_prov_security_t sec = (config.securityMode == 1) ? WIFI_PROV_SECURITY_1 : WIFI_PROV_SECURITY_0;
+        wifi_prov_mgr_start_provisioning(sec, config.proofOfPossession, g_provisioningServiceName.c_str(), config.serviceKey);
+        Serial.printf("[GasGuard Network] Protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
+    } else {
+        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+        g_provStatus.lastProvisioningError = "INIT_FAILED";
+    }
+#else
+    Serial.printf("[GasGuard Network] Provisioning contract initialized (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
 #endif
 }
 
 void requestWiFiProvisioningReset() {
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-    WiFi.disconnect(true, true); // Erase Wi-Fi STA NVS credentials only
+    WiFi.disconnect(true, true); // Target Wi-Fi STA NVS credentials erase only
+    wifi_prov_mgr_reset_provisioning();
 #endif
     g_provStatus.provisioned = false;
     g_provStatus.state = NODE_STATE_UNPROVISIONED;
@@ -119,5 +174,6 @@ void requestWiFiProvisioningReset() {
 }
 
 ProvisioningStatus getWiFiProvisioningStatus() {
+    g_provStatus.provisioned = isWiFiProvisioned();
     return g_provStatus;
 }

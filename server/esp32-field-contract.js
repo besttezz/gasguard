@@ -28,7 +28,9 @@ const FORBIDDEN_DEFAULT_POPS = Object.freeze([
   'default',
   'admin',
   '1234',
-  '00000000'
+  '00000000',
+  '123456789012',
+  'device_specific_pop_goes_here'
 ]);
 
 function validateProvisioningConfig(config = {}) {
@@ -46,6 +48,9 @@ function validateProvisioningConfig(config = {}) {
   }
 
   const popLower = config.proofOfPossession.trim().toLowerCase();
+  if (popLower.length < 12) {
+    return { ok: false, code: 'SHORT_POP', reason: 'Proof of Possession (PoP) must be at least 12 characters long' };
+  }
   if (FORBIDDEN_DEFAULT_POPS.includes(popLower)) {
     return { ok: false, code: 'FORBIDDEN_DEFAULT_POP', reason: 'Forbidden default static PoP value detected' };
   }

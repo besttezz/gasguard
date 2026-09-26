@@ -9,7 +9,7 @@ This document details the architecture, security model, boot state machine, and 
 ```
 Unprovisioned ESP32 Node
            │
-   WiFiProv (WIFI_PROV_SCHEME_SOFTAP)
+   Espressif Provisioning Manager (wifi_prov_mgr, SoftAP scheme)
            │ [Security 1: X25519 + AES-CTR + Proof of Possession]
    Technician Provisioning Client (Espressif Provisioning App)
            │ [Provides SSID & Wi-Fi Password]
@@ -20,16 +20,19 @@ Unprovisioned ESP32 Node
    [DEVICE_ENROLLMENT_REQUIRED] (Separate GasGuard Device Credentials - HW-3)
 ```
 
+> [!NOTE]
+> The implementation directly uses the Espressif Network Provisioning Manager (`wifi_prov_mgr`) rather than the higher-level Arduino `WiFiProv` wrapper to prevent internal `INFO` level logging of Proof of Possession (PoP) and SoftAP keys to serial logs.
+
 ---
 
 ## 2. Security Boundaries & Decision Model
 
-- **Security 1 Required**: Provisions sessions **MUST** use `NETWORK_PROV_SECURITY_1` (Security 1) with X25519 Elliptic Curve Key Exchange, AES-CTR encrypted transport, and Proof of Possession (PoP) authentication.
+- **Security 1 Required**: Provisioning sessions **MUST** use `WIFI_PROV_SECURITY_1` (Security 1) with X25519 Elliptic Curve Key Exchange, AES-CTR encrypted transport, and Proof of Possession (PoP) authentication.
 - **Security 0 Prohibited**: Plaintext provisioning (`Security 0`) is strictly forbidden and rejected during config validation.
 - **Proof of Possession (PoP)**:
-  - Must be high-entropy and generated uniquely per physical device outside committed source.
+  - Must be high-entropy (minimum 12 characters) and generated uniquely per physical device outside committed source.
   - Universal or static default strings (e.g., `abcd1234`, `12345678`, `password`) are strictly forbidden.
-  - If a device lacks a valid PoP, provisioning fails closed (`NODE_STATE_PROVISIONING_CONFIG_REQUIRED`).
+  - If a device lacks a valid PoP in `provisioning_secrets.h`, provisioning fails closed (`NODE_STATE_PROVISIONING_CONFIG_REQUIRED`).
 - **Credential Separation**:
   - Wi-Fi Credentials $\neq$ Provisioning PoP $\neq$ GasGuard Device Credentials $\neq$ Owner Invitation Tokens.
   - Provisioning Wi-Fi access does **NOT** grant GasGuard ingress authentication or enrollment.
@@ -40,7 +43,7 @@ Unprovisioned ESP32 Node
 
 1. `UNPROVISIONED`: Device boots with no saved Wi-Fi STA credentials in NVS.
 2. `PROVISIONING`: Protected SoftAP active (`PROV_GG_XXXXXX`, Security 1 + PoP).
-3. `PROVISIONING_CONFIG_REQUIRED`: Device configuration error (e.g. missing or forbidden default PoP).
+3. `PROVISIONING_CONFIG_REQUIRED`: Device configuration error (e.g. missing `provisioning_secrets.h` or forbidden default PoP).
 4. `PROVISIONING_FAILED`: Wi-Fi credential negotiation failed.
 5. `CONNECTING_WIFI`: Connecting to provisioned AP.
 6. `WIFI_CONNECTED`: Connected to Wi-Fi AP with local IP.
@@ -52,7 +55,7 @@ Unprovisioned ESP32 Node
 
 ## 4. Controlled Wi-Fi Reset Interface
 
-- **`requestWiFiProvisioningReset()`**: Erases stored Wi-Fi STA credentials from native NVS.
+- **`requestWiFiProvisioningReset()`**: Erases stored Wi-Fi STA credentials from native NVS via `wifi_prov_mgr_reset_provisioning()`.
 - **Isolation**: Reset erases **ONLY** Wi-Fi station credentials. It does **NOT** erase device identity, device credentials, sensor calibration data, or owner invitation tokens.
 
 ---
@@ -71,6 +74,6 @@ Unprovisioned ESP32 Node
 
 ## 6. Development Status & Wording
 
-- **IMPLEMENTED IN SOURCE**: Wi-Fi provisioning architecture, state machine, PoP validation, and contract functions exist in codebase.
+- **IMPLEMENTED IN SOURCE**: Wi-Fi provisioning architecture, state machine, native `wifi_prov_mgr` calls, PoP validation, and contract functions exist in codebase.
 - **NOT FIRMWARE-COMPILED**: Compiler toolchain execution has not been run.
 - **NOT PHYSICALLY TESTED**: Physical hardware bench testing pending physical board arrival.
