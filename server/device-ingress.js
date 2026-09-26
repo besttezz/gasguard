@@ -4,7 +4,22 @@ const crypto = require('node:crypto');
 
 const response = (status, body) => ({ status, body });
 const header = (headers, name) => headers?.[name] ?? headers?.[name.toLowerCase()] ?? headers?.[name.toUpperCase()];
-const suppliedKey = headers => header(headers, 'x-device-key') || String(header(headers, 'authorization') || '').replace(/^Bearer\s+/i, '') || null;
+function suppliedKey(headers) {
+  const xKey = header(headers, 'x-device-key');
+  if (xKey && typeof xKey === 'string' && xKey.trim()) {
+    return xKey.trim();
+  }
+
+  const authHeader = header(headers, 'authorization');
+  if (authHeader && typeof authHeader === 'string') {
+    const trimmed = authHeader.trim();
+    if (/^Bearer\s+\S+$/i.test(trimmed)) {
+      return trimmed.replace(/^Bearer\s+/i, '').trim();
+    }
+  }
+
+  return null;
+}
 const equalSecret = (left, right) => {
   if (typeof left !== 'string' || typeof right !== 'string' || !left || !right) return false;
   const a = Buffer.from(left), b = Buffer.from(right);

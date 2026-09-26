@@ -14,6 +14,14 @@ function hashDeviceCredential(rawCredential) {
   return crypto.createHash('sha256').update(rawCredential.trim().toLowerCase()).digest('hex');
 }
 
+function timingSafeEqualSecret(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length || bufA.length === 0) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 function createDatabaseDeviceAuthenticator({ verifyCredential }) {
   if (typeof verifyCredential !== 'function') {
     throw new Error('verifyCredential function required for database device authenticator');
@@ -41,7 +49,8 @@ function createDatabaseDeviceAuthenticator({ verifyCredential }) {
 
         return Object.freeze({
           authenticated: true,
-          deviceId: res.device_id,
+          databaseDeviceId: res.device_id,
+          deviceId: res.device_uid,
           deviceUid: res.device_uid,
           siteId: res.site_id,
           zoneId: res.zone_id,
@@ -57,7 +66,7 @@ function createDatabaseDeviceAuthenticator({ verifyCredential }) {
   });
 }
 
-function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null, legacyRealDeviceKey = null }) {
+function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null, legacyRealDeviceKey = null, allowLegacyRealAuth = false }) {
   return Object.freeze({
     async authenticateIngressRequest({ deviceUid, payloadDeviceId, xDeviceKey }) {
       const canonicalUid = (deviceUid || payloadDeviceId || '').trim();
@@ -69,14 +78,15 @@ function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null,
 
       // 1. Virtual/Test Device Path (ISOLATED TEST WORKSPACE)
       if (canonicalUid === 'SIM-ESP32-KITCHEN-01') {
-        const expectedTestKey = testDeviceKey || process.env.GASGUARD_TEST_DEVICE_KEY || null;
+        const expectedTestKey = testDeviceKey || null;
         if (!expectedTestKey) {
           return Object.freeze({ authenticated: false, code: 'TEST_CREDENTIAL_NOT_CONFIGURED' });
         }
-        if (rawKey === expectedTestKey) {
+        if (timingSafeEqualSecret(rawKey, expectedTestKey)) {
           return Object.freeze({
             authenticated: true,
-            deviceId: 'dev-sim-kitchen-01',
+            databaseDeviceId: 'dev-sim-kitchen-01',
+            deviceId: 'SIM-ESP32-KITCHEN-01',
             deviceUid: 'SIM-ESP32-KITCHEN-01',
             siteId: 'site-demo-01',
             zoneId: 'zone-kitchen-01',
@@ -90,24 +100,32 @@ function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null,
       }
 
       // 2. Database-backed Real Device Path
-      if (dbAuthenticator && typeof dbAuthenticator.authenticateDevice === 'function') {
+      const isDbConfigured = Boolean(dbAuthenticator && typeof dbAuthenticator.authenticateDevice === 'function');
+      if (isDbConfigured) {
         const dbResult = await dbAuthenticator.authenticateDevice({ deviceUid: canonicalUid, rawCredential: rawKey });
         if (dbResult.authenticated) {
-          // Verify payload device UID mismatch protection
-          if (payloadDeviceId && payloadDeviceId !== dbResult.deviceUid && payloadDeviceId !== dbResult.deviceId) {
+          // Verify payload device UID mismatch protection (MUST match physical deviceUid)
+          if (payloadDeviceId && payloadDeviceId !== dbResult.deviceUid) {
             return Object.freeze({ authenticated: false, code: 'DEVICE_IDENTITY_MISMATCH' });
           }
+          return dbResult;
+        }
+
+        // DB authentication is authoritative when configured.
+        // DO NOT fall through to legacy auth unless explicit opt-in compatibility flag is enabled.
+        if (!allowLegacyRealAuth) {
           return dbResult;
         }
       }
 
       // 3. Legacy Static Real Device Fallback (Hardware Pilot Fallback)
       if (canonicalUid === 'ESP32-KITCHEN-01') {
-        const expectedRealKey = legacyRealDeviceKey || process.env.GASGUARD_REAL_DEVICE_KEY || null;
-        if (expectedRealKey && rawKey === expectedRealKey) {
+        const expectedRealKey = legacyRealDeviceKey || null;
+        if (expectedRealKey && timingSafeEqualSecret(rawKey, expectedRealKey)) {
           return Object.freeze({
             authenticated: true,
-            deviceId: 'dev-pilot-kitchen-01',
+            databaseDeviceId: 'dev-pilot-kitchen-01',
+            deviceId: 'ESP32-KITCHEN-01',
             deviceUid: 'ESP32-KITCHEN-01',
             siteId: 'site-pilot-01',
             zoneId: 'zone-kitchen-01',
@@ -128,5 +146,6 @@ module.exports = Object.freeze({
   validateRawCredentialFormat,
   hashDeviceCredential,
   createDatabaseDeviceAuthenticator,
-  createDeviceAuthManager
+  createDeviceAuthManager,
+  timingSafeEqualSecret
 });

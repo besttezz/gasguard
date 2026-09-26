@@ -55,12 +55,43 @@ function parseRpcError(resData, status) {
   return new EnrollmentRpcError('INTERNAL_ENROLLMENT_ERROR', 'Internal Supabase RPC error', status);
 }
 
-function createSupabaseDeviceAdapter({ supabaseUrl, serviceRoleKey, fetchClient = null }) {
-  const url = (supabaseUrl || process.env.GASGUARD_SUPABASE_URL || '').replace(/\/+$/, '');
-  const key = serviceRoleKey || process.env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY || '';
+function isValidServerSecret(key) {
+  if (typeof key !== 'string' || !key.trim()) return false;
+  const trimmed = key.trim();
 
-  if (!url || !key) {
-    throw new Error('Supabase URL and service-role key required for device adapter');
+  // Reject obvious publishable / browser keys
+  if (trimmed.startsWith('sb_publishable_')) return false;
+
+  // Modern Supabase secret key format
+  if (trimmed.startsWith('sb_secret_')) return true;
+
+  // JWT validation: decoded role must be exactly 'service_role'
+  try {
+    const parts = trimmed.split('.');
+    if (parts.length === 3) {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+      const payload = JSON.parse(jsonPayload);
+      return Boolean(payload && payload.role === 'service_role');
+    }
+  } catch (_) {
+    return false;
+  }
+
+  return false;
+}
+
+function createSupabaseDeviceAdapter({ supabaseUrl, serviceRoleKey, fetchClient = null }) {
+  const url = (supabaseUrl || '').replace(/\/+$/, '');
+  const key = serviceRoleKey || '';
+
+  if (!url) {
+    throw new Error('Supabase URL required for device adapter');
+  }
+
+  if (!isValidServerSecret(key)) {
+    throw new Error('Valid Supabase service-role key required for device adapter');
   }
 
   async function callRpc(rpcName, payload) {
@@ -136,5 +167,6 @@ function createSupabaseDeviceAdapter({ supabaseUrl, serviceRoleKey, fetchClient 
 module.exports = Object.freeze({
   createSupabaseDeviceAdapter,
   EnrollmentRpcError,
-  parseRpcError
+  parseRpcError,
+  isValidServerSecret
 });

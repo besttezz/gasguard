@@ -10,7 +10,7 @@ const integrationStatus = require('../js/integration-status.js');
 const { publicAuthConfig } = require('../tools/build-static.js');
 const { createDeviceAuthManager, createDatabaseDeviceAuthenticator } = require('./device-auth.js');
 const { createDeviceEnrollmentService } = require('./device-enrollment.js');
-const { createSupabaseDeviceAdapter } = require('./supabase-device-adapter.js');
+const { createSupabaseDeviceAdapter, isValidServerSecret } = require('./supabase-device-adapter.js');
 
 const root = path.resolve(__dirname, '..');
 const contentTypes = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8' };
@@ -24,15 +24,30 @@ function resolveServerConfig(env = process.env) {
 }
 
 function createDevServer({ env = process.env, ingress, enrollmentService: customEnrollmentService, supabaseAdapter: customSupabaseAdapter } = {}) {
-  const hasServiceRoleConfig = Boolean(env.GASGUARD_SUPABASE_URL && env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY);
-  const supabaseAdapter = customSupabaseAdapter || (hasServiceRoleConfig ? createSupabaseDeviceAdapter({ supabaseUrl: env.GASGUARD_SUPABASE_URL, serviceRoleKey: env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY }) : null);
+  const serviceRoleSecret = env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY || null;
+  const isServerSecretValid = isValidServerSecret(serviceRoleSecret);
+  const hasServiceRoleConfig = Boolean(env.GASGUARD_SUPABASE_URL && isServerSecretValid);
+
+  let supabaseAdapter = customSupabaseAdapter || null;
+  if (!supabaseAdapter && hasServiceRoleConfig) {
+    try {
+      supabaseAdapter = createSupabaseDeviceAdapter({
+        supabaseUrl: env.GASGUARD_SUPABASE_URL,
+        serviceRoleKey: serviceRoleSecret
+      });
+    } catch (_) {
+      supabaseAdapter = null;
+    }
+  }
 
   const dbAuthenticator = supabaseAdapter ? createDatabaseDeviceAuthenticator({ verifyCredential: supabaseAdapter.verifyCredential }) : null;
+  const allowLegacyRealAuth = String(env.GASGUARD_ALLOW_LEGACY_REAL_AUTH || '').toLowerCase() === 'true';
 
   const authManager = createDeviceAuthManager({
     dbAuthenticator,
     testDeviceKey: env.GASGUARD_TEST_DEVICE_KEY || null,
-    legacyRealDeviceKey: env.GASGUARD_REAL_DEVICE_KEY || null
+    legacyRealDeviceKey: env.GASGUARD_REAL_DEVICE_KEY || null,
+    allowLegacyRealAuth
   });
 
   const enrollmentService = customEnrollmentService || (supabaseAdapter ? createDeviceEnrollmentService({ claimEnrollment: supabaseAdapter.claimEnrollment, issueToken: supabaseAdapter.issueToken }) : null);
@@ -51,7 +66,7 @@ function createDevServer({ env = process.env, ingress, enrollmentService: custom
 
     if (request.method === 'GET' && url.pathname === '/api/v1/health') {
       const workspaces = { 'hardware-pilot': deviceIngress.status('hardware-pilot'), 'device-test': deviceIngress.status('device-test') };
-      const databaseRealAuthConfigured = Boolean(env.GASGUARD_SUPABASE_URL && env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY && dbAuthenticator);
+      const databaseRealAuthConfigured = Boolean(env.GASGUARD_SUPABASE_URL && isServerSecretValid && dbAuthenticator);
       const legacyRealAuthConfigured = Boolean(env.GASGUARD_REAL_DEVICE_KEY);
       const testAuthConfigured = Boolean(env.GASGUARD_TEST_DEVICE_KEY);
 
