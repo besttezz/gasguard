@@ -12,6 +12,6 @@
     "integration:check": "node tools/integration-preflight.js",
     "integration:verify": "node tools/integration-verify.js",
     "virtual:esp32": "node tools/virtual-esp32.js",
-    "test": "node tests/engine.test.js && node tests/demo-scenarios.test.js && node tests/demo-data.test.js && node tests/navigation.test.js && node tests/auth.test.js && node tests/measurement.test.js && node tests/hardware-lab.test.js && node tests/workspaces.test.js && node tests/device-ingress.test.js && node tests/integration-readiness.test.js && node tests/deployment.test.js && node tests/public-landing.test.js && node tests/core-schema.test.js && node tests/installation-job-schema.test.js && node tests/owner-invitation-schema.test.js"
+    "test": "node tests/engine.test.js && node tests/demo-scenarios.test.js && node tests/demo-data.test.js && node tests/navigation.test.js && node tests/auth.test.js && node tests/measurement.test.js && node tests/hardware-lab.test.js && node tests/workspaces.test.js && node tests/device-ingress.test.js && node tests/integration-readiness.test.js && node tests/deployment.test.js && node tests/public-landing.test.js && node tests/core-schema.test.js && node tests/installation-job-schema.test.js && node tests/owner-invitation-schema.test.js && node tests/esp32-field-readiness.test.js"
   }
 }
