@@ -101,6 +101,7 @@ create policy "installation_jobs_select_technician" on public.installation_jobs
       from public.job_assignments ja
       where ja.job_id = installation_jobs.id
         and ja.technician_user_id = auth.uid()
+        and ja.assignment_status in ('assigned', 'accepted', 'completed')
     )
   );
 

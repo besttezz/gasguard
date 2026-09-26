@@ -40,15 +40,18 @@ assert.ok(/create\s+policy\s+"installation_jobs_select_general"\s+on\s+public\.i
 assert.ok(/role['"]?\s*\)?\s*=\s*'general'/i.test(sql), 'General job SELECT policy must explicitly require role = general');
 assert.ok(/sm\.status\s*=\s*'active'/i.test(sql), 'General job SELECT must check active site membership status');
 
-// 8. Technician job read requires platform role = 'technician' AND explicit job assignment
+// 8. Technician job read requires platform role = 'technician' AND explicit non-cancelled job assignment
 const techJobPolicy = sql.substring(sql.indexOf('policy "installation_jobs_select_technician"'), sql.indexOf('policy "installation_jobs_select_admin"'));
 assert.ok(/role['"]?\s*\)?\s*=\s*'technician'/i.test(techJobPolicy), 'installation_jobs technician policy must explicitly require role = technician');
 assert.ok(/ja\.technician_user_id\s*=\s*auth\.uid\(\)/i.test(techJobPolicy), 'installation_jobs technician policy must require matching job assignment');
+assert.ok(/ja\.assignment_status\s+in\s*\(\s*'assigned'\s*,\s*'accepted'\s*,\s*'completed'\s*\)/i.test(techJobPolicy), 'installation_jobs technician policy must allow assigned, accepted, completed statuses only');
+assert.ok(!/cancelled/i.test(techJobPolicy), 'Cancelled assignment status must NOT grant installation_jobs read access');
 
-// 9. Technician job assignment read requires platform role = 'technician' AND own user_id
+// 9. Technician job assignment read requires platform role = 'technician' AND own user_id (preserves history including cancelled)
 const techAssignmentPolicy = sql.substring(sql.indexOf('policy "job_assignments_select_technician"'), sql.indexOf('policy "job_assignments_select_admin"'));
 assert.ok(/role['"]?\s*\)?\s*=\s*'technician'/i.test(techAssignmentPolicy), 'job_assignments technician policy must explicitly require role = technician');
 assert.ok(/technician_user_id\s*=\s*auth\.uid\(\)/i.test(techAssignmentPolicy), 'job_assignments technician policy must require own technician_user_id');
+assert.ok(!/assignment_status/i.test(techAssignmentPolicy), 'job_assignments technician policy must NOT restrict assignment history by status');
 
 // 10. Admin global SELECT policies exist
 assert.ok(/create\s+policy\s+"installation_jobs_select_admin"\s+on\s+public\.installation_jobs/i.test(sql), 'Admin job SELECT policy must exist');
