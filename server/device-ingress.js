@@ -22,8 +22,28 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     const packet = packetState.get(workspaceId);
     const sensors = Array.from(knownSensors.get(workspaceId) || []);
     const sensorMap = latestMeasurementsBySensorMap.get(workspaceId);
-    const latestMeasurementsBySensor = sensorMap ? Object.fromEntries(sensorMap) : {};
-    const latestMeasurement = sensorMap ? (sensorMap.get('MQ6-01') || sensorMap.values().next().value || null) : null;
+
+    let latestMeasurementsBySensor = {};
+    let latestMeasurement = null;
+
+    if (sensorMap) {
+      const formattedMap = {};
+      for (const [sId, m] of sensorMap.entries()) {
+        const isStale = now() - m.receivedAtMs > staleMs;
+        formattedMap[sId] = Object.freeze({
+          sensorId: m.sensorId,
+          sensorType: m.sensorType,
+          rawAdc: m.rawAdc,
+          sensorVoltage: m.sensorVoltage,
+          inputAdjustedVoltage: m.inputAdjustedVoltage,
+          calibrationStatus: m.calibrationStatus,
+          receivedAt: new Date(m.receivedAtMs).toISOString(),
+          stale: isStale
+        });
+      }
+      latestMeasurementsBySensor = Object.freeze(formattedMap);
+      latestMeasurement = formattedMap['MQ6-01'] || Object.values(formattedMap)[0] || null;
+    }
 
     if (!packet) return { workspaceId, status: 'WAITING_FOR_DEVICE', connection: 'WAITING_FOR_DEVICE', telemetry: 'NO DATA', safety: 'UNKNOWN', gasPpm: null, lastTelemetry: null, ingress: 'READY', packetStatus: 'NO DATA', sensors, latestMeasurement, latestMeasurementsBySensor };
     const stale = now() - packet.receivedAtMs > staleMs;
@@ -53,32 +73,34 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
 
     const result = pipeline.measurement.ingest(payload, pipeline.engine);
 
-    // Record non-secret raw measurement projection by sensor for Hardware Pilot
-    if (payload.raw && typeof payload.raw === 'object') {
-      if (!latestMeasurementsBySensorMap.has(device.workspaceId)) {
-        latestMeasurementsBySensorMap.set(device.workspaceId, new Map());
-      }
-      const sensorId = payload.sensorId || 'MQ6-01';
-      latestMeasurementsBySensorMap.get(device.workspaceId).set(sensorId, Object.freeze({
-        sensorId,
-        sensorType: payload.sensorType || 'MQ6',
-        rawAdc: payload.raw.adc ?? null,
-        sensorVoltage: payload.raw.sensorVoltage ?? null,
-        inputAdjustedVoltage: payload.raw.inputAdjustedVoltage ?? null,
-        calibrationStatus: payload.raw.calibrationStatus ?? (result.code === 'CALIBRATION_REQUIRED' ? 'CALIBRATION_REQUIRED' : 'CALIBRATED')
-      }));
-    }
-
     // Handle Raw-only uncalibrated measurement input (CALIBRATION_REQUIRED)
     if (!result.ok && result.code === 'CALIBRATION_REQUIRED') {
       const rawValidation = pipeline.measurement.validateRaw(payload);
       if (!rawValidation.ok) {
+        // REJECT: ZERO state mutation!
         return response(422, { ok: false, code: rawValidation.code, errors: rawValidation.errors, workspaceId: device.workspaceId, source: device.source });
       }
 
+      // ACCEPTED VALID RAW MEASUREMENT: NOW update observable device state
       const receivedAtMs = now();
       if (!knownSensors.has(device.workspaceId)) knownSensors.set(device.workspaceId, new Set());
       if (payload.sensorId) knownSensors.get(device.workspaceId).add(payload.sensorId);
+
+      if (payload.raw && typeof payload.raw === 'object') {
+        if (!latestMeasurementsBySensorMap.has(device.workspaceId)) {
+          latestMeasurementsBySensorMap.set(device.workspaceId, new Map());
+        }
+        const sensorId = payload.sensorId || 'MQ6-01';
+        latestMeasurementsBySensorMap.get(device.workspaceId).set(sensorId, Object.freeze({
+          sensorId,
+          sensorType: payload.sensorType || 'MQ6',
+          rawAdc: payload.raw.adc ?? null,
+          sensorVoltage: payload.raw.sensorVoltage ?? null,
+          inputAdjustedVoltage: payload.raw.inputAdjustedVoltage ?? null,
+          calibrationStatus: payload.raw.calibrationStatus ?? 'CALIBRATION_REQUIRED',
+          receivedAtMs
+        }));
+      }
 
       const scenario = device.source === 'TEST_DEVICE' ? String(header(headers, 'x-test-scenario') || 'UNSPECIFIED').toUpperCase() : null;
       const requestedClassification = String(header(headers, 'x-gasguard-data-classification') || '').toUpperCase();
@@ -102,13 +124,30 @@ function createDeviceIngress({ registry, credentials, pipelines, staleMs = 15000
     }
 
     if (!result.ok) {
+      // REJECT: ZERO state mutation!
       return response(result.code === 'ENGINE_REJECTED' ? 409 : 422, { ok: false, code: result.code, errors: result.errors || result.engineError || null, workspaceId: device.workspaceId, source: device.source });
     }
 
-    // Calibrated / Upstream Telemetry Ingested
+    // ACCEPTED CALIBRATED / UPSTREAM TELEMETRY
     const analysis = pipeline.engine.analysis, receivedAtMs = now();
     if (!knownSensors.has(device.workspaceId)) knownSensors.set(device.workspaceId, new Set());
     if (payload.sensorId) knownSensors.get(device.workspaceId).add(payload.sensorId);
+
+    if (payload.raw && typeof payload.raw === 'object') {
+      if (!latestMeasurementsBySensorMap.has(device.workspaceId)) {
+        latestMeasurementsBySensorMap.set(device.workspaceId, new Map());
+      }
+      const sensorId = payload.sensorId || 'MQ6-01';
+      latestMeasurementsBySensorMap.get(device.workspaceId).set(sensorId, Object.freeze({
+        sensorId,
+        sensorType: payload.sensorType || 'MQ6',
+        rawAdc: payload.raw.adc ?? null,
+        sensorVoltage: payload.raw.sensorVoltage ?? null,
+        inputAdjustedVoltage: payload.raw.inputAdjustedVoltage ?? null,
+        calibrationStatus: payload.raw.calibrationStatus ?? 'CALIBRATED',
+        receivedAtMs
+      }));
+    }
 
     const scenario = device.source === 'TEST_DEVICE' ? String(header(headers, 'x-test-scenario') || 'UNSPECIFIED').toUpperCase() : null;
     const requestedClassification = String(header(headers, 'x-gasguard-data-classification') || '').toUpperCase();

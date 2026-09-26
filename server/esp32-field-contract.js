@@ -24,39 +24,8 @@ function validateBoardProfile(profile = {}) {
   if (!profile.profileConfirmed) {
     return { ok: false, code: 'CONFIG_ERROR', reason: 'Hardware board profile is UNCONFIRMED' };
   }
-  if (!profile.boardVariant || profile.boardVariant === 'ESP32_GENERIC_UNVERIFIED') {
-    return { ok: false, code: 'CONFIG_ERROR', reason: 'Unverified board variant specified' };
-  }
-  if (!profile.sensors || typeof profile.sensors !== 'object') {
-    return { ok: false, code: 'CONFIG_ERROR', reason: 'Sensors configuration missing' };
-  }
-
-  const mq6 = profile.sensors.mq6;
-  if (!mq6 || typeof mq6 !== 'object' || !mq6.enabled) {
-    return { ok: false, code: 'CONFIG_ERROR', reason: 'MQ-6 sensor configuration missing or disabled' };
-  }
-  if (mq6.inputScale == null || mq6.inputScale <= 0) {
-    return { ok: false, code: 'CONFIG_ERROR', reason: 'Confirmed profile requires positive inputScale' };
-  }
-
-  // Board profile pin boundary check (not merely numeric pin range)
-  if (profile.boardVariant === 'ESP32_WROOM32_BENCH_V1') {
-    const validPins = [32, 33, 34, 35, 36, 39];
-    if (!validPins.includes(mq6.pin)) {
-      return { ok: false, code: 'CONFIG_ERROR', reason: `Pin ${mq6.pin} is not valid for board ${profile.boardVariant}` };
-    }
-  } else {
-    return { ok: false, code: 'CONFIG_ERROR', reason: `Unsupported board variant ${profile.boardVariant}` };
-  }
-
-  if (profile.sensors.mq3 && profile.sensors.mq3.enabled) {
-    const mq3 = profile.sensors.mq3;
-    if (mq3.pin == null || mq3.pin === mq6.pin || mq3.inputScale == null || mq3.inputScale <= 0) {
-      return { ok: false, code: 'CONFIG_ERROR', reason: 'MQ-3 channel requires positive confirmed inputScale and distinct valid pin' };
-    }
-  }
-
-  return { ok: true, code: 'VALID' };
+  // Physical board model has not been confirmed on bench
+  return { ok: false, code: 'CONFIG_ERROR', reason: 'Physical ESP32 board model and pinout have not been confirmed' };
 }
 
 function createSensorDescriptor({ sensorId, sensorType, role, pin, adcAttenuation = 'ADC_11db', inputScale = null, enabled = true, profileConfirmed = false }) {
@@ -72,10 +41,14 @@ function createSensorDescriptor({ sensorId, sensorType, role, pin, adcAttenuatio
 }
 
 function processUncalibratedReading(descriptor, rawAdc, pinMilliVolts = null) {
-  if (rawAdc < 0 || rawAdc > 4095) throw new Error(`Raw ADC out of bounds: ${rawAdc}`);
+  if (!Number.isInteger(rawAdc) || rawAdc < 0 || rawAdc > 4095) throw new Error(`Raw ADC out of bounds: ${rawAdc}`);
   
-  const sensorVoltage = pinMilliVolts != null ? pinMilliVolts / 1000.0 : (rawAdc / 4095.0) * 3.3;
-  const inputAdjustedVoltage = (descriptor.inputScale != null && descriptor.inputScale > 0)
+  // Rule: NEVER synthesize calibrated voltage from raw ADC. Explicit pinMilliVolts required.
+  const sensorVoltage = (pinMilliVolts != null && Number.isFinite(pinMilliVolts) && pinMilliVolts >= 0)
+    ? Number((pinMilliVolts / 1000.0).toFixed(3))
+    : null;
+
+  const inputAdjustedVoltage = (sensorVoltage != null && descriptor.inputScale != null && descriptor.inputScale > 0)
     ? Number((sensorVoltage * descriptor.inputScale).toFixed(3))
     : null;
 
@@ -84,7 +57,7 @@ function processUncalibratedReading(descriptor, rawAdc, pinMilliVolts = null) {
     sensorType: descriptor.sensorType,
     role: descriptor.role,
     rawAdc,
-    sensorVoltage: Number(sensorVoltage.toFixed(3)),
+    sensorVoltage,
     inputAdjustedVoltage,
     calibrationStatus: 'CALIBRATION_REQUIRED',
     calibratedPpm: null,

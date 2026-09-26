@@ -24,6 +24,7 @@ extern SensorDescriptor g_mq6Sensor;
 extern SensorDescriptor g_mq3Sensor;
 
 void initSensorChannels();
+bool isConfiguredBoardPinAllowed(const char* boardVariant, uint8_t pin);
 bool validateSensorConfig(const SensorDescriptor& desc);
 bool validateBoardProfile();
 

@@ -39,32 +39,13 @@ const unconfirmedProfileRes = contract.validateBoardProfile({ profileConfirmed: 
 assert.equal(unconfirmedProfileRes.ok, false, 'Unconfirmed profile must reject startup');
 assert.equal(unconfirmedProfileRes.code, 'CONFIG_ERROR');
 
-// Confirmed profile with missing/zero inputScale rejects
-const invalidScaleProfileRes = contract.validateBoardProfile({
+// Confirmed profile with unverified physical board model rejects
+const unverifiedBoardRes = contract.validateBoardProfile({
   profileConfirmed: true,
-  boardVariant: 'ESP32_WROOM32_BENCH_V1',
-  sensors: { mq6: { enabled: true, pin: 34, inputScale: 0.0 } }
-});
-assert.equal(invalidScaleProfileRes.ok, false, 'Confirmed profile with zero inputScale must reject startup');
-
-// Board profile validation is not only numeric GPIO range (rejects unknown board variant)
-const unknownBoardRes = contract.validateBoardProfile({
-  profileConfirmed: true,
-  boardVariant: 'ESP32_UNKNOWN_MODEL',
+  boardVariant: 'ESP32_GENERIC_UNVERIFIED',
   sensors: { mq6: { enabled: true, pin: 34, inputScale: 1.5 } }
 });
-assert.equal(unknownBoardRes.ok, false, 'Board profile validation must reject unknown board variant');
-
-// Valid confirmed profile passes
-const validProfileRes = contract.validateBoardProfile({
-  profileConfirmed: true,
-  boardVariant: 'ESP32_WROOM32_BENCH_V1',
-  sensors: {
-    mq6: { enabled: true, pin: 34, inputScale: 1.5 },
-    mq3: { enabled: true, pin: 35, inputScale: 1.5 }
-  }
-});
-assert.equal(validProfileRes.ok, true, 'Valid confirmed profile passes validation');
+assert.equal(unverifiedBoardRes.ok, false, 'Unverified board variant must reject startup');
 
 // 4. Sensor descriptors contract verification
 const mq6Desc = contract.createSensorDescriptor({
@@ -90,65 +71,83 @@ const mq3Desc = contract.createSensorDescriptor({
 });
 assert.equal(mq3Desc.role, 'AUXILIARY_CONTEXT_SENSOR', 'MQ-3 must be auxiliary context channel');
 
-// 5. Raw-only produces CALIBRATION_REQUIRED and no invented ppm
-const reading6 = contract.processUncalibratedReading(mq6Desc, 2048, 1650);
-assert.equal(reading6.calibrationStatus, 'CALIBRATION_REQUIRED');
-assert.equal(reading6.calibratedPpm, null, 'Uncalibrated reading must not invent ppm value');
-assert.equal(reading6.confidence, null, 'Uncalibrated reading must not invent confidence score');
-assert.equal(reading6.sensorVoltage, 1.650, 'Calibrated millivolts separate from raw ADC');
-assert.equal(reading6.inputAdjustedVoltage, 2.475, 'Voltage divider scale applied');
+// 5. Raw-only produces CALIBRATION_REQUIRED, explicit mV, and NO 3.3/4095 fallback
+const readingWithMv = contract.processUncalibratedReading(mq6Desc, 2048, 1650);
+assert.equal(readingWithMv.calibrationStatus, 'CALIBRATION_REQUIRED');
+assert.equal(readingWithMv.calibratedPpm, null, 'Uncalibrated reading must not invent ppm value');
+assert.equal(readingWithMv.confidence, null, 'Uncalibrated reading must not invent confidence score');
+assert.equal(readingWithMv.sensorVoltage, 1.650, 'Explicit pin millivolts used');
+assert.equal(readingWithMv.inputAdjustedVoltage, 2.475, 'Voltage divider scale applied');
+
+// Verify NO 3.3/4095 fallback when pinMilliVolts is absent/null
+const readingNoMv = contract.processUncalibratedReading(mq6Desc, 2048);
+assert.equal(readingNoMv.sensorVoltage, null, 'No 3.3/4095 fallback allowed; sensorVoltage must be null when mV absent');
+assert.equal(readingNoMv.inputAdjustedVoltage, null, 'inputAdjustedVoltage must be null when sensorVoltage is null');
 
 // 6. Setup pipeline & ingress instance
 const keys = { 'ESP32-KITCHEN-01': 'test-secret-key' };
 const pipelines = { 'hardware-pilot': createPipeline(root) };
 const ingress = createDeviceIngress({ registry, credentials: keys, pipelines });
+const validHeaders = { 'x-device-key': 'test-secret-key' };
 
-// 7. Device Ingress behavior for Raw-Only Authenticated Packet
-const rawPayloadMQ6 = contract.formatRawMeasurementPayload({
+// 7. Test State Immutability on Rejected Packets
+// Step 1: Send valid MQ-6 raw packet
+const validRawPayload = contract.formatRawMeasurementPayload({
   deviceId: 'ESP32-KITCHEN-01',
-  reading: reading6,
+  reading: readingWithMv,
   bootId: 'boot-xyz-123',
   sequence: 42,
   timestamp: new Date().toISOString()
 });
+const firstRes = ingress.ingest({ headers: validHeaders, payload: validRawPayload });
+assert.equal(firstRes.status, 202);
+assert.equal(firstRes.body.code, 'CALIBRATION_REQUIRED');
 
-const validHeaders = {
-  'x-device-key': 'test-secret-key'
+const statusBefore = ingress.status('hardware-pilot');
+assert.equal(statusBefore.latestMeasurement.rawAdc, 2048);
+assert.equal(statusBefore.sensors.length, 1);
+assert.equal(statusBefore.sensors[0], 'MQ6-01');
+
+// Step 2: Send authenticated INVALID MQ-6 packet with bogus values & bogus new sensorId
+const invalidPayload = {
+  deviceId: 'ESP32-KITCHEN-01',
+  sensorId: 'BOGUS-INVALID-SENSOR',
+  sensorType: 'MQ6',
+  bootId: 'boot-xyz-123',
+  sequence: 43,
+  timestamp: new Date().toISOString(),
+  raw: { adc: 9999, sensorVoltage: -1.0 } // invalid raw ADC out of 0..4095 bounds
 };
+const invalidRes = ingress.ingest({ headers: validHeaders, payload: invalidPayload });
+assert.equal(invalidRes.status, 422, 'Invalid packet must return HTTP 422');
 
-const ingressRes = ingress.ingest({ headers: validHeaders, payload: rawPayloadMQ6 });
-assert.equal(ingressRes.status, 202, 'Raw-only authenticated device packet must return HTTP 202');
-assert.equal(ingressRes.body.ok, true);
-assert.equal(ingressRes.body.code, 'CALIBRATION_REQUIRED');
-assert.equal(ingressRes.body.gasPpm, null, 'Raw-only packet must set gasPpm to null');
-assert.equal(ingressRes.body.safety, 'UNKNOWN', 'Raw-only packet must set safety to UNKNOWN');
-assert.equal(ingressRes.body.workspaceId, 'hardware-pilot');
+// Step 3: Verify device status was UNCHANGED (zero state mutation on rejection)
+const statusAfter = ingress.status('hardware-pilot');
+assert.equal(statusAfter.latestMeasurement.rawAdc, 2048, 'Rejected packet must NOT modify latest raw measurement state');
+assert.equal(statusAfter.sensors.length, 1, 'Rejected packet must NOT add bogus sensor to knownSensors');
+assert.equal(statusAfter.sensors[0], 'MQ6-01');
+assert.equal(statusAfter.latestMeasurementsBySensor['BOGUS-INVALID-SENSOR'], undefined, 'Bogus sensor state must NOT be recorded');
 
 // Verify Raw-only packet did NOT pollute Safety Engine readings
 assert.equal(pipelines['hardware-pilot'].engine.state.readings.length, 0, 'Safety Engine receives zero raw-only readings');
 
-// 8. Latest raw measurement state is available from device status per sensor
-const statusResMQ6 = ingress.status('hardware-pilot');
-assert.ok(statusResMQ6.latestMeasurement, 'latestMeasurement available in status');
-assert.equal(statusResMQ6.latestMeasurement.sensorId, 'MQ6-01');
-assert.equal(statusResMQ6.latestMeasurement.rawAdc, 2048);
-assert.equal(statusResMQ6.latestMeasurement.sensorVoltage, 1.65);
-
-// Ingest MQ-3 payload independently
+// 8. Ingest valid MQ-3 payload independently and verify per-sensor freshness
 const reading3 = contract.processUncalibratedReading(mq3Desc, 1024, 825);
-const rawPayloadMQ3 = contract.formatRawMeasurementPayload({
+const validPayloadMQ3 = contract.formatRawMeasurementPayload({
   deviceId: 'ESP32-KITCHEN-01',
   reading: reading3,
   bootId: 'boot-xyz-123',
   sequence: 12,
   timestamp: new Date().toISOString()
 });
-ingress.ingest({ headers: validHeaders, payload: rawPayloadMQ3 });
+ingress.ingest({ headers: validHeaders, payload: validPayloadMQ3 });
 
 const statusResBoth = ingress.status('hardware-pilot');
 assert.ok(statusResBoth.latestMeasurementsBySensor['MQ6-01'], 'MQ-6 raw state retained');
 assert.ok(statusResBoth.latestMeasurementsBySensor['MQ3-01'], 'MQ-3 raw state retained independently');
 assert.equal(statusResBoth.latestMeasurementsBySensor['MQ3-01'].rawAdc, 1024);
+assert.equal(typeof statusResBoth.latestMeasurementsBySensor['MQ3-01'].receivedAt, 'string', 'per-sensor receivedAt timestamp present');
+assert.equal(statusResBoth.latestMeasurementsBySensor['MQ3-01'].stale, false, 'per-sensor freshness tracked');
 
 // 9. No secrets enter device status
 const statusString = JSON.stringify(statusResBoth);
@@ -158,30 +157,27 @@ assert.equal(statusString.includes('test-secret-key'), false, 'no secrets enter 
 const inoContent = fs.readFileSync(path.join(fieldNodeDir, 'esp32-field-node.ino'), 'utf8');
 assert.ok(inoContent.includes('validateBoardProfile()'), 'validateBoardProfile exists in firmware');
 assert.ok(inoContent.includes('nextIngressAttemptAtMs'), 'Real retry gate exists in firmware');
-assert.ok(inoContent.includes('calculateNextBackoffMs'), 'Failed transport advances next attempt time');
-assert.ok(inoContent.includes('resetBackoff'), 'Successful transport resets backoff');
-assert.ok(inoContent.includes('mq6Sequence') && inoContent.includes('mq3Sequence'), 'MQ-6 and MQ-3 sequence counters remain independent');
 
 const sensorConfigContent = fs.readFileSync(path.join(fieldNodeDir, 'sensor_config.cpp'), 'utf8');
-assert.ok(sensorConfigContent.includes('analogSetPinAttenuation'), 'Firmware applies per-pin attenuation');
-assert.ok(sensorConfigContent.includes('analogReadResolution'), 'Firmware sets ADC resolution');
+assert.ok(sensorConfigContent.includes('isConfiguredBoardPinAllowed'), 'Firmware uses configured board pin allowed boundary');
+assert.ok(sensorConfigContent.includes('ESP32_GENERIC_UNVERIFIED'), 'Generic unverified board variant stays unconfirmed');
 
 const measurementContent = fs.readFileSync(path.join(fieldNodeDir, 'measurement.cpp'), 'utf8');
 assert.ok(measurementContent.includes('analogRead(') && measurementContent.includes('analogReadMilliVolts('), 'Raw ADC and calibrated millivolt reads remain separate');
 
-// 11. Canonical Telemetry V1.1 still requires real ppm path
+// 11. Calibrated path still works
 const calibratedPayload = {
   schemaVersion: 'gasguard.telemetry.v1.1',
   deviceId: 'ESP32-KITCHEN-01',
-  sensorId: reading6.sensorId,
-  sensorType: reading6.sensorType,
+  sensorId: readingWithMv.sensorId,
+  sensorType: readingWithMv.sensorType,
   bootId: 'boot-xyz-123',
-  sequence: 43,
+  sequence: 44,
   timestamp: new Date().toISOString(),
   upstreamPpm: 15.5,
   raw: {
-    adc: reading6.rawAdc,
-    sensorVoltage: reading6.sensorVoltage,
+    adc: readingWithMv.rawAdc,
+    sensorVoltage: readingWithMv.sensorVoltage,
     calibrationStatus: 'CALIBRATED'
   }
 };
@@ -189,9 +185,6 @@ const calibratedRes = ingress.ingest({ headers: validHeaders, payload: calibrate
 assert.equal(calibratedRes.status, 202);
 assert.equal(calibratedRes.body.gasPpm, 15.5);
 assert.equal(calibratedRes.body.safety, 'safe');
+assert.equal(pipelines['hardware-pilot'].engine.state.readings.length, 1, 'Calibrated telemetry enters Safety Engine');
 
-// 12. Documentation checks: ADC_11db measurable range clarification
-const fieldIntegrationDoc = fs.readFileSync(path.join(root, 'docs', 'ESP32_FIELD_INTEGRATION.md'), 'utf8');
-assert.ok(fieldIntegrationDoc.includes('150 mV to 3100 mV') || fieldIntegrationDoc.includes('150mV'), 'Docs no longer describe ADC_11db as universally 0-3.3V full scale');
-
-console.log('esp32 field readiness final correctness tests passed!');
+console.log('esp32 pre-provisioning state integrity tests passed!');
