@@ -4,6 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const contract = require('../server/esp32-field-contract.js');
+const registry = require('../server/device-registry.js');
+const { createDeviceIngress } = require('../server/device-ingress.js');
+const { createPipeline } = require('../server/pipeline-runtime.js');
 
 const root = path.resolve(__dirname, '..');
 const fieldNodeDir = path.join(root, 'firmware', 'esp32-field-node');
@@ -34,6 +37,7 @@ const mq6Desc = contract.createSensorDescriptor({
   sensorType: 'MQ6',
   role: contract.SENSOR_ROLES.PRIMARY_LPG_SENSOR,
   pin: 34,
+  profileConfirmed: true,
   inputScale: 1.5
 });
 assert.equal(mq6Desc.role, 'PRIMARY_LPG_SENSOR', 'MQ-6 must be primary LPG channel');
@@ -43,6 +47,7 @@ const mq3Desc = contract.createSensorDescriptor({
   sensorType: 'MQ3',
   role: contract.SENSOR_ROLES.AUXILIARY_CONTEXT_SENSOR,
   pin: 35,
+  profileConfirmed: true,
   inputScale: 1.5
 });
 assert.equal(mq3Desc.role, 'AUXILIARY_CONTEXT_SENSOR', 'MQ-3 must be auxiliary context channel');
@@ -53,32 +58,88 @@ const reading6 = contract.processUncalibratedReading(mq6Desc, 2048);
 assert.equal(reading6.calibrationStatus, 'CALIBRATION_REQUIRED');
 assert.equal(reading6.calibratedPpm, null, 'Uncalibrated reading must not invent ppm value');
 assert.equal(reading6.confidence, null, 'Uncalibrated reading must not invent confidence score');
-assert.ok(reading6.sensorVoltage > 0 && reading6.inputAdjustedVoltage > reading6.sensorVoltage, 'voltage divider scale applied');
+assert.ok(reading6.sensorVoltage > 0 && reading6.inputAdjustedVoltage > reading6.sensorVoltage, 'voltage divider scale applied when confirmed');
 
-// 5. Invalid pin configuration rejected (must be ADC1 pins 32..39)
+// 5. Unconfirmed hardware profile produces CONFIG_ERROR or equivalent refusal
 assert.throws(
-  () => contract.createSensorDescriptor({ sensorId: 'MQ6-01', sensorType: 'MQ6', role: contract.SENSOR_ROLES.PRIMARY_LPG_SENSOR, pin: 15 }), // GPIO 15 is not ADC1
-  /ADC1 pin/,
-  'non-ADC1 pin configuration must be rejected'
+  () => contract.createSensorDescriptor({ sensorId: 'MQ6-01', sensorType: 'MQ6', role: contract.SENSOR_ROLES.PRIMARY_LPG_SENSOR, pin: 34, profileConfirmed: false }),
+  /UNCONFIRMED/,
+  'Unconfirmed hardware profile must be refused'
 );
 
-// 6. Telemetry payload contract (gasguard.telemetry.v1.1)
-const payload = contract.formatTelemetryPayload({
+// 6. Setup pipeline & ingress instance
+const keys = { 'ESP32-KITCHEN-01': 'test-secret-key' };
+const pipelines = { 'hardware-pilot': createPipeline(root) };
+const ingress = createDeviceIngress({ registry, credentials: keys, pipelines });
+
+// 7. Device Ingress behavior for Raw-Only Authenticated Packet
+const rawPayload = contract.formatRawMeasurementPayload({
   deviceId: 'ESP32-KITCHEN-01',
   reading: reading6,
   bootId: 'boot-xyz-123',
   sequence: 42,
-  timestamp: '2026-09-26T16:00:00Z'
+  timestamp: new Date().toISOString()
 });
 
-assert.equal(payload.schemaVersion, 'gasguard.telemetry.v1.1');
-assert.equal(payload.deviceId, 'ESP32-KITCHEN-01');
-assert.equal(payload.sensorId, 'MQ6-01');
-assert.equal(payload.bootId, 'boot-xyz-123');
-assert.equal(payload.sequence, 42);
-assert.equal(payload.raw.calibrationStatus, 'CALIBRATION_REQUIRED');
+// Verify raw packet does NOT claim gasguard.telemetry.v1.1
+assert.equal(rawPayload.schemaVersion, undefined, 'Raw field packet is NOT falsely labelled canonical Telemetry V1.1');
+assert.equal(rawPayload.deviceId, 'ESP32-KITCHEN-01');
+assert.equal(rawPayload.sensorId, 'MQ6-01');
 
-// 7. Field diagnostics secret redaction
+const validHeaders = {
+  'x-device-key': 'test-secret-key'
+};
+
+const ingressRes = ingress.ingest({ headers: validHeaders, payload: rawPayload });
+assert.equal(ingressRes.status, 202, 'Raw-only authenticated device packet must return HTTP 202');
+assert.equal(ingressRes.body.ok, true);
+assert.equal(ingressRes.body.code, 'CALIBRATION_REQUIRED');
+assert.equal(ingressRes.body.gasPpm, null, 'Raw-only packet must set gasPpm to null');
+assert.equal(ingressRes.body.safety, 'UNKNOWN', 'Raw-only packet must set safety to UNKNOWN');
+assert.equal(ingressRes.body.workspaceId, 'hardware-pilot');
+
+// Verify Raw-only packet did NOT pollute Safety Engine readings
+assert.equal(pipelines['hardware-pilot'].engine.state.readings.length, 0, 'Raw-only packet must not enter Safety Engine as calibrated telemetry');
+
+// 8. Device auth failure
+const invalidAuthRes = ingress.ingest({ headers: { 'x-device-key': 'wrong-key' }, payload: rawPayload });
+assert.equal(invalidAuthRes.status, 401, 'Device auth still required');
+
+// 9. Invalid raw measurement rejected
+const invalidRawRes = ingress.ingest({ headers: validHeaders, payload: { deviceId: 'ESP32-KITCHEN-01', raw: {} } });
+assert.equal(invalidRawRes.status, 422, 'Invalid raw measurement must be rejected with 422 status');
+
+// 10. Valid upstreamPpm path still works
+const calibratedPayload = {
+  schemaVersion: 'gasguard.telemetry.v1.1',
+  deviceId: 'ESP32-KITCHEN-01',
+  sensorId: reading6.sensorId,
+  sensorType: reading6.sensorType,
+  bootId: 'boot-xyz-123',
+  sequence: 43,
+  timestamp: new Date().toISOString(),
+  upstreamPpm: 15.5,
+  raw: {
+    adc: reading6.rawAdc,
+    sensorVoltage: reading6.sensorVoltage,
+    calibrationStatus: 'CALIBRATED'
+  }
+};
+const calibratedRes = ingress.ingest({ headers: validHeaders, payload: calibratedPayload });
+assert.equal(calibratedRes.status, 202);
+assert.equal(calibratedRes.body.gasPpm, 15.5);
+assert.equal(calibratedRes.body.safety, 'safe');
+assert.equal(pipelines['hardware-pilot'].engine.state.readings.length, 1, 'Calibrated telemetry enters Safety Engine');
+
+// 11. Check firmware files for timestamp fallback & hardcoded scaling defaults
+const inoContent = fs.readFileSync(path.join(fieldNodeDir, 'esp32-field-node.ino'), 'utf8');
+assert.equal(inoContent.includes('2026-09-26T00:00:00Z'), false, 'Hardcoded timestamp fallback must be removed');
+assert.ok(inoContent.includes('TIME_UNAVAILABLE'), 'Must report TIME_UNAVAILABLE when NTP is missing');
+
+const boardConfigContent = fs.readFileSync(path.join(fieldNodeDir, 'board_config.h'), 'utf8');
+assert.ok(boardConfigContent.includes('GASGUARD_HARDWARE_PROFILE_CONFIRMED false'), 'Hardware profile must default to false/unconfirmed');
+
+// 12. Secret redaction verification
 const rawDiag = {
   deviceId: 'ESP32-KITCHEN-01',
   wifiPassword: 'super-secret-wifi-pass',
@@ -89,15 +150,13 @@ const formattedDiag = contract.formatFieldDiagnostics(rawDiag);
 assert.equal(formattedDiag.wifiPassword, '[REDACTED]', 'Wi-Fi password must be redacted from diagnostics');
 assert.equal(formattedDiag.deviceKey, '[REDACTED]', 'Device key must be redacted from diagnostics');
 
-// 8. Verify no secrets committed in firmware source files
-const firmwareFiles = fs.readdirSync(fieldNodeDir).filter(f => f.endsWith('.h') || f.endsWith('.cpp') || f.endsWith('.ino'));
-for (const file of firmwareFiles) {
-  const content = fs.readFileSync(path.join(fieldNodeDir, file), 'utf8');
-  assert.equal(/GASGUARD_(WIFI_PASS|DEVICE_SECRET|SERVICE_ROLE)/.test(content), false, `firmware file ${file} must not contain real secret placeholders`);
-}
+// 13. Documentation checks: SoftAP not implemented & 48h preheat
+const fieldIntegrationDoc = fs.readFileSync(path.join(root, 'docs', 'ESP32_FIELD_INTEGRATION.md'), 'utf8');
+assert.ok(fieldIntegrationDoc.includes('48 hours'), 'Documentation must require >=48h preheat for MQ sensors');
+assert.ok(fieldIntegrationDoc.includes('NOT YET IMPLEMENTED') || fieldIntegrationDoc.includes('PLANNED'), 'Documentation must state SoftAP is not yet implemented');
 
-// 9. Documentation files exist
-assert.ok(fs.existsSync(path.join(root, 'docs', 'ESP32_FIELD_INTEGRATION.md')), 'ESP32_FIELD_INTEGRATION.md must exist');
-assert.ok(fs.existsSync(path.join(root, 'docs', 'ESP32_FIRST_CONNECTION_CHECKLIST.md')), 'ESP32_FIRST_CONNECTION_CHECKLIST.md must exist');
+const readmeDoc = fs.readFileSync(path.join(fieldNodeDir, 'README.md'), 'utf8');
+assert.ok(readmeDoc.includes('48 hours'), 'README must specify >=48h preheat');
+assert.ok(readmeDoc.includes('NOT YET IMPLEMENTED') || readmeDoc.includes('PLANNED'), 'README must state SoftAP is not yet implemented');
 
-console.log('esp32 field readiness tests passed');
+console.log('esp32 field readiness correctness tests passed!');

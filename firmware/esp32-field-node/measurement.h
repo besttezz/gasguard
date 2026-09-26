@@ -11,6 +11,7 @@ struct MeasurementReading {
     uint16_t rawAdc;
     float sensorVoltage;
     float inputAdjustedVoltage;
+    bool hasInputScale;
     const char* calibrationStatus; // "CALIBRATION_REQUIRED"
     bool isValid;
 };

@@ -1,6 +1,6 @@
 #include "telemetry.h"
 
-String buildTelemetryPayload(
+String buildRawMeasurementPayload(
     const char* deviceId,
     const MeasurementReading& reading,
     const String& bootId,
@@ -8,7 +8,6 @@ String buildTelemetryPayload(
     const String& timestampIso
 ) {
     String json = "{";
-    json += "\"schemaVersion\":\"gasguard.telemetry.v1.1\",";
     json += "\"deviceId\":\"" + String(deviceId) + "\",";
     json += "\"sensorId\":\"" + String(reading.sensorId) + "\",";
     json += "\"sensorType\":\"" + String(reading.sensorType) + "\",";
@@ -18,7 +17,11 @@ String buildTelemetryPayload(
     json += "\"raw\":{";
     json += "\"adc\":" + String(reading.rawAdc) + ",";
     json += "\"sensorVoltage\":" + String(reading.sensorVoltage, 3) + ",";
-    json += "\"inputAdjustedVoltage\":" + String(reading.inputAdjustedVoltage, 3) + ",";
+    if (reading.hasInputScale) {
+        json += "\"inputAdjustedVoltage\":" + String(reading.inputAdjustedVoltage, 3) + ",";
+    } else {
+        json += "\"inputAdjustedVoltage\":null,";
+    }
     json += "\"calibrationStatus\":\"" + String(reading.calibrationStatus) + "\"";
     json += "}";
     json += "}";

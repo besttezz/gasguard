@@ -10,14 +10,17 @@ struct FieldDiagnostics {
     String bootId;
     const char* firmwareVersion;
     NodeState currentState;
+    bool profileConfirmed;
     bool wifiConnected;
     int32_t rssi;
     String ipAddress;
     bool ingressReachable;
     int lastHttpStatus;
+    const char* softApStatus;
     MeasurementReading mq6Reading;
     MeasurementReading mq3Reading;
-    uint32_t sequence;
+    uint32_t mq6Sequence;
+    uint32_t mq3Sequence;
     uint32_t uptimeMs;
 };
 

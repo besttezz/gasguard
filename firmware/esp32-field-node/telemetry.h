@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include "measurement.h"
 
-String buildTelemetryPayload(
+// Builds raw measurement packet for pre-telemetry ingress
+String buildRawMeasurementPayload(
     const char* deviceId,
     const MeasurementReading& reading,
     const String& bootId,

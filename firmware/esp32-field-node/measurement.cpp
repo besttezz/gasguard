@@ -8,6 +8,7 @@ MeasurementReading sampleSensorChannel(const SensorDescriptor& desc) {
     m.role = desc.role;
     m.calibrationStatus = "CALIBRATION_REQUIRED";
     m.isValid = false;
+    m.hasInputScale = false;
 
     if (!desc.enabled) {
         m.rawAdc = 0;
@@ -16,14 +17,21 @@ MeasurementReading sampleSensorChannel(const SensorDescriptor& desc) {
         return m;
     }
 
-    // Read 12-bit ADC (0..4095)
+    // Read 12-bit ADC raw integer
     m.rawAdc = (uint16_t)analogRead(desc.pin);
     
-    // Calibrated pin voltage (0 to 3.3V)
-    m.sensorVoltage = ((float)m.rawAdc / 4095.0f) * 3.3f;
+    // Platform calibrated pin voltage in millivolts
+    uint32_t mV = analogReadMilliVolts(desc.pin);
+    m.sensorVoltage = (float)mV / 1000.0f;
     
-    // External divider corrected AO voltage
-    m.inputAdjustedVoltage = m.sensorVoltage * desc.inputScale;
+    // External divider corrected AO voltage (only if inputScale > 0)
+    if (desc.inputScale > 0.0f) {
+        m.inputAdjustedVoltage = m.sensorVoltage * desc.inputScale;
+        m.hasInputScale = true;
+    } else {
+        m.inputAdjustedVoltage = 0.0f;
+        m.hasInputScale = false;
+    }
     
     m.isValid = true;
     return m;

@@ -16,9 +16,9 @@ struct SensorDescriptor {
     uint8_t adcAttenuation;
     float inputScale;
     bool enabled;
+    bool profileConfirmed;
 };
 
-// Configured Sensor Channels (MQ-6 Primary, MQ-3 Auxiliary)
 extern SensorDescriptor g_mq6Sensor;
 extern SensorDescriptor g_mq3Sensor;
 
