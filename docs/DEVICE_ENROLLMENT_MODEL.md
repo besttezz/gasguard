@@ -95,9 +95,39 @@ $$\text{Wi-Fi Password} \neq \text{Provisioning PoP} \neq \text{Enrollment Token
 
 ## 7. Development Status & Maturity
 
-- **STORAGE SCHEMA**: `IMPLEMENTED IN SOURCE (MIGRATION CREATED)`
-- **REMOTE DATABASE**: `NOT APPLIED TO REMOTE DATABASE (READ-ONLY SAFETY)`
-- **TOKEN ISSUANCE**: `NOT IMPLEMENTED (HW-3B BOUNDARY)`
-- **ATOMIC CLAIM RPC**: `NOT IMPLEMENTED (HW-3B BOUNDARY)`
+- **STORAGE SCHEMA**: `APPLIED TO REMOTE DATABASE (HW-3A)`
+- **TOKEN ISSUANCE RPC**: `IMPLEMENTED IN SOURCE (MIGRATION 20260926213000)`
+- **ATOMIC CLAIM RPC**: `IMPLEMENTED IN SOURCE (MIGRATION 20260926213000)`
+- **WORKFLOW MIGRATION REMOTE**: `NOT APPLIED TO REMOTE DATABASE (HW-3B SOURCE CHECKPOINT)`
 - **FIRMWARE NVS CREDENTIAL**: `NOT IMPLEMENTED (HW-3C BOUNDARY)`
 - **PHYSICAL HARDWARE**: `NOT PHYSICALLY TESTED`
+
+---
+
+## 8. HW-3B Controlled Workflow Specification
+
+### 8.1 Token Issuance (`public.issue_device_enrollment_token`)
+- **Caller Authorization**: Authenticated `technician` assigned to the installation job (`assigned` / `accepted` status) or global `admin`. `general` and `developer` roles are rejected (`UNAUTHORIZED`).
+- **Eligibility**:
+  - `device.lifecycle_status` MUST be `registered`.
+  - `installation_job.job_type` MUST be `installation`.
+  - `installation_job.status` MUST be `scheduled` or `in_progress`.
+  - `device.site_id` MUST equal `installation_job.site_id` (Strict Site Binding).
+- **Concurrency & Serialization**: Row lock on `public.devices` (`FOR UPDATE`). Automatically revokes any existing `pending` tokens for the device before inserting a new 15-minute token (`status = 'revoked'`).
+- **One-Time Raw Return**: Returns raw 64 hex character token ONCE. Raw token is never stored in DB; only `SHA-256` hash is persisted.
+
+### 8.2 Atomic Claim (`public.claim_device_enrollment`)
+- **Execution Boundary**: Server-only RPC executable ONLY by `service_role`. Execution revoked from `PUBLIC`, `anon`, and `authenticated`. Physical ESP32 devices connect via trusted server HTTP endpoints and NEVER receive database keys.
+- **Atomic Transaction Steps**:
+  1. Computes `SHA-256` of incoming raw enrollment token.
+  2. Row locks matching `private.device_enrollment_tokens` record (`FOR UPDATE`).
+  3. Verifies token status (`pending`) and expiry (`expires_at > now()`). Expired tokens are marked `expired`.
+  4. Verifies optional `expected_device_uid` against `public.devices.device_uid`.
+  5. Verifies device lifecycle (`registered`), job status, and strict site binding.
+  6. Verifies no active credential exists for the device.
+  7. Generates cryptographically secure 256-bit raw device credential (64 hex characters) and computes `SHA-256`.
+  8. Inserts `private.device_credentials` (`status = 'active'`).
+  9. Updates `private.device_enrollment_tokens` (`status = 'claimed'`, `claimed_at = now()`).
+  10. Transitions `public.devices` (`lifecycle_status = 'commissioning'`).
+  11. Returns raw device credential ONCE.
+- **Race Protection & Response-Loss Limitation**: Concurrent claim attempts against the same token fail cleanly. A claimed token cannot be re-claimed. Because raw credentials are never stored, a lost response cannot be replayed; re-enrollment requires explicit future credential revocation/re-issuance workflows.
