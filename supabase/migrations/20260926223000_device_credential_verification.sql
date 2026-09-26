@@ -19,7 +19,7 @@ begin
         return jsonb_build_object('valid', false, 'code', 'INVALID_DEVICE_CREDENTIAL');
     end if;
 
-    if p_credential_hash is null or lower(trim(p_credential_hash)) !~ '^[0-9a-f]{64}$' then
+    if p_credential_hash is null or p_credential_hash !~ '^[0-9a-f]{64}$' then
         return jsonb_build_object('valid', false, 'code', 'INVALID_DEVICE_CREDENTIAL');
     end if;
 
@@ -44,7 +44,7 @@ begin
     into v_cred_rec
     from private.device_credentials
     where device_id = v_device_rec.id
-      and credential_hash = lower(trim(p_credential_hash))
+      and credential_hash = p_credential_hash
       and status = 'active';
 
     if v_cred_rec.id is null then

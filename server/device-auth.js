@@ -59,9 +59,9 @@ function createDatabaseDeviceAuthenticator({ verifyCredential }) {
 
 function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null, legacyRealDeviceKey = null }) {
   return Object.freeze({
-    async authenticateIngressRequest({ deviceUid, payloadDeviceId, xDeviceKey, xEnrollmentToken }) {
+    async authenticateIngressRequest({ deviceUid, payloadDeviceId, xDeviceKey }) {
       const canonicalUid = (deviceUid || payloadDeviceId || '').trim();
-      const rawKey = (xDeviceKey || xEnrollmentToken || '').trim();
+      const rawKey = (xDeviceKey || '').trim();
 
       if (!canonicalUid || !rawKey) {
         return Object.freeze({ authenticated: false, code: 'CREDENTIAL_REQUIRED' });
@@ -69,7 +69,10 @@ function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null,
 
       // 1. Virtual/Test Device Path (ISOLATED TEST WORKSPACE)
       if (canonicalUid === 'SIM-ESP32-KITCHEN-01') {
-        const expectedTestKey = testDeviceKey || process.env.GASGUARD_TEST_DEVICE_KEY || 'simulated-esp32-test-key-001';
+        const expectedTestKey = testDeviceKey || process.env.GASGUARD_TEST_DEVICE_KEY || null;
+        if (!expectedTestKey) {
+          return Object.freeze({ authenticated: false, code: 'TEST_CREDENTIAL_NOT_CONFIGURED' });
+        }
         if (rawKey === expectedTestKey) {
           return Object.freeze({
             authenticated: true,
@@ -100,8 +103,8 @@ function createDeviceAuthManager({ dbAuthenticator = null, testDeviceKey = null,
 
       // 3. Legacy Static Real Device Fallback (Hardware Pilot Fallback)
       if (canonicalUid === 'ESP32-KITCHEN-01') {
-        const expectedRealKey = legacyRealDeviceKey || process.env.GASGUARD_REAL_DEVICE_KEY || 'hardcoded-legacy-fallback';
-        if (rawKey === expectedRealKey) {
+        const expectedRealKey = legacyRealDeviceKey || process.env.GASGUARD_REAL_DEVICE_KEY || null;
+        if (expectedRealKey && rawKey === expectedRealKey) {
           return Object.freeze({
             authenticated: true,
             deviceId: 'dev-pilot-kitchen-01',

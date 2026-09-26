@@ -24,17 +24,18 @@ function resolveServerConfig(env = process.env) {
 }
 
 function createDevServer({ env = process.env, ingress, enrollmentService: customEnrollmentService, supabaseAdapter: customSupabaseAdapter } = {}) {
-  const supabaseAdapter = customSupabaseAdapter || (env.GASGUARD_SUPABASE_URL ? createSupabaseDeviceAdapter({ supabaseUrl: env.GASGUARD_SUPABASE_URL, serviceRoleKey: env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY }) : null);
+  const hasServiceRoleConfig = Boolean(env.GASGUARD_SUPABASE_URL && env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseAdapter = customSupabaseAdapter || (hasServiceRoleConfig ? createSupabaseDeviceAdapter({ supabaseUrl: env.GASGUARD_SUPABASE_URL, serviceRoleKey: env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY }) : null);
 
   const dbAuthenticator = supabaseAdapter ? createDatabaseDeviceAuthenticator({ verifyCredential: supabaseAdapter.verifyCredential }) : null;
 
   const authManager = createDeviceAuthManager({
     dbAuthenticator,
-    testDeviceKey: env.GASGUARD_TEST_DEVICE_KEY,
-    legacyRealDeviceKey: env.GASGUARD_REAL_DEVICE_KEY
+    testDeviceKey: env.GASGUARD_TEST_DEVICE_KEY || null,
+    legacyRealDeviceKey: env.GASGUARD_REAL_DEVICE_KEY || null
   });
 
-  const enrollmentService = customEnrollmentService || createDeviceEnrollmentService(supabaseAdapter ? { claimEnrollment: supabaseAdapter.claimEnrollment, issueToken: supabaseAdapter.issueToken } : {});
+  const enrollmentService = customEnrollmentService || (supabaseAdapter ? createDeviceEnrollmentService({ claimEnrollment: supabaseAdapter.claimEnrollment, issueToken: supabaseAdapter.issueToken }) : null);
 
   const deviceIngress = ingress || createDeviceIngress({
     registry,
@@ -50,12 +51,35 @@ function createDevServer({ env = process.env, ingress, enrollmentService: custom
 
     if (request.method === 'GET' && url.pathname === '/api/v1/health') {
       const workspaces = { 'hardware-pilot': deviceIngress.status('hardware-pilot'), 'device-test': deviceIngress.status('device-test') };
-      const readiness = { overall: integrationStatus.readiness({ server: true, ingress: true, registry: registryReady, realDeviceKey: Boolean(credentials['ESP32-KITCHEN-01']) }), server: 'READY', lan: config.lanMode ? 'ENABLED' : 'LOCALHOST_ONLY', ingress: 'AVAILABLE', deviceAuth: { realConfigured: Boolean(credentials['ESP32-KITCHEN-01'] || dbAuthenticator), testConfigured: Boolean(credentials['SIM-ESP32-KITCHEN-01']) }, registry: registryReady ? 'READY' : 'ERROR', realDevice: integrationStatus.connection(workspaces['hardware-pilot']), virtualTest: integrationStatus.connection(workspaces['device-test']) };
+      const databaseRealAuthConfigured = Boolean(env.GASGUARD_SUPABASE_URL && env.GASGUARD_SUPABASE_SERVICE_ROLE_KEY && dbAuthenticator);
+      const legacyRealAuthConfigured = Boolean(env.GASGUARD_REAL_DEVICE_KEY);
+      const testAuthConfigured = Boolean(env.GASGUARD_TEST_DEVICE_KEY);
+
+      const readiness = {
+        overall: integrationStatus.readiness({ server: true, ingress: true, registry: registryReady, realDeviceKey: Boolean(legacyRealAuthConfigured || databaseRealAuthConfigured) }),
+        server: 'READY',
+        lan: config.lanMode ? 'ENABLED' : 'LOCALHOST_ONLY',
+        ingress: 'AVAILABLE',
+        deviceAuth: {
+          databaseRealAuthConfigured,
+          legacyRealAuthConfigured,
+          testAuthConfigured,
+          realConfigured: Boolean(legacyRealAuthConfigured || databaseRealAuthConfigured),
+          testConfigured: testAuthConfigured
+        },
+        registry: registryReady ? 'READY' : 'ERROR',
+        realDevice: integrationStatus.connection(workspaces['hardware-pilot']),
+        virtualTest: integrationStatus.connection(workspaces['device-test'])
+      };
       json(response, 200, { ok: true, service: 'gasguard-device-ingress', readiness, workspaces });
       return;
     }
 
     if (request.method === 'POST' && url.pathname === '/api/v1/device/enroll') {
+      if (!enrollmentService) {
+        json(response, 503, { ok: false, code: 'ENROLLMENT_BACKEND_UNAVAILABLE', error: 'Supabase service role key not configured for device enrollment' });
+        return;
+      }
       // Transport security check: non-localhost or LAN mode HTTP requests require explicit insecure dev flag
       const clientIp = request.socket?.remoteAddress || '';
       const hostHeader = (request.headers.host || '').trim();
