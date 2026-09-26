@@ -68,7 +68,7 @@ create table public.job_assignments (
 create index idx_job_assignments_technician_user_id on public.job_assignments(technician_user_id);
 
 create trigger tr_validate_job_assignment_technician_role
-  before insert or update on public.job_assignments
+  before insert or update of technician_user_id on public.job_assignments
   for each row execute function public.validate_job_assignment_technician_role();
 
 -- ==============================================================================
@@ -82,7 +82,8 @@ alter table public.job_assignments enable row level security;
 create policy "installation_jobs_select_general" on public.installation_jobs
   for select to authenticated
   using (
-    exists (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'general'
+    and exists (
       select 1
       from public.site_memberships sm
       where sm.site_id = installation_jobs.site_id

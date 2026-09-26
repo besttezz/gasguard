@@ -35,26 +35,33 @@ assert.ok(/alter\s+table\s+public\.job_assignments\s+enable\s+row\s+level\s+secu
 // 6. No anon policies
 assert.ok(!/to\s+anon\b/i.test(sql), 'No anon access policies allowed');
 
-// 7. General job read requires active site membership
+// 7. General job read requires platform role = 'general' AND active site membership
 assert.ok(/create\s+policy\s+"installation_jobs_select_general"\s+on\s+public\.installation_jobs/i.test(sql), 'General job SELECT policy must exist');
+assert.ok(/role['"]?\s*\)?\s*=\s*'general'/i.test(sql), 'General job SELECT policy must explicitly require role = general');
 assert.ok(/sm\.status\s*=\s*'active'/i.test(sql), 'General job SELECT must check active site membership status');
 
 // 8. Technician job read requires explicit assignment
 assert.ok(/create\s+policy\s+"installation_jobs_select_technician"\s+on\s+public\.installation_jobs/i.test(sql), 'Technician job SELECT policy must exist');
 assert.ok(/ja\.technician_user_id\s*=\s*auth\.uid\(\)/i.test(sql), 'Technician job SELECT must require job assignment');
 
-// 9. Developer has no blanket access
+// 9. Admin global SELECT policy exists
+assert.ok(/create\s+policy\s+"installation_jobs_select_admin"\s+on\s+public\.installation_jobs/i.test(sql), 'Admin job SELECT policy must exist');
+assert.ok(/create\s+policy\s+"job_assignments_select_admin"\s+on\s+public\.job_assignments/i.test(sql), 'Admin job assignment SELECT policy must exist');
+
+// 10. Developer has no blanket access
 assert.ok(!/role['"]?\s*\)?\s*=\s*'developer'/i.test(sql), 'developer must not have blanket access');
 
-// 10. No browser write policies
+// 11. No browser write policies
 const writePolicyRegex = /create\s+policy[\\s\\S]*?for\s+(insert|update|delete|all)/gi;
 assert.ok(!writePolicyRegex.test(sql), 'No browser write policy allowed');
 
-// 11. Function privilege hardening
+// 12. Function security and trigger scope
+assert.ok(/security\s+definer/i.test(sql), 'Validation function must be SECURITY DEFINER');
 assert.ok(/set\s+search_path\s*=\s*''/i.test(sql), 'Validation trigger function must set empty search_path');
 assert.ok(/revoke\s+execute\s+on\s+function\s+public\.validate_job_assignment_technician_role\(\)\s+from\s+public,\s*anon,\s*authenticated/i.test(sql), 'EXECUTE on validation trigger function must be revoked from public, anon, authenticated');
+assert.ok(/before\s+insert\s+or\s+update\s+of\s+technician_user_id\s+on\s+public\.job_assignments/i.test(sql), 'Validation trigger must be BEFORE INSERT OR UPDATE OF technician_user_id');
 
-// 12. No hardcoded secrets / UUIDs
+// 13. No hardcoded secrets / UUIDs
 assert.ok(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(sql), 'No hardcoded UUIDs allowed');
 
 console.log('installation job schema tests passed');
