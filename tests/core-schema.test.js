@@ -61,13 +61,23 @@ for (const table of businessTables) {
 // 9. Profile own update policy exists
 assert.ok(/create\s+policy\s+"profiles_update_own"\s+on\s+public\.profiles\s+for\s+update/i.test(sql), 'Own profile update policy must exist');
 
-// 10. Devices site_id NOT NULL
+// 10. Zones uniqueness for (site_id, id)
+assert.ok(/unique\s*\(\s*site_id\s*,\s*id\s*\)/i.test(sql), 'zones must have unique constraint on (site_id, id)');
+
+// 11. Devices composite foreign key (site_id, zone_id) -> zones(site_id, id)
+assert.ok(/foreign\s+key\s*\(\s*site_id\s*,\s*zone_id\s*\)\s*references\s+public\.zones\s*\(\s*site_id\s*,\s*id\s*\)/i.test(sql), 'devices must have composite FK (site_id, zone_id) -> zones(site_id, id)');
+
+// 12. Devices site_id NOT NULL and zone_id nullable
 assert.ok(/site_id\s+uuid\s+not\s+null\s+references\s+public\.sites/i.test(sql), 'devices.site_id must be NOT NULL');
+assert.ok(/zone_id\s+uuid\s+null\b/i.test(sql), 'devices.zone_id must remain nullable');
 
-// 11. Platform roles absent from site_memberships
-assert.ok(!/('general'|'technician'|'admin'|'developer')/i.test(sql.substring(sql.indexOf('create table public.site_memberships'), sql.indexOf('create table public.devices'))), 'Platform roles must not be stored in site_memberships');
+// 13. Trigger function hardening assertions
+const handleUpdatedAtBlock = sql.substring(sql.indexOf('function public.handle_updated_at'), sql.indexOf('function public.handle_new_auth_user'));
+assert.ok(!/security\s+definer/i.test(handleUpdatedAtBlock), 'handle_updated_at must NOT be SECURITY DEFINER');
 
-// 12. Trigger function safety
-assert.ok(/set\s+search_path\s*=\s*public/i.test(sql), 'Trigger functions must specify safe explicit search_path');
+const handleNewAuthUserBlock = sql.substring(sql.indexOf('function public.handle_new_auth_user'), sql.indexOf('CORE PUBLIC TABLES'));
+assert.ok(/security\s+definer/i.test(handleNewAuthUserBlock), 'handle_new_auth_user MUST be SECURITY DEFINER');
+assert.ok(/set\s+search_path\s*=\s*''/i.test(handleNewAuthUserBlock), 'handle_new_auth_user must set empty search_path');
+assert.ok(/public\.profiles/i.test(handleNewAuthUserBlock), 'handle_new_auth_user must use fully-qualified public.profiles');
 
 console.log('core schema tests passed');

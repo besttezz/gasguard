@@ -15,8 +15,7 @@
 create or replace function public.handle_updated_at()
 returns trigger
 language plpgsql
-security definer
-set search_path = public, pg_catalog
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -29,7 +28,7 @@ create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_catalog
+set search_path = ''
 as $$
 begin
   insert into public.profiles (id)
@@ -85,8 +84,8 @@ create table public.sites (
   customer_id uuid not null references public.customers(id),
   name text not null,
   address_text text null,
-  latitude numeric null,
-  longitude numeric null,
+  latitude numeric null check (latitude is null or latitude between -90 and 90),
+  longitude numeric null check (longitude is null or longitude between -180 and 180),
   lifecycle_status text not null default 'unverified' check (lifecycle_status in ('unverified', 'commissioning', 'commissioned', 'suspended')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -105,7 +104,8 @@ create table public.zones (
   name text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (site_id, name)
+  unique (site_id, name),
+  unique (site_id, id)
 );
 
 create index idx_zones_site_id on public.zones(site_id);
@@ -130,13 +130,14 @@ create index idx_site_memberships_user_id on public.site_memberships(user_id);
 create table public.devices (
   id uuid primary key default gen_random_uuid(),
   site_id uuid not null references public.sites(id) on delete cascade,
-  zone_id uuid null references public.zones(id) on delete set null,
+  zone_id uuid null,
   device_uid text unique not null,
   device_type text not null default 'esp32',
   lifecycle_status text not null default 'registered' check (lifecycle_status in ('registered', 'commissioning', 'active', 'retired')),
   firmware_version text null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  foreign key (site_id, zone_id) references public.zones(site_id, id) on delete set null (zone_id)
 );
 
 create index idx_devices_site_id on public.devices(site_id);
