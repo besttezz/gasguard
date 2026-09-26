@@ -6,8 +6,8 @@ GasGuard uses Supabase Auth email/password login. Only public browser configurat
 
 1. Open the Supabase project dashboard.
 2. Copy the Project URL and the public publishable/legacy anon key from project API settings.
-3. For local development only, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in the uncommitted working copy of `js/auth-config.js`.
-4. For Cloudflare Pages, set build variables `GASGUARD_SUPABASE_URL` and `GASGUARD_SUPABASE_ANON_KEY`; `npm run build` writes the public values into `dist/js/auth-config.js`.
+3. For local development only, set `GASGUARD_SUPABASE_URL` and `GASGUARD_SUPABASE_ANON_KEY` in `.env.local` and run `npm run dev:auth`.
+4. For Cloudflare Pages, set build environment variables `GASGUARD_SUPABASE_URL` and `GASGUARD_SUPABASE_ANON_KEY`; `npm run build:cloudflare` writes the public values into `dist/js/auth-config.js`.
 5. Keep Email authentication enabled. Do not enable public Sign Up unless the product owner approves a registration flow.
 
 The checked-in config remains blank. With blank configuration, GasGuard displays **Auth ยังไม่พร้อมใช้งาน** and disables login. Never put a password, device key, `service_role`, or `sb_secret_*` value in either frontend configuration path.
