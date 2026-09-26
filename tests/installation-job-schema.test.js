@@ -40,28 +40,34 @@ assert.ok(/create\s+policy\s+"installation_jobs_select_general"\s+on\s+public\.i
 assert.ok(/role['"]?\s*\)?\s*=\s*'general'/i.test(sql), 'General job SELECT policy must explicitly require role = general');
 assert.ok(/sm\.status\s*=\s*'active'/i.test(sql), 'General job SELECT must check active site membership status');
 
-// 8. Technician job read requires explicit assignment
-assert.ok(/create\s+policy\s+"installation_jobs_select_technician"\s+on\s+public\.installation_jobs/i.test(sql), 'Technician job SELECT policy must exist');
-assert.ok(/ja\.technician_user_id\s*=\s*auth\.uid\(\)/i.test(sql), 'Technician job SELECT must require job assignment');
+// 8. Technician job read requires platform role = 'technician' AND explicit job assignment
+const techJobPolicy = sql.substring(sql.indexOf('policy "installation_jobs_select_technician"'), sql.indexOf('policy "installation_jobs_select_admin"'));
+assert.ok(/role['"]?\s*\)?\s*=\s*'technician'/i.test(techJobPolicy), 'installation_jobs technician policy must explicitly require role = technician');
+assert.ok(/ja\.technician_user_id\s*=\s*auth\.uid\(\)/i.test(techJobPolicy), 'installation_jobs technician policy must require matching job assignment');
 
-// 9. Admin global SELECT policy exists
+// 9. Technician job assignment read requires platform role = 'technician' AND own user_id
+const techAssignmentPolicy = sql.substring(sql.indexOf('policy "job_assignments_select_technician"'), sql.indexOf('policy "job_assignments_select_admin"'));
+assert.ok(/role['"]?\s*\)?\s*=\s*'technician'/i.test(techAssignmentPolicy), 'job_assignments technician policy must explicitly require role = technician');
+assert.ok(/technician_user_id\s*=\s*auth\.uid\(\)/i.test(techAssignmentPolicy), 'job_assignments technician policy must require own technician_user_id');
+
+// 10. Admin global SELECT policies exist
 assert.ok(/create\s+policy\s+"installation_jobs_select_admin"\s+on\s+public\.installation_jobs/i.test(sql), 'Admin job SELECT policy must exist');
 assert.ok(/create\s+policy\s+"job_assignments_select_admin"\s+on\s+public\.job_assignments/i.test(sql), 'Admin job assignment SELECT policy must exist');
 
-// 10. Developer has no blanket access
+// 11. Developer has no blanket access
 assert.ok(!/role['"]?\s*\)?\s*=\s*'developer'/i.test(sql), 'developer must not have blanket access');
 
-// 11. No browser write policies
-const writePolicyRegex = /create\s+policy[\\s\\S]*?for\s+(insert|update|delete|all)/gi;
+// 12. No browser write policies (trustworthy multiline regex check)
+const writePolicyRegex = /create\s+policy[\s\S]*?for\s+(insert|update|delete|all)/gi;
 assert.ok(!writePolicyRegex.test(sql), 'No browser write policy allowed');
 
-// 12. Function security and trigger scope
+// 13. Function security and trigger scope
 assert.ok(/security\s+definer/i.test(sql), 'Validation function must be SECURITY DEFINER');
 assert.ok(/set\s+search_path\s*=\s*''/i.test(sql), 'Validation trigger function must set empty search_path');
 assert.ok(/revoke\s+execute\s+on\s+function\s+public\.validate_job_assignment_technician_role\(\)\s+from\s+public,\s*anon,\s*authenticated/i.test(sql), 'EXECUTE on validation trigger function must be revoked from public, anon, authenticated');
 assert.ok(/before\s+insert\s+or\s+update\s+of\s+technician_user_id\s+on\s+public\.job_assignments/i.test(sql), 'Validation trigger must be BEFORE INSERT OR UPDATE OF technician_user_id');
 
-// 13. No hardcoded secrets / UUIDs
+// 14. No hardcoded secrets / UUIDs
 assert.ok(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(sql), 'No hardcoded UUIDs allowed');
 
 console.log('installation job schema tests passed');

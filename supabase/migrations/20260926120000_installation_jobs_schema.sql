@@ -95,7 +95,8 @@ create policy "installation_jobs_select_general" on public.installation_jobs
 create policy "installation_jobs_select_technician" on public.installation_jobs
   for select to authenticated
   using (
-    exists (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'technician'
+    and exists (
       select 1
       from public.job_assignments ja
       where ja.job_id = installation_jobs.id
@@ -113,7 +114,8 @@ create policy "installation_jobs_select_admin" on public.installation_jobs
 create policy "job_assignments_select_technician" on public.job_assignments
   for select to authenticated
   using (
-    technician_user_id = auth.uid()
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'technician'
+    and technician_user_id = auth.uid()
   );
 
 create policy "job_assignments_select_admin" on public.job_assignments
