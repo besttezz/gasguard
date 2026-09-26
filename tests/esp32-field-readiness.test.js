@@ -102,10 +102,11 @@ assert.equal(formattedDiag.deviceKey, '[REDACTED]');
 assert.equal(formattedDiag.proofOfPossession, '[REDACTED]');
 assert.equal(formattedDiag.serviceKey, '[REDACTED]');
 
-// 4. Source Code Audit Checks for HW-2B & HW-2C
+// 4. Source Code Audit Checks for HW-2B, HW-2C & HW-2D
 const cppContent = fs.readFileSync(path.join(fieldNodeDir, 'network_provisioning.cpp'), 'utf8');
-assert.ok(cppContent.includes('network_prov_mgr_start_provisioning') || cppContent.includes('wifi_prov_mgr_start_provisioning'), 'Active provisioning start code exists and is not commented');
-assert.ok(cppContent.includes('USE_CURRENT_NET_PROV_API') && cppContent.includes('USE_LEGACY_WIFI_PROV_API'), 'Compatibility boundary defines current vs legacy API paths');
+assert.ok(cppContent.includes('prepareWiFiProvisioning'), 'prepareWiFiProvisioning function implements explicit manager lifecycle');
+assert.ok(cppContent.includes('network_prov_mgr_deinit()'), 'Deinitializes provisioning manager on failure / completion');
+assert.ok(cppContent.includes('USE_CURRENT_NET_PROV_API'), 'Compatibility boundary defines current network_prov API path');
 assert.ok(cppContent.includes('registerProvisioningEventHandler'), 'Event callback handler is declared and registered');
 assert.ok(cppContent.includes('ARDUINO_EVENT_PROV_START') && cppContent.includes('ARDUINO_EVENT_WIFI_STA_GOT_IP'), 'Handles Arduino ESP32 provisioning & station events');
 assert.equal(cppContent.includes('nvs_flash_erase'), false, 'nvs_flash_erase must NOT be called');
@@ -113,6 +114,8 @@ assert.equal(cppContent.includes('nvs_flash_erase'), false, 'nvs_flash_erase mus
 const inoContent = fs.readFileSync(path.join(fieldNodeDir, 'esp32-field-node.ino'), 'utf8');
 assert.ok(inoContent.includes('#include "provisioning_config.h"'), 'Uses provisioning_config.h instead of directly including example header');
 assert.ok(inoContent.includes('g_serviceNameStr'), 'Service name has safe global String lifetime');
+assert.ok(inoContent.includes('prepareWiFiProvisioning(provConfig)'), 'setup() uses prepareWiFiProvisioning for single state authority');
+assert.equal(inoContent.includes('A1B2C3'), false, 'Firmware must not contain fake A1B2C3 MAC fallback');
 assert.equal(inoContent.includes('printQR('), false, 'printQR must not be called in normal field runtime');
 
 const provConfigContent = fs.readFileSync(path.join(fieldNodeDir, 'provisioning_config.h'), 'utf8');
@@ -159,4 +162,4 @@ assert.equal(ingressRes.body.code, 'CALIBRATION_REQUIRED');
 assert.equal(ingressRes.body.gasPpm, null);
 assert.equal(ingressRes.body.safety, 'UNKNOWN');
 
-console.log('esp32 HW-2C provisioning compatibility & runtime event integrity tests passed!');
+console.log('esp32 HW-2D provisioning manager lifecycle finalization tests passed!');

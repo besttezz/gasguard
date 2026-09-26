@@ -57,8 +57,6 @@ void setup() {
     char macSuffixBuf[7] = {0};
     if (chipMac != 0) {
         snprintf(macSuffixBuf, sizeof(macSuffixBuf), "%06X", (uint32_t)(chipMac & 0xFFFFFF));
-    } else {
-        snprintf(macSuffixBuf, sizeof(macSuffixBuf), "A1B2C3"); // Mock hardware MAC fallback for contract testing
     }
 
     bootId = "esp32-" + String((uint32_t)(chipMac >> 32), HEX) + "-" + String(esp_random(), HEX);
@@ -77,21 +75,9 @@ void setup() {
 
     Serial.printf("\n[GasGuard Node] Starting %s (BootId: %s)\n", FIRMWARE_VERSION, bootId.c_str());
 
-    // Native Wi-Fi provisioning state inspection & manager lifecycle
-    if (isWiFiProvisioned()) {
-        currentState = NODE_STATE_CONNECTING_WIFI;
-        WiFi.mode(WIFI_STA);
-        WiFi.begin();
-    } else {
-        String err;
-        if (!validateProvisioningConfig(provConfig, err)) {
-            currentState = NODE_STATE_PROVISIONING_CONFIG_REQUIRED;
-            Serial.printf("[GasGuard Node] PROVISIONING_CONFIG_REQUIRED: %s\n", err.c_str());
-        } else {
-            initWiFiProvisioning(provConfig);
-            currentState = getWiFiProvisioningStatus().state;
-        }
-    }
+    // Single State Authority: Prepare & initialize provisioning manager lifecycle
+    ProvisioningStatus provStatus = prepareWiFiProvisioning(provConfig);
+    currentState = provStatus.state;
 
     if (!validateBoardProfile()) {
         Serial.println("[GasGuard Node] NOTICE: Sensor hardware profile is UNCONFIRMED. MQ sampling disabled.");
@@ -103,8 +89,13 @@ void setup() {
 void loop() {
     unsigned long now = millis();
 
-    // 1. Connection & Backoff State Machine
-    if (WiFi.status() == WL_CONNECTED) {
+    // 1. Connection & Backoff State Machine - Single State Authority Synchronization
+    ProvisioningStatus provStatus = getWiFiProvisioningStatus();
+    if (provStatus.state == NODE_STATE_PROVISIONING || provStatus.state == NODE_STATE_PROVISIONING_FAILED ||
+        provStatus.state == NODE_STATE_PROVISIONING_CONFIG_REQUIRED || provStatus.state == NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE ||
+        provStatus.state == NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE) {
+        currentState = provStatus.state;
+    } else if (WiFi.status() == WL_CONNECTED) {
         if (currentState == NODE_STATE_CONNECTING_WIFI || currentState == NODE_STATE_OFFLINE || currentState == NODE_STATE_PROVISIONING) {
             // Check if device credential exists for GasGuard ingress
             if (strlen(transportConfig.deviceKey) == 0) {
@@ -116,7 +107,8 @@ void loop() {
             }
         }
     } else {
-        if (currentState != NODE_STATE_UNPROVISIONED && currentState != NODE_STATE_PROVISIONING && currentState != NODE_STATE_PROVISIONING_CONFIG_REQUIRED) {
+        if (currentState != NODE_STATE_UNPROVISIONED && currentState != NODE_STATE_PROVISIONING && currentState != NODE_STATE_PROVISIONING_CONFIG_REQUIRED &&
+            currentState != NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE && currentState != NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE) {
             currentState = NODE_STATE_OFFLINE;
         }
     }

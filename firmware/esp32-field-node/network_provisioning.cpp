@@ -156,6 +156,7 @@ static void onWiFiProvEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
         case ARDUINO_EVENT_PROV_START:
             g_provStatus.state = NODE_STATE_PROVISIONING;
             g_provStatus.lastProvisioningEvent = "PROV_START";
+            g_provManagerState = PROV_MGR_RUNNING;
             Serial.println("[GasGuard Event] Provisioning session started.");
             break;
 
@@ -178,17 +179,22 @@ static void onWiFiProvEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
             break;
 
         case ARDUINO_EVENT_PROV_END:
+            // Upstream Arduino event bridge deinitializes provisioning manager before firing PROV_END.
+            // Update GasGuard managerState bookkeeping to STOPPED/UNINITIALIZED without double-deinit.
+            g_provManagerState = PROV_MGR_STOPPED;
             g_provStatus.lastProvisioningEvent = "PROV_END";
             Serial.println("[GasGuard Event] Provisioning session ended.");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             g_provStatus.provisioned = true;
+            g_provStatus.state = NODE_STATE_WIFI_CONNECTED;
             g_provStatus.lastProvisioningEvent = "WIFI_STA_GOT_IP";
             Serial.println("[GasGuard Event] Wi-Fi STA obtained IP address.");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+            g_provStatus.state = NODE_STATE_OFFLINE;
             g_provStatus.lastProvisioningEvent = "WIFI_STA_DISCONNECTED";
             Serial.println("[GasGuard Event] Wi-Fi STA disconnected.");
             break;
@@ -209,42 +215,37 @@ bool isWiFiProvisioned() {
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
 #if USE_CURRENT_NET_PROV_API
     bool provisioned = false;
-    if (network_prov_mgr_is_wifi_provisioned(&provisioned) == ESP_OK) {
-        return provisioned;
-    }
-#elif USE_LEGACY_WIFI_PROV_API
-    bool provisioned = false;
-    if (wifi_prov_mgr_is_provisioned(&provisioned) == ESP_OK) {
+    if (g_provManagerState != PROV_MGR_UNINITIALIZED && network_prov_mgr_is_wifi_provisioned(&provisioned) == ESP_OK) {
         return provisioned;
     }
 #endif
-    return WiFi.SSID().length() > 0;
+    return false; // Fail closed if manager uninitialized or query fails
 #else
     return g_provStatus.provisioned;
 #endif
 }
 
-void initWiFiProvisioning(const ProvisioningConfig& config) {
+ProvisioningStatus prepareWiFiProvisioning(const ProvisioningConfig& config) {
     if (!HAS_SECURITY_1_SUPPORT) {
         g_provStatus.state = NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE;
         g_provStatus.lastProvisioningError = "SECURITY_1_UNAVAILABLE";
-        Serial.println("[GasGuard Network] Security 1 is unavailable in this build. Provisioning stopped.");
-        return;
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        return g_provStatus;
+    }
+
+    if (!config.serviceName || strlen(config.serviceName) == 0) {
+        g_provStatus.state = NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE;
+        g_provStatus.lastProvisioningError = "HARDWARE_MAC_UNAVAILABLE";
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        return g_provStatus;
     }
 
     String err;
     if (!validateProvisioningConfig(config, err)) {
         g_provStatus.state = NODE_STATE_PROVISIONING_CONFIG_REQUIRED;
         g_provStatus.lastProvisioningError = "INVALID_PROVISIONING_CONFIG";
-        Serial.printf("[GasGuard Network] Provisioning config rejected: %s\n", err.c_str());
-        return;
-    }
-
-    if (!config.serviceName || strlen(config.serviceName) == 0) {
-        g_provStatus.state = NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE;
-        g_provStatus.lastProvisioningError = "HARDWARE_MAC_UNAVAILABLE";
-        Serial.println("[GasGuard Network] Hardware device identity unavailable. Provisioning aborted.");
-        return;
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        return g_provStatus;
     }
 
     g_provisioningServiceName = String(config.serviceName);
@@ -255,20 +256,31 @@ void initWiFiProvisioning(const ProvisioningConfig& config) {
     registerProvisioningEventHandler();
 
 #if USE_CURRENT_NET_PROV_API
-    network_prov_mgr_config_t prov_mgr_config = {
-        .scheme = network_prov_scheme_softap,
-        .scheme_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE,
-        .app_info = NULL
-    };
+    // Explicit aggregate initialization compatible with network_prov_mgr_config_t
+    network_prov_mgr_config_t prov_mgr_config = {};
+    prov_mgr_config.scheme = network_prov_scheme_softap;
+    prov_mgr_config.scheme_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE;
+
     esp_err_t init_err = network_prov_mgr_init(prov_mgr_config);
     if (init_err != ESP_OK) {
         g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
         g_provStatus.lastProvisioningError = "MGR_INIT_FAILED";
         g_provManagerState = PROV_MGR_UNINITIALIZED;
         Serial.printf("[GasGuard Network] Failed to initialize network_prov_mgr: %d\n", (int)init_err);
-        return;
+        return g_provStatus;
     }
     g_provManagerState = PROV_MGR_INITIALIZED;
+
+    bool provisioned = isWiFiProvisioned();
+    if (provisioned) {
+        g_provStatus.provisioned = true;
+        g_provStatus.state = NODE_STATE_CONNECTING_WIFI;
+        network_prov_mgr_deinit();
+        g_provManagerState = PROV_MGR_STOPPED;
+        WiFi.mode(WIFI_STA);
+        WiFi.begin();
+        return g_provStatus;
+    }
 
     esp_err_t start_err = network_prov_mgr_start_provisioning(
         NETWORK_PROV_SECURITY_1,
@@ -283,56 +295,48 @@ void initWiFiProvisioning(const ProvisioningConfig& config) {
         g_provManagerState = PROV_MGR_RUNNING;
         Serial.printf("[GasGuard Network] Protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
     } else {
-        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
-        g_provStatus.lastProvisioningError = "MGR_START_FAILED";
-        Serial.printf("[GasGuard Network] Failed to start provisioning manager: %d\n", (int)start_err);
-    }
-#elif USE_LEGACY_WIFI_PROV_API
-    wifi_prov_mgr_config_t prov_mgr_config = {
-        .scheme = wifi_prov_scheme_softap,
-        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE,
-        .app_info = NULL
-    };
-    esp_err_t init_err = wifi_prov_mgr_init(prov_mgr_config);
-    if (init_err != ESP_OK) {
-        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
-        g_provStatus.lastProvisioningError = "MGR_INIT_FAILED";
+        network_prov_mgr_deinit(); // Clean up initialized manager on start failure
         g_provManagerState = PROV_MGR_UNINITIALIZED;
-        Serial.printf("[GasGuard Network] Failed to initialize wifi_prov_mgr: %d\n", (int)init_err);
-        return;
-    }
-    g_provManagerState = PROV_MGR_INITIALIZED;
-
-    wifi_prov_security_t sec = (config.securityMode == 1) ? WIFI_PROV_SECURITY_1 : WIFI_PROV_SECURITY_0;
-    esp_err_t start_err = wifi_prov_mgr_start_provisioning(sec, config.proofOfPossession, g_provisioningServiceName.c_str(), config.serviceKey);
-    if (start_err == ESP_OK) {
-        g_provStatus.state = NODE_STATE_PROVISIONING;
-        g_provStatus.lastProvisioningEvent = "START";
-        g_provManagerState = PROV_MGR_RUNNING;
-        Serial.printf("[GasGuard Network] Protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
-    } else {
         g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
         g_provStatus.lastProvisioningError = "MGR_START_FAILED";
         Serial.printf("[GasGuard Network] Failed to start provisioning manager: %d\n", (int)start_err);
     }
 #endif
 #else
-    g_provStatus.state = NODE_STATE_PROVISIONING;
-    g_provStatus.lastProvisioningEvent = "START";
-    g_provManagerState = PROV_MGR_RUNNING;
-    Serial.printf("[GasGuard Network] Provisioning contract initialized (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
+    if (g_provStatus.provisioned) {
+        g_provStatus.state = NODE_STATE_CONNECTING_WIFI;
+        g_provManagerState = PROV_MGR_STOPPED;
+    } else {
+        g_provStatus.state = NODE_STATE_PROVISIONING;
+        g_provStatus.lastProvisioningEvent = "START";
+        g_provManagerState = PROV_MGR_RUNNING;
+        Serial.printf("[GasGuard Network] Provisioning contract initialized (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
+    }
 #endif
+
+    return g_provStatus;
+}
+
+void initWiFiProvisioning(const ProvisioningConfig& config) {
+    prepareWiFiProvisioning(config);
 }
 
 void requestWiFiProvisioningReset() {
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
     WiFi.disconnect(true, true); // Target Wi-Fi STA NVS credentials erase only
 #if USE_CURRENT_NET_PROV_API
-    network_prov_mgr_reset_wifi_provisioning();
-    network_prov_mgr_deinit();
-#elif USE_LEGACY_WIFI_PROV_API
-    wifi_prov_mgr_reset_provisioning();
-    wifi_prov_mgr_deinit();
+    if (g_provManagerState == PROV_MGR_UNINITIALIZED) {
+        network_prov_mgr_config_t prov_mgr_config = {};
+        prov_mgr_config.scheme = network_prov_scheme_softap;
+        prov_mgr_config.scheme_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE;
+        if (network_prov_mgr_init(prov_mgr_config) == ESP_OK) {
+            g_provManagerState = PROV_MGR_INITIALIZED;
+        }
+    }
+    if (g_provManagerState != PROV_MGR_UNINITIALIZED) {
+        network_prov_mgr_reset_wifi_provisioning();
+        network_prov_mgr_deinit();
+    }
 #endif
 #endif
     g_provManagerState = PROV_MGR_STOPPED;
@@ -343,7 +347,6 @@ void requestWiFiProvisioningReset() {
 }
 
 ProvisioningStatus getWiFiProvisioningStatus() {
-    g_provStatus.provisioned = isWiFiProvisioned();
     g_provStatus.managerState = g_provManagerState;
     return g_provStatus;
 }

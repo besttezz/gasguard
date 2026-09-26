@@ -58,6 +58,7 @@ uint32_t calculateNextBackoffMs(BoundedBackoff& backoff);
 void resetBackoff(BoundedBackoff& backoff);
 
 void registerProvisioningEventHandler();
+ProvisioningStatus prepareWiFiProvisioning(const ProvisioningConfig& config);
 void initWiFiProvisioning(const ProvisioningConfig& config);
 bool isWiFiProvisioned();
 String generateProvisioningServiceName(const char* macOrDeviceSuffix);
