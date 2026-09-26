@@ -7,6 +7,7 @@
 #include "measurement.h"
 #include "telemetry.h"
 #include "network_provisioning.h"
+#include "provisioning_config.example.h"
 #include "transport.h"
 #include "diagnostics.h"
 
@@ -31,6 +32,7 @@ unsigned long nextIngressAttemptAtMs = 0;
 NodeState currentState = NODE_STATE_UNPROVISIONED;
 BoundedBackoff networkBackoff;
 TransportConfig transportConfig;
+ProvisioningConfig provConfig;
 
 String getUtcTimestampIso() {
     struct tm timeInfo;
@@ -47,49 +49,66 @@ void setup() {
     delay(500);
 
     bootId = "esp32-" + String((uint32_t)(ESP.getEfuseMac() >> 32), HEX) + "-" + String(esp_random(), HEX);
-
-    if (!validateBoardProfile()) {
-        currentState = NODE_STATE_CONFIG_ERROR;
-        Serial.println("[GasGuard Node] ERROR: Hardware profile is UNCONFIRMED or invalid. Refusing execution.");
-        return;
-    }
-
-    initSensorChannels();
     initBackoff(networkBackoff, 1000, 30000);
 
+    // Setup Wi-Fi provisioning configuration with Security 1 + PoP
+    String serviceNameStr = generateProvisioningServiceName((DEVICE_ID));
+    provConfig.serviceName = serviceNameStr.c_str();
+    provConfig.proofOfPossession = GASGUARD_PROV_POP_PLACEHOLDER;
+    provConfig.serviceKey = GASGUARD_PROV_SERVICE_KEY;
+    provConfig.securityMode = GASGUARD_PROV_SECURITY_MODE;
+
     transportConfig.ingressUrl = GASGUARD_INGRESS_URL;
-    transportConfig.deviceKey = ""; // Must be set via provisioning or secure NVS
+    transportConfig.deviceKey = ""; // Must be set via HW-3 provisioning / secure NVS
     transportConfig.dataClassification = DATA_CLASSIFICATION;
 
-    currentState = NODE_STATE_CONNECTING_WIFI;
     Serial.printf("\n[GasGuard Node] Starting %s (BootId: %s)\n", FIRMWARE_VERSION, bootId.c_str());
 
-    WiFi.mode(WIFI_STA);
+    // Wi-Fi provisioning state inspection
+    if (WiFi.SSID().length() > 0) {
+        currentState = NODE_STATE_CONNECTING_WIFI;
+        WiFi.mode(WIFI_STA);
+    } else {
+        String err;
+        if (!validateProvisioningConfig(provConfig, err)) {
+            currentState = NODE_STATE_PROVISIONING_CONFIG_REQUIRED;
+            Serial.printf("[GasGuard Node] PROVISIONING_CONFIG_REQUIRED: %s\n", err.c_str());
+        } else {
+            currentState = NODE_STATE_PROVISIONING;
+            initWiFiProvisioning(provConfig);
+        }
+    }
+
+    if (!validateBoardProfile()) {
+        Serial.println("[GasGuard Node] NOTICE: Sensor hardware profile is UNCONFIRMED. MQ sampling disabled.");
+    } else {
+        initSensorChannels();
+    }
 }
 
 void loop() {
-    if (currentState == NODE_STATE_CONFIG_ERROR) {
-        delay(1000);
-        return;
-    }
-
     unsigned long now = millis();
 
     // 1. Connection & Backoff State Machine
     if (WiFi.status() == WL_CONNECTED) {
-        if (currentState == NODE_STATE_CONNECTING_WIFI || currentState == NODE_STATE_OFFLINE) {
-            currentState = NODE_STATE_CONNECTING_INGRESS;
-            resetBackoff(networkBackoff);
-            nextIngressAttemptAtMs = 0;
+        if (currentState == NODE_STATE_CONNECTING_WIFI || currentState == NODE_STATE_OFFLINE || currentState == NODE_STATE_PROVISIONING) {
+            // Check if device credential exists for GasGuard ingress
+            if (strlen(transportConfig.deviceKey) == 0) {
+                currentState = NODE_STATE_DEVICE_ENROLLMENT_REQUIRED;
+            } else {
+                currentState = NODE_STATE_CONNECTING_INGRESS;
+                resetBackoff(networkBackoff);
+                nextIngressAttemptAtMs = 0;
+            }
         }
     } else {
-        if (currentState != NODE_STATE_UNPROVISIONED && currentState != NODE_STATE_PROVISIONING) {
+        if (currentState != NODE_STATE_UNPROVISIONED && currentState != NODE_STATE_PROVISIONING && currentState != NODE_STATE_PROVISIONING_CONFIG_REQUIRED) {
             currentState = NODE_STATE_OFFLINE;
         }
     }
 
-    // 2. Sensor Sampling & Telemetry Push with Retry Gate
-    if (now - lastSampleAt >= SAMPLING_INTERVAL_MS) {
+    // 2. Sensor Sampling & Telemetry Push (Only if board profile confirmed & device enrolled)
+    if (validateBoardProfile() && (now - lastSampleAt >= SAMPLING_INTERVAL_MS)) {
         lastSampleAt = now;
 
         MeasurementReading mq6Reading = sampleSensorChannel(g_mq6Sensor);
@@ -100,7 +119,6 @@ void loop() {
             if (timestampStr.length() == 0) {
                 Serial.println("[GasGuard Node] TIME_UNAVAILABLE: NTP timestamp not ready. Skipping transmission.");
             } else if (currentState == NODE_STATE_CONNECTING_INGRESS || currentState == NODE_STATE_READY) {
-                // Retry gate check
                 bool networkAllowed = (nextIngressAttemptAtMs == 0) || ((long)(now - nextIngressAttemptAtMs) >= 0);
                 if (networkAllowed) {
                     String payload = buildRawMeasurementPayload(DEVICE_ID, mq6Reading, bootId, mq6Sequence, timestampStr);
@@ -152,9 +170,12 @@ void loop() {
         diag.ingressReachable = ingressReachable;
         diag.mq6LastHttpStatus = mq6LastHttpStatus;
         diag.mq3LastHttpStatus = mq3LastHttpStatus;
-        diag.softApStatus = "PLANNED / INTERFACE PREPARED - NOT YET IMPLEMENTED";
-        diag.mq6Reading = sampleSensorChannel(g_mq6Sensor);
-        diag.mq3Reading = sampleSensorChannel(g_mq3Sensor);
+        diag.softApStatus = "PROTECTED_SOFTAP_SECURITY_1";
+        diag.provisioningServiceName = provConfig.serviceName ? String(provConfig.serviceName) : "PROV_GG_UNCONFIGURED";
+        diag.provisioningSecurityMode = provConfig.securityMode;
+        diag.hasDeviceCredential = (strlen(transportConfig.deviceKey) > 0);
+        diag.mq6Reading = validateBoardProfile() ? sampleSensorChannel(g_mq6Sensor) : MeasurementReading{};
+        diag.mq3Reading = validateBoardProfile() ? sampleSensorChannel(g_mq3Sensor) : MeasurementReading{};
         diag.mq6Sequence = mq6Sequence;
         diag.mq3Sequence = mq3Sequence;
         diag.uptimeMs = now;

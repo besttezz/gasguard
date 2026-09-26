@@ -31,8 +31,8 @@ This checklist is to be opened and followed at the bench on the day physical ESP
 - [ ] Verify boot log displays `[GasGuard Node] Starting v1.0.0-field-foundation`.
 
 ## 6. WI-FI PROVISIONING
-- [ ] Trigger provisioning state (`NODE_STATE_PROVISIONING`). (SoftAP provisioning is **PLANNED / NOT YET IMPLEMENTED** in HW-1B; configure Wi-Fi credentials directly for bench testing).
-- [ ] Configure local Wi-Fi AP credentials.
+- [ ] Trigger provisioning state (`NODE_STATE_PROVISIONING`). Protected SoftAP `PROV_GG_XXXXXX` starts with Security 1 + Proof of Possession (PoP).
+- [ ] Use Espressif Provisioning App to select target Wi-Fi AP and submit network credentials.
 - [ ] Verify state transitions to `NODE_STATE_WIFI_CONNECTED` and local IP is assigned.
 
 ## 7. INGRESS

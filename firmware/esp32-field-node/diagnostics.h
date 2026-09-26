@@ -18,6 +18,9 @@ struct FieldDiagnostics {
     int mq6LastHttpStatus;
     int mq3LastHttpStatus;
     const char* softApStatus;
+    String provisioningServiceName;
+    uint8_t provisioningSecurityMode;
+    bool hasDeviceCredential;
     MeasurementReading mq6Reading;
     MeasurementReading mq3Reading;
     uint32_t mq6Sequence;

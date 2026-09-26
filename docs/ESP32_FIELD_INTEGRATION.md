@@ -72,7 +72,7 @@ Before connecting any MQ sensor module to an ESP32 board, perform the following 
 
 1. **Bench Power Check**: Apply 5V power to MQ heaters; allow **at least 48 hours** sensor preheat according to exact sensor datasheet.
 2. **Serial Connection**: Connect ESP32 to bench host via USB/Serial (115200 baud).
-3. **Provisioning**: Initialize SoftAP provisioning mode (**PLANNED / NOT YET IMPLEMENTED**).
+3. **Provisioning**: Initialize Protected SoftAP provisioning mode (**IMPLEMENTED IN SOURCE**: Security 1 + Proof of Possession; see `docs/ESP32_PROVISIONING.md`).
 4. **Network Verification**: Verify Wi-Fi connection and local IP assignment (`NODE_STATE_WIFI_CONNECTED`).
 5. **Ingress Reachability**: Verify HTTP/HTTPS POST reachability to GasGuard ingress URL (`NODE_STATE_CONNECTING_INGRESS` -> `NODE_STATE_READY`).
 6. **Raw Telemetry Stream**: Confirm raw measurement packets arrive with `raw.adc` and `calibrationStatus = "CALIBRATION_REQUIRED"`.

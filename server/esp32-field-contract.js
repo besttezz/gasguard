@@ -8,14 +8,90 @@ const SENSOR_ROLES = Object.freeze({
 const NODE_STATES = Object.freeze([
   'UNPROVISIONED',
   'PROVISIONING',
+  'PROVISIONING_CONFIG_REQUIRED',
+  'PROVISIONING_FAILED',
   'CONNECTING_WIFI',
   'WIFI_CONNECTED',
   'CONNECTING_INGRESS',
   'READY',
+  'DEVICE_ENROLLMENT_REQUIRED',
   'CALIBRATION_REQUIRED',
   'OFFLINE',
   'CONFIG_ERROR'
 ]);
+
+const FORBIDDEN_DEFAULT_POPS = Object.freeze([
+  'abcd1234',
+  '12345678',
+  'password',
+  'gasguard123',
+  'default',
+  'admin',
+  '1234',
+  '00000000'
+]);
+
+function validateProvisioningConfig(config = {}) {
+  if (!config || typeof config !== 'object') {
+    return { ok: false, code: 'INVALID_PROVISIONING_CONFIG', reason: 'Config must be an object' };
+  }
+  if (config.securityMode === 0) {
+    return { ok: false, code: 'SECURITY_0_FORBIDDEN', reason: 'Security 0 (plaintext provisioning) is strictly FORBIDDEN' };
+  }
+  if (config.securityMode !== 1) {
+    return { ok: false, code: 'UNSUPPORTED_SECURITY_MODE', reason: 'Security 1 (X25519 + PoP + AES-CTR) required' };
+  }
+  if (!config.proofOfPossession || typeof config.proofOfPossession !== 'string' || !config.proofOfPossession.trim()) {
+    return { ok: false, code: 'MISSING_POP', reason: 'Device-specific Proof of Possession (PoP) required' };
+  }
+
+  const popLower = config.proofOfPossession.trim().toLowerCase();
+  if (FORBIDDEN_DEFAULT_POPS.includes(popLower)) {
+    return { ok: false, code: 'FORBIDDEN_DEFAULT_POP', reason: 'Forbidden default static PoP value detected' };
+  }
+
+  return { ok: true, code: 'VALID_PROVISIONING_CONFIG' };
+}
+
+function generateProvisioningServiceName(macOrDeviceSuffix = '') {
+  let suffix = String(macOrDeviceSuffix || '').trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (suffix.length > 6) {
+    suffix = suffix.slice(-6);
+  }
+  if (!suffix) {
+    suffix = '000000';
+  }
+  return `PROV_GG_${suffix}`;
+}
+
+function processProvisioningEvent(currentState, event, context = {}) {
+  switch (event) {
+    case 'START':
+      return 'PROVISIONING';
+    case 'CREDENTIAL_SUCCESS':
+      return 'CONNECTING_WIFI';
+    case 'CREDENTIAL_FAILURE':
+      return 'PROVISIONING_FAILED';
+    case 'WIFI_GOT_IP':
+      if (context.hasDeviceCredential) {
+        return 'CONNECTING_INGRESS';
+      }
+      return 'DEVICE_ENROLLMENT_REQUIRED';
+    case 'WIFI_DISCONNECTED':
+      return 'OFFLINE';
+    default:
+      return currentState;
+  }
+}
+
+function requestWiFiProvisioningReset() {
+  return Object.freeze({
+    state: 'UNPROVISIONED',
+    wifiProvisioned: false,
+    clearedCredentials: ['WIFI_STA_SSID', 'WIFI_STA_PASSWORD'],
+    preservedData: ['DEVICE_IDENTITY', 'DEVICE_CREDENTIAL', 'SENSOR_CALIBRATION', 'OWNER_INVITATION_TOKEN']
+  });
+}
 
 function validateBoardProfile(profile = {}) {
   if (!profile || typeof profile !== 'object') {
@@ -24,7 +100,6 @@ function validateBoardProfile(profile = {}) {
   if (!profile.profileConfirmed) {
     return { ok: false, code: 'CONFIG_ERROR', reason: 'Hardware board profile is UNCONFIRMED' };
   }
-  // Physical board model has not been confirmed on bench
   return { ok: false, code: 'CONFIG_ERROR', reason: 'Physical ESP32 board model and pinout have not been confirmed' };
 }
 
@@ -43,7 +118,6 @@ function createSensorDescriptor({ sensorId, sensorType, role, pin, adcAttenuatio
 function processUncalibratedReading(descriptor, rawAdc, pinMilliVolts = null) {
   if (!Number.isInteger(rawAdc) || rawAdc < 0 || rawAdc > 4095) throw new Error(`Raw ADC out of bounds: ${rawAdc}`);
   
-  // Rule: NEVER synthesize calibrated voltage from raw ADC. Explicit pinMilliVolts required.
   const sensorVoltage = (pinMilliVolts != null && Number.isFinite(pinMilliVolts) && pinMilliVolts >= 0)
     ? Number((pinMilliVolts / 1000.0).toFixed(3))
     : null;
@@ -91,12 +165,19 @@ function formatFieldDiagnostics(diag) {
   if (redacted.wifiPassword) redacted.wifiPassword = '[REDACTED]';
   if (redacted.deviceKey) redacted.deviceKey = '[REDACTED]';
   if (redacted.secret) redacted.secret = '[REDACTED]';
+  if (redacted.proofOfPossession) redacted.proofOfPossession = '[REDACTED]';
+  if (redacted.pop) redacted.pop = '[REDACTED]';
+  if (redacted.serviceKey) redacted.serviceKey = '[REDACTED]';
   return Object.freeze(redacted);
 }
 
 module.exports = Object.freeze({
   SENSOR_ROLES,
   NODE_STATES,
+  validateProvisioningConfig,
+  generateProvisioningServiceName,
+  processProvisioningEvent,
+  requestWiFiProvisioningReset,
   validateBoardProfile,
   createSensorDescriptor,
   processUncalibratedReading,

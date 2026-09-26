@@ -21,6 +21,7 @@ lerna-debug.log*
 .env
 .env*.local
 firmware/**/secrets.h
+firmware/**/provisioning_secrets.h
 
 # Editor & IDE artifacts
 .vscode/*
