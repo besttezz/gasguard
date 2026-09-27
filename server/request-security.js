@@ -96,6 +96,15 @@ function classifyRequestTransport({ request, serverConfig = {}, env = process.en
       };
     }
 
+    // Immediate TCP Peer Inspection: Forwarded headers are trusted ONLY from local cloudflared process on loopback
+    if (!isLocalhostIp) {
+      return {
+        secure: false,
+        source: 'UNTRUSTED',
+        reason: 'Trusted tunnel request rejected: Immediate TCP peer is not loopback'
+      };
+    }
+
     // Forwarded Protocol Inspection
     const rawForwardedProto = request?.headers?.['x-forwarded-proto'];
     let forwardedProto = '';
@@ -146,8 +155,8 @@ function classifyRequestTransport({ request, serverConfig = {}, env = process.en
       }
     }
 
-    // Host Header Validation (Exact match on normalized hostname to prevent suffix attacks)
-    const reqHostForCompare = normalizeHost(request?.headers?.['x-forwarded-host'] || rawHostHeader);
+    // Host Header Validation (Exact match on normalized Host header; X-Forwarded-Host CANNOT override Host)
+    const reqHostForCompare = normalizedReqHost;
     if (!reqHostForCompare || reqHostForCompare !== expectedPublicHost) {
       return {
         secure: false,

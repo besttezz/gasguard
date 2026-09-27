@@ -24,9 +24,9 @@ int sendTelemetryPacket(const TransportConfig& config, const String& payload) {
         isFieldNode = true;
     }
 
-    // Physical field mode requires HTTPS (http:// rejected for field nodes unless explicit local bench adapter)
-    if (isFieldNode && isHttp) {
-        Serial.println("[GasGuard Transport] ERROR: HTTP ingress URL rejected for field node. HTTPS required.");
+    // Physical field mode requires HTTPS scheme EXACTLY. Rejects http://, ftp://, ws://, missing or malformed schemes.
+    if (isFieldNode && !isHttps) {
+        Serial.println("[GasGuard Transport] ERROR: Non-HTTPS ingress URL rejected for field node. HTTPS required.");
         return TRANSPORT_ERR_INGRESS_URL_NOT_HTTPS;
     }
 

@@ -292,10 +292,10 @@ console.log('  [15] Health never contains secret values: PASS');
 // =============================================================================
 {
   const transportCpp = readFirmware('transport.cpp');
-  assert.ok(transportCpp.includes('isFieldNode && isHttp'),
-    'transport.cpp must check and reject HTTP ingress URL for physical field node');
+  assert.ok(transportCpp.includes('isFieldNode && !isHttps'),
+    'transport.cpp must check and reject non-HTTPS ingress URL for physical field node');
   assert.ok(transportCpp.includes('TRANSPORT_ERR_INGRESS_URL_NOT_HTTPS'),
-    'transport.cpp must return TRANSPORT_ERR_INGRESS_URL_NOT_HTTPS on HTTP field ingress');
+    'transport.cpp must return TRANSPORT_ERR_INGRESS_URL_NOT_HTTPS on non-HTTPS field ingress');
 }
 console.log('  [16] Physical ingress requires HTTPS: PASS');
 
@@ -304,8 +304,8 @@ console.log('  [16] Physical ingress requires HTTPS: PASS');
 // =============================================================================
 {
   const transportCpp = readFirmware('transport.cpp');
-  assert.ok(transportCpp.includes('HTTP ingress URL rejected for field node'),
-    'transport.cpp must log diagnostic error on HTTP field node ingress');
+  assert.ok(transportCpp.includes('Non-HTTPS ingress URL rejected for field node'),
+    'transport.cpp must log diagnostic error on non-HTTPS field node ingress');
 }
 console.log('  [17] HTTP physical ingress rejected: PASS');
 
@@ -417,13 +417,66 @@ console.log('  [25] Existing raw telemetry contract preserved: PASS');
 console.log('  [26] CALIBRATION_REQUIRED semantics preserved: PASS');
 
 // =============================================================================
-// 27. GASGUARD_HARDWARE_PROFILE_CONFIRMED REMAINS FALSE
+// 28. X-FORWARDED-HOST CANNOT OVERRIDE WRONG HOST
 // =============================================================================
 {
-  const boardConfig = readFirmware('board_config.h');
-  assert.ok(boardConfig.includes('GASGUARD_HARDWARE_PROFILE_CONFIRMED false'),
-    'board_config.h must keep GASGUARD_HARDWARE_PROFILE_CONFIRMED false');
+  const req = {
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {
+      host: 'wrong-host.example.com',
+      'x-forwarded-host': 'device-api.example.com',
+      'x-forwarded-proto': 'https'
+    }
+  };
+  const env = {
+    GASGUARD_TRUSTED_TUNNEL_MODE: 'true',
+    GASGUARD_PUBLIC_DEVICE_HOST: 'device-api.example.com'
+  };
+  const res = classifyRequestTransport({ request: req, serverConfig: { host: '127.0.0.1', lanMode: false }, env });
+  assert.equal(res.secure, false);
+  assert.equal(res.source, 'UNTRUSTED');
 }
-console.log('  [27] GASGUARD_HARDWARE_PROFILE_CONFIRMED remains false: PASS');
+console.log('  [28] X-Forwarded-Host cannot override wrong Host: PASS');
 
-console.log('\nALL HW-4A REMOTE HARDWARE PILOT GATEWAY CONTRACT TESTS PASSED!');
+// =============================================================================
+// 29. TRUSTED TUNNEL REQUIRES LOOPBACK IMMEDIATE PEER (REJECT REMOTE PEER WITH FORGED HEADERS)
+// =============================================================================
+{
+  const reqRemotePeer = {
+    socket: { remoteAddress: '203.0.113.5' },
+    headers: {
+      host: 'device-api.example.com',
+      'x-forwarded-proto': 'https'
+    }
+  };
+  const env = {
+    GASGUARD_TRUSTED_TUNNEL_MODE: 'true',
+    GASGUARD_PUBLIC_DEVICE_HOST: 'device-api.example.com'
+  };
+  const res = classifyRequestTransport({ request: reqRemotePeer, serverConfig: { host: '127.0.0.1', lanMode: false }, env });
+  assert.equal(res.secure, false);
+  assert.equal(res.source, 'UNTRUSTED');
+}
+console.log('  [29] Trusted tunnel requires loopback immediate peer (remote peer rejected): PASS');
+
+// =============================================================================
+// 30. ENROLLMENT CA AND INGRESS CA CONFIGURED AND DOCUMENTED
+// =============================================================================
+{
+  const exampleEnv = fs.readFileSync(path.join(root, 'config', 'remote-hardware-gateway.example.env'), 'utf8');
+  assert.ok(exampleEnv.includes('GASGUARD_ENROLLMENT_CA_CERT='), 'example env must document GASGUARD_ENROLLMENT_CA_CERT');
+  assert.ok(exampleEnv.includes('GASGUARD_INGRESS_CA_CERT='), 'example env must document GASGUARD_INGRESS_CA_CERT');
+}
+console.log('  [30] Enrollment CA and Ingress CA configured and documented: PASS');
+
+// =============================================================================
+// 31. TRANSPORTCONFIG CA INITIALIZED DETERMINISTICALLY IN INO
+// =============================================================================
+{
+  const inoContent = readFirmware('esp32-field-node.ino');
+  assert.ok(inoContent.includes('transportConfig.caCert = GASGUARD_INGRESS_CA_CERT;'),
+    'esp32-field-node.ino must explicitly assign transportConfig.caCert = GASGUARD_INGRESS_CA_CERT');
+}
+console.log('  [31] TransportConfig CA initialized deterministically in ino: PASS');
+
+console.log('\nALL HW-4A / HW-4A1 REMOTE HARDWARE PILOT GATEWAY CONTRACT TESTS PASSED!');

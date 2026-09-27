@@ -68,7 +68,25 @@ The remote tester does **NOT** require Supabase credentials, database secrets, o
 
 ---
 
+## Cloudflare Tunnel Configuration Template (HW-4B Concept)
+
+Future Cloudflare Named Tunnel configuration template (`config.yml`):
+
+```yaml
+ingress:
+  - hostname: <public-device-host>
+    service: http://127.0.0.1:5567
+    originRequest:
+      httpHostHeader: <public-device-host>
+  - service: http_status:404
+```
+
+> [!IMPORTANT]
+> No real domain, no tunnel UUID, and no credentials file are configured in this checkpoint.
+
+---
+
 ## Checkpoint Status
 
 > [!NOTE]
-> This HW-4A checkpoint is **SOURCE ONLY**. Live Cloudflare Named Tunnel creation, DNS record mutation, and cloud deployment will be executed in **HW-4B**.
+> This HW-4A / HW-4A1 checkpoint is **SOURCE ONLY**. Live Cloudflare Named Tunnel creation, DNS record mutation, and cloud deployment will be executed in **HW-4B**.

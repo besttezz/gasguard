@@ -37,8 +37,8 @@ This checklist is to be opened and followed at the bench on the day physical ESP
 
 ## 7. INGRESS
 - [ ] Configure `GASGUARD_INGRESS_URL`:
-  - **LOCAL BENCH ONLY**: `http://<server-ip>:5567/api/v1/device/telemetry` (Localhost / LAN testing)
-  - **REMOTE HARDWARE PILOT = HTTPS ONLY**: `https://<public-domain>/api/v1/device/telemetry` (Cloudflare Tunnel deployment)
+  - **SERVER / VIRTUAL TEST ONLY**: `http://<server-ip>:5567/api/v1/device/telemetry` (Localhost / LAN testing)
+  - **PHYSICAL ESP32 HARDWARE PILOT = HTTPS ONLY**: `https://<public-domain>/api/v1/device/telemetry` (Cloudflare Tunnel deployment)
 - [ ] Confirm HTTP POST response returns status `202 Accepted` with code `CALIBRATION_REQUIRED`.
 
 ## 8. RAW DATA

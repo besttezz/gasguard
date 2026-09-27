@@ -112,6 +112,7 @@ void setup() {
     // Use persisted Device Credential for transport — never a compile-time credential
     transportConfig.deviceKey = g_deviceCredentialRuntime.length() > 0 ? g_deviceCredentialRuntime.c_str() : "";
     transportConfig.dataClassification = DATA_CLASSIFICATION;
+    transportConfig.caCert = GASGUARD_INGRESS_CA_CERT;
 
     Serial.printf("\n[GasGuard Node] Starting %s (BootId: %s, DeviceUID: %s)\n",
                   FIRMWARE_VERSION, bootId.c_str(), getRuntimeDeviceId());
