@@ -86,7 +86,17 @@ ingress:
 
 ---
 
+## Cloudflare Quick Tunnel Smoke Test Result (HW-4B-QT)
+
+- **Date**: 2026-09-27
+- **Classification**: Development / Testing Only (Temporary TryCloudflare Quick Tunnel)
+- **Status**: PASSED (`tools/remote-hardware-smoke.js` verified HTTP 200 health & 401 unauth telemetry rejection over HTTPS tunnel)
+- **Trusted Tunnel Mode**: `false` (Server mode `LOCAL_ONLY`, remote enrollment strictly closed)
+- **Persistence**: Temporary process lifetime only. No domain, DNS records, Named Tunnel UUID, or credentials stored.
+
+---
+
 ## Checkpoint Status
 
 > [!NOTE]
-> This HW-4A / HW-4A1 checkpoint is **SOURCE ONLY**. Live Cloudflare Named Tunnel creation, DNS record mutation, and cloud deployment will be executed in **HW-4B**.
+> This HW-4B-QT checkpoint is **DEVELOPMENT / TESTING SMOKE ONLY**. Live Cloudflare Named Tunnel creation, DNS record mutation, and production domain deployment will be executed in **HW-4B**.

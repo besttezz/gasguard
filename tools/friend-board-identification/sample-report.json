@@ -1,0 +1,57 @@
+{
+  "schema": "gasguard.board-identification.v1",
+  "capturedAt": "2026-09-27T14:00:00.000Z",
+  "os": {
+    "caption": "Microsoft Windows 11 Pro",
+    "version": "10.0.22631",
+    "psVersion": "5.1.22621.3880"
+  },
+  "serialPorts": [
+    {
+      "deviceUid": "COM3",
+      "friendlyName": "Silicon Labs CP210x USB to UART Bridge (COM3)",
+      "pnpDeviceId": "USB\\VID_10C4&PID_EA60\\0001",
+      "vid": "10C4",
+      "pid": "EA60"
+    }
+  ],
+  "usbCandidates": [
+    {
+      "comPort": "COM3",
+      "vid": "10C4",
+      "pid": "EA60",
+      "friendlyName": "Silicon Labs CP210x USB to UART Bridge (COM3)",
+      "pnpDeviceId": "USB\\VID_10C4&PID_EA60\\0001",
+      "usbBridgeClassification": "CP210X"
+    }
+  ],
+  "selectedCandidate": {
+    "comPort": "COM3",
+    "vid": "10C4",
+    "pid": "EA60",
+    "friendlyName": "Silicon Labs CP210x USB to UART Bridge (COM3)",
+    "usbBridgeClassification": "CP210X"
+  },
+  "esptool": {
+    "available": true,
+    "version": "v4.7.0",
+    "chipFamily": "ESP32-D0WD-V3 (revision v3.0)",
+    "chipRevision": "3",
+    "deviceMac": "24:0A:C4:00:11:22",
+    "flashId": "0x1640c8 (GD25Q32C)",
+    "flashSize": "4MB"
+  },
+  "board": {
+    "exactModel": "NOT_CONFIRMED",
+    "fqbn": "NOT_CONFIRMED",
+    "secondSensorModel": "NOT_CONFIRMED"
+  },
+  "nextEvidenceRequired": [
+    "FRONT_BOARD_PHOTO",
+    "BACK_BOARD_PHOTO",
+    "RF_MODULE_TEXT_PHOTO",
+    "USB_BRIDGE_CHIP_PHOTO",
+    "PIN_LABEL_PHOTO",
+    "SENSOR_MODULE_PHOTO"
+  ]
+}
