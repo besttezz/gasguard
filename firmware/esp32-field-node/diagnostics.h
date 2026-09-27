@@ -21,6 +21,9 @@ struct FieldDiagnostics {
     String provisioningServiceName;
     uint8_t provisioningSecurityMode;
     bool hasDeviceCredential;
+    const char* credentialStoreState;        // e.g. "LOADED", "EMPTY", "CORRUPT", "ENROLLED"
+    const char* enrollmentState;             // Last enrollment result code (safe, no secrets)
+    int lastEnrollmentHttpStatus;            // Last enrollment HTTP status code
     MeasurementReading mq6Reading;
     MeasurementReading mq3Reading;
     uint32_t mq6Sequence;

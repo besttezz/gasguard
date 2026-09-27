@@ -17,7 +17,10 @@ enum NodeState {
     NODE_STATE_OFFLINE = 10,
     NODE_STATE_CONFIG_ERROR = 11,
     NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE = 12,
-    NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE = 13
+    NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE = 13,
+    NODE_STATE_ENROLLING_DEVICE = 14,
+    NODE_STATE_DEVICE_ENROLLMENT_FAILED = 15,
+    NODE_STATE_CREDENTIAL_STORAGE_ERROR = 16
 };
 
 const char* nodeStateToString(NodeState state);
@@ -65,5 +68,31 @@ String generateProvisioningServiceName(const char* macOrDeviceSuffix);
 bool validateProvisioningConfig(const ProvisioningConfig& config, String& outError);
 void requestWiFiProvisioningReset();
 ProvisioningStatus getWiFiProvisioningStatus();
+
+// Custom provisioning endpoint for enrollment bootstrap.
+// Must be created AFTER manager init, BEFORE provisioning starts.
+// Handler registered AFTER provisioning starts.
+bool createEnrollmentEndpoint();
+bool registerEnrollmentEndpointHandler();
+
+// Enrollment bootstrap data received via custom provisioning endpoint.
+// Held in RAM only. NEVER persisted, logged, or sent to Serial.
+struct EnrollmentBootstrap {
+    String deviceUid;
+    bool hasBootstrapData;
+    // NOTE: enrollmentToken is stored in a separate volatile-only variable
+    // inside network_provisioning.cpp and is NEVER exposed in this struct.
+};
+
+// Get bootstrap data (without token) for state machine decisions
+EnrollmentBootstrap getEnrollmentBootstrap();
+
+// Access enrollment token for the enrollment client ONLY.
+// Returns a mutable reference that will be cleared after use.
+// NEVER print, log, persist, or include in diagnostics.
+String& getEnrollmentTokenRef();
+
+// Check if bootstrap enrollment token is available in RAM
+bool hasEnrollmentToken();
 
 #endif // GASGUARD_NETWORK_PROVISIONING_H

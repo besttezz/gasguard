@@ -1,5 +1,6 @@
 #include "network_provisioning.h"
 #include "provisioning_config.h"
+#include "device_credentials.h"
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
 #include <sdkconfig.h>
@@ -49,6 +50,15 @@ static ProvisioningStatus g_provStatus = {
     "NONE"
 };
 
+// ============================================================================
+// ENROLLMENT BOOTSTRAP — RAM-ONLY TOKEN STORAGE
+// Enrollment Token is NEVER persisted to NVS, filesystem, Serial,
+// diagnostics, telemetry, or crash output.
+// ============================================================================
+static String g_enrollmentToken = "";           // RAM only — cleared after use
+static String g_bootstrapDeviceUid = "";         // RAM only — persisted only after successful enrollment
+static bool g_hasBootstrapData = false;
+
 const char* nodeStateToString(NodeState state) {
     switch (state) {
         case NODE_STATE_UNPROVISIONED: return "UNPROVISIONED";
@@ -65,6 +75,9 @@ const char* nodeStateToString(NodeState state) {
         case NODE_STATE_CONFIG_ERROR: return "CONFIG_ERROR";
         case NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE: return "PROVISIONING_SECURITY_UNAVAILABLE";
         case NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE: return "PROVISIONING_IDENTITY_UNAVAILABLE";
+        case NODE_STATE_ENROLLING_DEVICE: return "ENROLLING_DEVICE";
+        case NODE_STATE_DEVICE_ENROLLMENT_FAILED: return "DEVICE_ENROLLMENT_FAILED";
+        case NODE_STATE_CREDENTIAL_STORAGE_ERROR: return "CREDENTIAL_STORAGE_ERROR";
         default: return "UNKNOWN";
     }
 }
@@ -282,6 +295,9 @@ ProvisioningStatus prepareWiFiProvisioning(const ProvisioningConfig& config) {
         return g_provStatus;
     }
 
+    // Create custom enrollment endpoint AFTER manager init, BEFORE provisioning starts
+    createEnrollmentEndpoint();
+
     esp_err_t start_err = network_prov_mgr_start_provisioning(
         NETWORK_PROV_SECURITY_1,
         (const char*)config.proofOfPossession,
@@ -293,6 +309,8 @@ ProvisioningStatus prepareWiFiProvisioning(const ProvisioningConfig& config) {
         g_provStatus.state = NODE_STATE_PROVISIONING;
         g_provStatus.lastProvisioningEvent = "START";
         g_provManagerState = PROV_MGR_RUNNING;
+        // Register enrollment endpoint handler AFTER provisioning starts
+        registerEnrollmentEndpointHandler();
         Serial.printf("[GasGuard Network] Protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
     } else {
         network_prov_mgr_deinit(); // Clean up initialized manager on start failure
@@ -349,4 +367,173 @@ void requestWiFiProvisioningReset() {
 ProvisioningStatus getWiFiProvisioningStatus() {
     g_provStatus.managerState = g_provManagerState;
     return g_provStatus;
+}
+
+// ============================================================================
+// CUSTOM PROVISIONING ENDPOINT: gasguard-enroll
+// Receives Device UID + Enrollment Token during provisioning session.
+// Created AFTER manager init, handler registered AFTER provisioning starts.
+// ============================================================================
+
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#if defined(USE_CURRENT_NET_PROV_API) && HAS_NETWORK_PROV_SUPPORT
+
+// Custom endpoint handler callback
+// Receives bootstrap payload, validates, stores in RAM only.
+static esp_err_t enrollmentEndpointHandler(
+    uint32_t session_id,
+    const uint8_t *inbuf, ssize_t inlen,
+    uint8_t **outbuf, ssize_t *outlen,
+    void *priv_data
+) {
+    (void)session_id;
+    (void)priv_data;
+
+    // Default error response
+    const char* errResponse = "{\"ok\":false,\"code\":\"INVALID_PAYLOAD\"}";
+    const char* okResponse = "{\"ok\":true,\"code\":\"ENROLLMENT_BOOTSTRAP_ACCEPTED\"}";
+
+    if (inbuf == NULL || inlen <= 0) {
+        *outbuf = (uint8_t*)strdup(errResponse);
+        *outlen = strlen(errResponse);
+        return ESP_OK;
+    }
+
+    // Parse input as string (it arrives through the Security 1 encrypted session)
+    String input = String((const char*)inbuf).substring(0, (unsigned int)inlen);
+
+    // Minimal JSON parsing for deviceUid and enrollmentToken
+    // Input contract: {"deviceUid":"...","enrollmentToken":"..."}
+    auto extractValue = [](const String& json, const String& key) -> String {
+        String searchKey = "\"" + key + "\"";
+        int keyIdx = json.indexOf(searchKey);
+        if (keyIdx < 0) return "";
+        int colonIdx = json.indexOf(':', keyIdx + searchKey.length());
+        if (colonIdx < 0) return "";
+        int qs = json.indexOf('"', colonIdx + 1);
+        if (qs < 0) return "";
+        int qe = json.indexOf('"', qs + 1);
+        if (qe < 0) return "";
+        return json.substring(qs + 1, qe);
+    };
+
+    String deviceUid = extractValue(input, "deviceUid");
+    String enrollmentToken = extractValue(input, "enrollmentToken");
+
+    // Clear input buffer copy
+    for (unsigned int i = 0; i < input.length(); i++) {
+        input.setCharAt(i, '\0');
+    }
+    input = "";
+
+    // Validate deviceUid
+    if (!isValidDeviceUid(deviceUid)) {
+        *outbuf = (uint8_t*)strdup(errResponse);
+        *outlen = strlen(errResponse);
+        return ESP_OK;
+    }
+
+    // Validate enrollmentToken: exactly 64 hex characters
+    String normalizedToken = normalizeHexLowercase(enrollmentToken);
+    // Clear original before checking
+    for (unsigned int i = 0; i < enrollmentToken.length(); i++) {
+        enrollmentToken.setCharAt(i, '\0');
+    }
+    enrollmentToken = "";
+
+    if (!isValidHex64(normalizedToken)) {
+        for (unsigned int i = 0; i < normalizedToken.length(); i++) {
+            normalizedToken.setCharAt(i, '\0');
+        }
+        normalizedToken = "";
+        *outbuf = (uint8_t*)strdup(errResponse);
+        *outlen = strlen(errResponse);
+        return ESP_OK;
+    }
+
+    // Store in RAM-only volatile storage
+    // Clear any previous bootstrap data
+    if (g_enrollmentToken.length() > 0) {
+        for (unsigned int i = 0; i < g_enrollmentToken.length(); i++) {
+            g_enrollmentToken.setCharAt(i, '\0');
+        }
+    }
+    g_enrollmentToken = normalizedToken;
+    g_bootstrapDeviceUid = deviceUid;
+    g_hasBootstrapData = true;
+
+    // Clear local copies
+    for (unsigned int i = 0; i < normalizedToken.length(); i++) {
+        normalizedToken.setCharAt(i, '\0');
+    }
+    normalizedToken = "";
+
+    // Return safe acknowledgment — NEVER echo token back
+    *outbuf = (uint8_t*)strdup(okResponse);
+    *outlen = strlen(okResponse);
+
+    Serial.println("[GasGuard Enrollment] Bootstrap payload accepted via provisioning endpoint.");
+    return ESP_OK;
+}
+
+#endif // USE_CURRENT_NET_PROV_API && HAS_NETWORK_PROV_SUPPORT
+#endif // ARDUINO_ARCH_ESP32 || ESP32
+
+bool createEnrollmentEndpoint() {
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#if defined(USE_CURRENT_NET_PROV_API) && HAS_NETWORK_PROV_SUPPORT
+    // Create custom endpoint AFTER manager initialization, BEFORE provisioning starts
+    // Endpoint name must be a non-reserved short name
+    esp_err_t err = network_prov_mgr_endpoint_create("gasguard-enroll");
+    if (err != ESP_OK) {
+        Serial.printf("[GasGuard Enrollment] Failed to create custom endpoint: %d\n", (int)err);
+        return false;
+    }
+    Serial.println("[GasGuard Enrollment] Custom provisioning endpoint 'gasguard-enroll' created.");
+    return true;
+#else
+    Serial.println("[GasGuard Enrollment] CUSTOM ENDPOINT COMPILE = NOT TESTED (API not available)");
+    return false;
+#endif
+#else
+    return false;
+#endif
+}
+
+bool registerEnrollmentEndpointHandler() {
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#if defined(USE_CURRENT_NET_PROV_API) && HAS_NETWORK_PROV_SUPPORT
+    // Register handler AFTER provisioning starts
+    esp_err_t err = network_prov_mgr_endpoint_register(
+        "gasguard-enroll",
+        enrollmentEndpointHandler,
+        NULL
+    );
+    if (err != ESP_OK) {
+        Serial.printf("[GasGuard Enrollment] Failed to register endpoint handler: %d\n", (int)err);
+        return false;
+    }
+    Serial.println("[GasGuard Enrollment] Enrollment endpoint handler registered.");
+    return true;
+#else
+    return false;
+#endif
+#else
+    return false;
+#endif
+}
+
+EnrollmentBootstrap getEnrollmentBootstrap() {
+    EnrollmentBootstrap bootstrap;
+    bootstrap.deviceUid = g_bootstrapDeviceUid;
+    bootstrap.hasBootstrapData = g_hasBootstrapData;
+    return bootstrap;
+}
+
+String& getEnrollmentTokenRef() {
+    return g_enrollmentToken;
+}
+
+bool hasEnrollmentToken() {
+    return g_enrollmentToken.length() == 64;
 }

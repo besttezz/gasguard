@@ -19,7 +19,10 @@ const NODE_STATES = Object.freeze([
   'OFFLINE',
   'CONFIG_ERROR',
   'PROVISIONING_SECURITY_UNAVAILABLE',
-  'PROVISIONING_IDENTITY_UNAVAILABLE'
+  'PROVISIONING_IDENTITY_UNAVAILABLE',
+  'ENROLLING_DEVICE',
+  'DEVICE_ENROLLMENT_FAILED',
+  'CREDENTIAL_STORAGE_ERROR'
 ]);
 
 const FORBIDDEN_DEFAULT_POPS = Object.freeze([
@@ -86,7 +89,17 @@ function processProvisioningEvent(currentState, event, context = {}) {
       if (context.hasDeviceCredential) {
         return 'CONNECTING_INGRESS';
       }
+      if (context.hasEnrollmentToken) {
+        return 'ENROLLING_DEVICE';
+      }
       return 'DEVICE_ENROLLMENT_REQUIRED';
+    case 'ENROLLMENT_SUCCESS':
+      return 'CONNECTING_INGRESS';
+    case 'ENROLLMENT_ALREADY_CLAIMED':
+    case 'ENROLLMENT_RESULT_UNKNOWN':
+      return 'DEVICE_ENROLLMENT_FAILED';
+    case 'CREDENTIAL_STORAGE_ERROR':
+      return 'CREDENTIAL_STORAGE_ERROR';
     case 'WIFI_DISCONNECTED':
       return 'OFFLINE';
     default:
@@ -178,6 +191,9 @@ function formatFieldDiagnostics(diag) {
   if (redacted.proofOfPossession) redacted.proofOfPossession = '[REDACTED]';
   if (redacted.pop) redacted.pop = '[REDACTED]';
   if (redacted.serviceKey) redacted.serviceKey = '[REDACTED]';
+  if (redacted.enrollmentToken) redacted.enrollmentToken = '[REDACTED]';
+  if (redacted.deviceCredential) redacted.deviceCredential = '[REDACTED]';
+  if (redacted.credentialHash) redacted.credentialHash = '[REDACTED]';
   return Object.freeze(redacted);
 }
 
