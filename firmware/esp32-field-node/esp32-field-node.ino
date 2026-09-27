@@ -138,17 +138,25 @@ void loop() {
     // 1. Connection & Backoff State Machine - Single State Authority Synchronization
     ProvisioningStatus provStatus = getWiFiProvisioningStatus();
 
-    // Re-enrollment bootstrap accepted: request provisioning stop once and resume saved Wi-Fi STA
+    static bool staResumedForEnrollment = false;
+
+    // Re-enrollment bootstrap accepted: request provisioning stop once and resume saved Wi-Fi STA only after PROV_END
     if (hasEnrollmentBootstrapAccepted()) {
         if (provStatus.managerState == PROV_MGR_RUNNING) {
             requestProvisioningStop();
-        }
+        } else if (provStatus.managerState == PROV_MGR_STOPPED) {
+            if (!staResumedForEnrollment) {
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
-        if (WiFi.status() != WL_CONNECTED) {
-            WiFi.mode(WIFI_STA);
-            WiFi.begin();
-        }
+                if (WiFi.status() != WL_CONNECTED) {
+                    WiFi.mode(WIFI_STA);
+                    WiFi.begin();
+                }
 #endif
+                staResumedForEnrollment = true;
+            }
+        }
+    } else {
+        staResumedForEnrollment = false;
     }
 
     if ((provStatus.state == NODE_STATE_PROVISIONING || provStatus.state == NODE_STATE_PROVISIONING_FAILED ||

@@ -831,6 +831,74 @@ console.log('  [27] Board profile remains unconfirmed: PASS');
   const boardConfig = readFirmware('board_config.h');
   assert.ok(boardConfig.includes('GASGUARD_HARDWARE_PROFILE_CONFIRMED false'));
 }
-console.log('  [29] HW-3C2B1 Re-enrollment completion & provisioning lifecycle finalization: PASS');
+// =============================================================================
+// 30. HW-3C2B2 PROVISIONING STOP/DEINIT LIFECYCLE CORRECTNESS
+// =============================================================================
+{
+  const provCpp = readFirmware('network_provisioning.cpp');
+  const provH = readFirmware('network_provisioning.h');
+  const inoContent = readFirmware('esp32-field-node.ino');
+  const allContent = allFirmwareContent();
 
-console.log('\nALL HW-3C2A, HW-3C2B, & HW-3C2B1 ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');
+  // 1. PROV_MGR_STOP_REQUESTED lifecycle marker exists
+  assert.ok(provH.includes('PROV_MGR_STOP_REQUESTED'),
+    'PROV_MGR_STOP_REQUESTED must be declared in network_provisioning.h');
+
+  // 2. requestProvisioningStop sets PROV_MGR_STOP_REQUESTED on success (not PROV_MGR_STOPPED)
+  const reqStopBody = provCpp.substring(
+    provCpp.indexOf('bool requestProvisioningStop()'),
+    provCpp.indexOf('void clearEnrollmentBootstrapData()')
+  );
+  assert.ok(reqStopBody.includes('PROV_MGR_STOP_REQUESTED'),
+    'requestProvisioningStop must transition to PROV_MGR_STOP_REQUESTED');
+  assert.equal(reqStopBody.includes('g_provManagerState = PROV_MGR_STOPPED'), false,
+    'requestProvisioningStop must NOT set PROV_MGR_STOPPED directly');
+
+  // 3. Stop failure path handles error and does NOT report STOPPED
+  assert.ok(reqStopBody.includes('PROVISIONING_STOP_FAILED'),
+    'requestProvisioningStop must set PROVISIONING_STOP_FAILED diagnostic error on stop failure');
+
+  // 4. PROV_END handles final PROV_MGR_STOPPED bookkeeping
+  const provEndIdx = provCpp.indexOf('ARDUINO_EVENT_PROV_END');
+  const provEndSection = provCpp.substring(provEndIdx, provEndIdx + 600);
+  assert.ok(provEndSection.includes('g_provManagerState = PROV_MGR_STOPPED'),
+    'ARDUINO_EVENT_PROV_END must set g_provManagerState = PROV_MGR_STOPPED');
+
+  // 5. esp32-field-node.ino resumes STA ONLY after PROV_MGR_STOPPED
+  assert.ok(inoContent.includes('provStatus.managerState == PROV_MGR_STOPPED'),
+    'esp32-field-node.ino must check PROV_MGR_STOPPED before resuming STA');
+  assert.ok(inoContent.includes('staResumedForEnrollment'),
+    'esp32-field-node.ino must latch staResumedForEnrollment');
+
+  // 6. Post-start endpoint register failure calls requestProvisioningStop without manual deinit
+  const prepareIdx = provCpp.indexOf('ProvisioningStatus prepareWiFiProvisioning');
+  const prepareBody = provCpp.substring(prepareIdx, provCpp.indexOf('void initWiFiProvisioning'));
+  const prepRegFailIdx = prepareBody.indexOf('ENROLLMENT_ENDPOINT_REGISTER_FAILED');
+  const prepRegBlock = prepareBody.substring(prepRegFailIdx - 200, prepRegFailIdx + 100);
+  assert.ok(prepRegBlock.includes('requestProvisioningStop()'),
+    'Post-start register failure in prepareWiFiProvisioning must call requestProvisioningStop()');
+  assert.equal(prepRegBlock.includes('network_prov_mgr_deinit()'), false,
+    'Post-start register failure must NOT call network_prov_mgr_deinit() directly');
+
+  const startReEnrollIdx = provCpp.indexOf('ProvisioningStatus startDeviceEnrollmentProvisioning');
+  const reEnrollBody = provCpp.substring(startReEnrollIdx);
+  const reRegFailIdx = reEnrollBody.indexOf('ENROLLMENT_ENDPOINT_REGISTER_FAILED');
+  const reRegBlock = reEnrollBody.substring(reRegFailIdx - 200, reRegFailIdx + 100);
+  assert.ok(reRegBlock.includes('requestProvisioningStop()'),
+    'Post-start register failure in startDeviceEnrollmentProvisioning must call requestProvisioningStop()');
+  assert.equal(reRegBlock.includes('network_prov_mgr_deinit()'), false,
+    'Post-start register failure in re-enrollment must NOT call network_prov_mgr_deinit() directly');
+
+  // 7. Official evidence documentation present in source
+  assert.ok(provCpp.includes('Arduino-ESP32 event bridge lifecycle behavior') ||
+            provCpp.includes('Upstream WiFiProv.cpp / network_prov_mgr handles NETWORK_PROV_END'),
+    'Official evidence documentation must be present in network_provisioning.cpp');
+
+  // 8. Telemetry & safety constraints preserved
+  assert.ok(allContent.includes('x-device-key'));
+  assert.equal(allContent.includes('HMAC'), false);
+  assert.equal(allContent.includes('setInsecure'), false);
+}
+console.log('  [30] HW-3C2B2 Provisioning stop/deinit lifecycle correctness: PASS');
+
+console.log('\nALL HW-3C2A, HW-3C2B, HW-3C2B1, & HW-3C2B2 ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');

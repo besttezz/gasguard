@@ -37,7 +37,8 @@ enum ProvisioningManagerState {
     PROV_MGR_UNINITIALIZED = 0,
     PROV_MGR_INITIALIZED = 1,
     PROV_MGR_RUNNING = 2,
-    PROV_MGR_STOPPED = 3
+    PROV_MGR_STOPPED = 3,
+    PROV_MGR_STOP_REQUESTED = 4
 };
 
 struct ProvisioningStatus {

@@ -194,8 +194,11 @@ static void onWiFiProvEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
             break;
 
         case ARDUINO_EVENT_PROV_END:
-            // Upstream Arduino event bridge deinitializes provisioning manager before firing PROV_END.
-            // Update GasGuard managerState bookkeeping to STOPPED/UNINITIALIZED without double-deinit.
+            // Arduino-ESP32 event bridge lifecycle behavior:
+            // Upstream WiFiProv.cpp / network_prov_mgr handles NETWORK_PROV_END by calling
+            // network_prov_mgr_deinit() before forwarding ARDUINO_EVENT_PROV_END.
+            // (Validated against current Arduino-ESP32 upstream source; exact installed target core still pending).
+            // Update GasGuard managerState bookkeeping to PROV_MGR_STOPPED without competing deinit.
             g_provManagerState = PROV_MGR_STOPPED;
             g_provStatus.lastProvisioningEvent = "PROV_END";
             if (g_enrollmentBootstrapAccepted) {
@@ -210,13 +213,19 @@ static void onWiFiProvEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             g_provStatus.provisioned = true;
-            g_provStatus.state = NODE_STATE_WIFI_CONNECTED;
+            if (g_provStatus.state != NODE_STATE_DEVICE_ENROLLMENT_FAILED &&
+                g_provStatus.state != NODE_STATE_CREDENTIAL_STORAGE_ERROR) {
+                g_provStatus.state = NODE_STATE_WIFI_CONNECTED;
+            }
             g_provStatus.lastProvisioningEvent = "WIFI_STA_GOT_IP";
             Serial.println("[GasGuard Event] Wi-Fi STA obtained IP address.");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            g_provStatus.state = NODE_STATE_OFFLINE;
+            if (g_provStatus.state != NODE_STATE_DEVICE_ENROLLMENT_FAILED &&
+                g_provStatus.state != NODE_STATE_CREDENTIAL_STORAGE_ERROR) {
+                g_provStatus.state = NODE_STATE_OFFLINE;
+            }
             g_provStatus.lastProvisioningEvent = "WIFI_STA_DISCONNECTED";
             Serial.println("[GasGuard Event] Wi-Fi STA disconnected.");
             break;
@@ -327,12 +336,10 @@ ProvisioningStatus prepareWiFiProvisioning(const ProvisioningConfig& config) {
         g_provManagerState = PROV_MGR_RUNNING;
         // Register enrollment endpoint handler AFTER provisioning starts
         if (!registerEnrollmentEndpointHandler()) {
-            network_prov_mgr_stop_provisioning();
-            network_prov_mgr_deinit();
-            g_provManagerState = PROV_MGR_UNINITIALIZED;
+            requestProvisioningStop();
             g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
             g_provStatus.lastProvisioningError = "ENROLLMENT_ENDPOINT_REGISTER_FAILED";
-            Serial.println("[GasGuard Network] Custom enrollment endpoint registration failed. Provisioning stopped.");
+            Serial.println("[GasGuard Network] Custom enrollment endpoint registration failed. Provisioning stop requested.");
             return g_provStatus;
         }
         Serial.printf("[GasGuard Network] Protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
@@ -572,15 +579,27 @@ bool requestProvisioningStop() {
 #if USE_CURRENT_NET_PROV_API
     if (g_provManagerState == PROV_MGR_RUNNING) {
         esp_err_t err = network_prov_mgr_stop_provisioning();
-        g_provManagerState = PROV_MGR_STOPPED;
-        Serial.printf("[GasGuard Network] Provisioning stop requested: %d\n", (int)err);
-        return err == ESP_OK;
+        if (err == ESP_OK) {
+            g_provManagerState = PROV_MGR_STOP_REQUESTED;
+            Serial.println("[GasGuard Network] Provisioning stop requested successfully. Awaiting PROV_END.");
+            return true;
+        } else {
+            g_provStatus.lastProvisioningError = "PROVISIONING_STOP_FAILED";
+            Serial.printf("[GasGuard Network] Failed to request provisioning stop: %d\n", (int)err);
+            return false;
+        }
+    }
+    if (g_provManagerState == PROV_MGR_STOP_REQUESTED || g_provManagerState == PROV_MGR_STOPPED) {
+        return true;
     }
 #endif
 #else
-    g_provManagerState = PROV_MGR_STOPPED;
-#endif
+    if (g_provManagerState == PROV_MGR_RUNNING) {
+        g_provManagerState = PROV_MGR_STOP_REQUESTED;
+    }
     return true;
+#endif
+    return false;
 }
 
 void clearEnrollmentBootstrapData() {
@@ -654,12 +673,10 @@ ProvisioningStatus startDeviceEnrollmentProvisioning(const ProvisioningConfig& c
         g_provManagerState = PROV_MGR_RUNNING;
 
         if (!registerEnrollmentEndpointHandler()) {
-            network_prov_mgr_stop_provisioning();
-            network_prov_mgr_deinit();
-            g_provManagerState = PROV_MGR_UNINITIALIZED;
+            requestProvisioningStop();
             g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
             g_provStatus.lastProvisioningError = "ENROLLMENT_ENDPOINT_REGISTER_FAILED";
-            Serial.println("[GasGuard Network] Custom enrollment endpoint registration failed during re-enrollment. Provisioning stopped.");
+            Serial.println("[GasGuard Network] Custom enrollment endpoint registration failed during re-enrollment. Provisioning stop requested.");
             return g_provStatus;
         }
         Serial.printf("[GasGuard Network] Re-enrollment protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());

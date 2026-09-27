@@ -31,6 +31,20 @@ When `startDeviceEnrollmentProvisioning` reopens the Espressif `network_prov_mgr
 **AUTHORIZED TECHNICIAN CLIENT POLICY:**
 Custom endpoint (`gasguard-enroll`) ONLY during re-enrollment. Authorized GasGuard technician tooling MUST NOT invoke Wi-Fi configuration endpoints during re-enrollment, preserving saved Wi-Fi STA credentials.
 
+#### Provisioning Teardown Lifecycle & Deinit Ownership
+- **Single-Authority Teardown**:
+  1. Bootstrap accepted (`gasguard-enroll`)
+  2. Application issues `requestProvisioningStop()` (manager state: `PROV_MGR_STOP_REQUESTED`)
+  3. Framework executes teardown and emits `ARDUINO_EVENT_PROV_END`
+  4. Application updates manager state to `PROV_MGR_STOPPED`
+  5. Application resumes saved Wi-Fi STA (`WiFi.mode(WIFI_STA); WiFi.begin();`)
+  6. Connection established (`WL_CONNECTED` / `GOT_IP`) → transition to `ENROLLING_DEVICE` → HTTPS claim
+
+- **Official Evidence & Framework Deinit Ownership**:
+  Upstream Arduino-ESP32 event bridge (`WiFiProv.cpp` / `network_prov_mgr`) handles `NETWORK_PROV_END` by executing `network_prov_mgr_deinit()` before forwarding `ARDUINO_EVENT_PROV_END` to the application.
+  *(Validated against current Arduino-ESP32 upstream source; exact installed target core still pending).*
+  Therefore, once active provisioning has successfully started, the application requests `STOP` only. Direct `deinit` calls are forbidden post-start to prevent double-deinit race conditions.
+
 ---
 
 ## Technician Client Contract Helper (`tools/esp32-provisioning-client.js`)
