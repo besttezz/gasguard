@@ -20,7 +20,8 @@ enum NodeState {
     NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE = 13,
     NODE_STATE_ENROLLING_DEVICE = 14,
     NODE_STATE_DEVICE_ENROLLMENT_FAILED = 15,
-    NODE_STATE_CREDENTIAL_STORAGE_ERROR = 16
+    NODE_STATE_CREDENTIAL_STORAGE_ERROR = 16,
+    NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED = 17
 };
 
 const char* nodeStateToString(NodeState state);
@@ -94,5 +95,9 @@ String& getEnrollmentTokenRef();
 
 // Check if bootstrap enrollment token is available in RAM
 bool hasEnrollmentToken();
+
+// Re-enrollment entry point boundary for technician workflow (HW-3C2B foundation).
+// Reopens protected provisioning session for enrollment bootstrap WITHOUT erasing Wi-Fi credentials.
+ProvisioningStatus requestDeviceEnrollmentProvisioning(const ProvisioningConfig& config);
 
 #endif // GASGUARD_NETWORK_PROVISIONING_H

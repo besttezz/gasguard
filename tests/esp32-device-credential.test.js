@@ -368,27 +368,29 @@ console.log('  [20] Response credential exact 64 hex required: PASS');
 console.log('  [21] Response-loss / ambiguous result does not blindly retry: PASS');
 
 // =============================================================================
-// 22. ENROLLMENT_ALREADY_CLAIMED DOES NOT RETRY
+// 22. ENROLLMENT HTTP 409 TERMINAL RESPONSE CODES DO NOT RETRY
 // =============================================================================
 {
   const enrollCpp = readFirmware('device_enrollment_client.cpp');
-  assert.ok(enrollCpp.includes('ENROLL_ALREADY_CLAIMED'),
-    'Must define ENROLL_ALREADY_CLAIMED');
-  assert.ok(enrollCpp.includes('httpCode == 409'),
-    'HTTP 409 must map to ALREADY_CLAIMED');
+  assert.ok(enrollCpp.includes('ENROLL_ALREADY_CLAIMED'), 'Must define ENROLL_ALREADY_CLAIMED');
+  assert.ok(enrollCpp.includes('ENROLL_TOKEN_EXPIRED'), 'Must define ENROLL_TOKEN_EXPIRED');
+  assert.ok(enrollCpp.includes('ENROLL_TOKEN_REVOKED'), 'Must define ENROLL_TOKEN_REVOKED');
+  assert.ok(enrollCpp.includes('ENROLL_NOT_AVAILABLE'), 'Must define ENROLL_NOT_AVAILABLE');
+  assert.ok(enrollCpp.includes('httpCode == 409'), 'HTTP 409 must be checked');
+  assert.ok(enrollCpp.includes('ENROLLMENT_EXPIRED'), 'Must check ENROLLMENT_EXPIRED code');
+  assert.ok(enrollCpp.includes('ENROLLMENT_REVOKED'), 'Must check ENROLLMENT_REVOKED code');
+  assert.ok(enrollCpp.includes('ENROLLMENT_NOT_AVAILABLE'), 'Must check ENROLLMENT_NOT_AVAILABLE code');
 
   // Contract-level
-  const claimedState = contract.processProvisioningEvent('ENROLLING_DEVICE', 'ENROLLMENT_ALREADY_CLAIMED');
-  assert.equal(claimedState, 'DEVICE_ENROLLMENT_FAILED');
+  assert.equal(contract.processProvisioningEvent('ENROLLING_DEVICE', 'ENROLLMENT_ALREADY_CLAIMED'), 'DEVICE_ENROLLMENT_FAILED');
 }
-console.log('  [22] ENROLLMENT_ALREADY_CLAIMED does not retry: PASS');
+console.log('  [22] Enrollment HTTP 409 terminal response codes do not retry: PASS');
 
 // =============================================================================
 // 23. PROVISIONING POP NOT REUSED AS TOKEN
 // =============================================================================
 {
   const allContent = allFirmwareContent();
-  // PoP and enrollment token must be in completely separate code paths
   const enrollCpp = readFirmware('device_enrollment_client.cpp');
   assert.equal(enrollCpp.includes('GASGUARD_PROV_POP'), false,
     'Enrollment client must not reference PoP');
@@ -396,6 +398,98 @@ console.log('  [22] ENROLLMENT_ALREADY_CLAIMED does not retry: PASS');
     'Enrollment client must not reference proofOfPossession');
 }
 console.log('  [23] Provisioning PoP not reused as token: PASS');
+
+// =============================================================================
+// 24. HW-3C2A1 HARDENING REQUIREMENTS (SECRET CLEARING, ENDPOINT FAILURES, RE-ENROLLMENT GAP, TELEMETRY X-DEVICE-KEY)
+// =============================================================================
+{
+  const enrollCpp = readFirmware('device_enrollment_client.cpp');
+  const provCpp = readFirmware('network_provisioning.cpp');
+  const inoContent = readFirmware('esp32-field-node.ino');
+  const allContent = allFirmwareContent();
+
+  // 1. responseBody is best-effort cleared after parsing
+  assert.ok(enrollCpp.includes('bestEffortClearSecret(responseBody)'),
+    'responseBody must be cleared after parsing');
+
+  // 2. responseBody is cleared on error/malformed branches
+  const responseBodyClearMatches = enrollCpp.match(/bestEffortClearSecret\(responseBody\)/g) || [];
+  assert.ok(responseBodyClearMatches.length >= 3,
+    'responseBody must be cleared on multiple response branches');
+
+  // 3. raw credential does not remain in diagnostic/result objects
+  const enrollH = readFirmware('device_enrollment_client.h');
+  assert.ok(enrollH.includes('Device Credential is NEVER stored in this struct'),
+    'Result struct documentation must state credential is not stored');
+  const diagH = readFirmware('diagnostics.h');
+  assert.equal(diagH.includes('deviceCredential'), false,
+    'FieldDiagnostics struct must not contain deviceCredential');
+
+  // 4. endpoint create failure is checked
+  assert.ok(provCpp.includes('ENROLLMENT_ENDPOINT_CREATE_FAILED'),
+    'Endpoint create failure must produce ENROLLMENT_ENDPOINT_CREATE_FAILED');
+
+  // 5. endpoint register failure is checked
+  assert.ok(provCpp.includes('ENROLLMENT_ENDPOINT_REGISTER_FAILED'),
+    'Endpoint register failure must produce ENROLLMENT_ENDPOINT_REGISTER_FAILED');
+
+  // 6. provisioning does not report normal success when custom endpoint setup failed
+  assert.ok(provCpp.includes('NODE_STATE_PROVISIONING_FAILED'),
+    'Endpoint failure must set state to NODE_STATE_PROVISIONING_FAILED');
+
+  // 7. official endpoint ordering remains: init → create → start → register
+  const initIdx = provCpp.indexOf('network_prov_mgr_init');
+  const createIdx = provCpp.indexOf('createEnrollmentEndpoint()');
+  const startIdx = provCpp.indexOf('network_prov_mgr_start_provisioning');
+  const regIdx = provCpp.indexOf('registerEnrollmentEndpointHandler()');
+  assert.ok(initIdx < createIdx && createIdx < startIdx && startIdx < regIdx,
+    'Official ordering (init -> create -> start -> register) must be maintained');
+
+  // 8. Wi-Fi-provisioned + credential-missing case is explicitly represented
+  assert.ok(provCpp.includes('NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED'),
+    'Must define NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED');
+  assert.ok(inoContent.includes('NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED'),
+    'esp32-field-node.ino must set ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED when credential absent and no token');
+
+  // 9. targeted Device Credential reset does not erase Wi-Fi
+  const credCpp = readFirmware('device_credentials.cpp');
+  assert.ok(credCpp.includes('clearDeviceCredentials'),
+    'clearDeviceCredentials must exist');
+  assert.equal(credCpp.includes('nvs_flash_erase'), false,
+    'clearDeviceCredentials must not call nvs_flash_erase');
+
+  // 10. re-enrollment bootstrap requires explicit protected provisioning entry
+  assert.ok(provCpp.includes('requestDeviceEnrollmentProvisioning'),
+    'Must define requestDeviceEnrollmentProvisioning entry point boundary');
+
+  // 11. no Serial secret entry
+  assert.equal(allContent.includes('Serial.readString'), false,
+    'No Serial secret entry permitted');
+
+  // 12. no Enrollment Token persistence
+  assert.equal(credCpp.includes('enrollmentToken'), false,
+    'No enrollment token in NVS store');
+
+  // 13-16. HTTP 409 responses handled & distinguished without retry
+  assert.ok(enrollCpp.includes('ENROLL_TOKEN_EXPIRED') && enrollCpp.includes('ENROLL_TOKEN_REVOKED') && enrollCpp.includes('ENROLL_NOT_AVAILABLE'),
+    '409 error codes mapped correctly');
+
+  // 17. telemetry still uses x-device-key
+  const transportCpp = readFirmware('transport.cpp');
+  assert.ok(transportCpp.includes('x-device-key'),
+    'Telemetry transport must use x-device-key header');
+
+  // 18. no HMAC implementation introduced
+  assert.equal(allContent.includes('mbedtls_md_hmac'), false,
+    'No HMAC implementation in firmware source');
+  assert.equal(allContent.includes('HMAC'), false,
+    'No HMAC terminology in firmware source');
+
+  // 19. no setInsecure
+  assert.equal(allContent.includes('setInsecure'), false,
+    'No setInsecure permitted');
+}
+console.log('  [24] HW-3C2A1 hardening requirements (secret clearing, endpoint failures, re-enrollment gap, telemetry x-device-key): PASS');
 
 // =============================================================================
 // 24. CUSTOM ENDPOINT RESPONSE NEVER ECHOES TOKEN

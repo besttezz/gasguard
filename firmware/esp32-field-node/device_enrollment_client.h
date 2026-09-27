@@ -57,7 +57,10 @@ enum EnrollmentResultCode {
     ENROLL_ALREADY_CLAIMED = 11,
     ENROLL_RESULT_UNKNOWN = 12,
     ENROLL_CREDENTIAL_STORE_ERROR = 13,
-    ENROLL_SERVER_REJECTED = 14
+    ENROLL_SERVER_REJECTED = 14,
+    ENROLL_TOKEN_EXPIRED = 15,
+    ENROLL_TOKEN_REVOKED = 16,
+    ENROLL_NOT_AVAILABLE = 17
 };
 
 const char* enrollmentResultToString(EnrollmentResultCode code);

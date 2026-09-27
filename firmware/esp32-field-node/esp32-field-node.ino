@@ -149,7 +149,10 @@ void loop() {
                 if (hasEnrollmentToken()) {
                     currentState = NODE_STATE_ENROLLING_DEVICE;
                 } else {
-                    currentState = NODE_STATE_DEVICE_ENROLLMENT_REQUIRED;
+                    // Wi-Fi connected, but Device Credential missing and no RAM bootstrap token
+                    // Protected enrollment-bootstrap channel entry required
+                    currentState = NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED;
+                    Serial.println("[GasGuard Node] Wi-Fi connected, but Device Credential absent. ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED.");
                 }
             } else {
                 currentState = NODE_STATE_CONNECTING_INGRESS;
@@ -189,10 +192,13 @@ void loop() {
                         currentState = NODE_STATE_CREDENTIAL_STORAGE_ERROR;
                         credentialStoreState = "VERIFY_FAILED";
                     }
-                } else if (enrollResult.code == ENROLL_ALREADY_CLAIMED) {
-                    // Terminal: token already used, do NOT retry
+                } else if (enrollResult.code == ENROLL_ALREADY_CLAIMED ||
+                           enrollResult.code == ENROLL_TOKEN_EXPIRED ||
+                           enrollResult.code == ENROLL_TOKEN_REVOKED ||
+                           enrollResult.code == ENROLL_NOT_AVAILABLE) {
+                    // Terminal 409 responses: token invalid/claimed/expired/revoked, do NOT retry
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
-                    Serial.println("[GasGuard Node] ENROLLMENT_ALREADY_CLAIMED. New enrollment workflow required.");
+                    Serial.printf("[GasGuard Node] Enrollment terminal error: %s. New enrollment workflow required.\n", lastEnrollmentErrorCode);
                 } else if (enrollResult.code == ENROLL_RESULT_UNKNOWN) {
                     // Ambiguous: server may have committed. Do NOT retry.
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
@@ -211,7 +217,7 @@ void loop() {
                 }
             } else {
                 // Bootstrap data not available
-                currentState = NODE_STATE_DEVICE_ENROLLMENT_REQUIRED;
+                currentState = NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED;
             }
         }
     } else {

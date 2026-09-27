@@ -82,9 +82,14 @@ The node operates under an explicit connection state machine (`network_provision
 ## 5. Security & Provisioning Boundaries
 
 - **Separation of Credentials**:
-  - `deviceId` & `deviceCredential` (Server-issued device identity & auth key)
+  - `deviceId` & `deviceCredential` (Server-issued device identity & auth key, persisted in NVS namespace `gg-auth`)
+  - Enrollment Token (One-time bootstrap token received via custom SoftAP endpoint `gasguard-enroll`; **RAM ONLY**, cleared best-effort after use)
   - Wi-Fi Credentials (Provisioned via protected SoftAP `Security 1` session)
   - Proof of Possession (Device-specific provisioning authorization secret)
   - Owner Invitation Credentials (Used exclusively by human site owners; **NEVER** stored or used by ESP32 devices)
-- **Secret Redaction**: Field diagnostic serial output redacts all Wi-Fi passwords, PoPs, and device keys.
+- **Telemetry Authentication**: Authenticated via HTTP header `x-device-key: <Device Credential>` over TLS (**NOT HMAC**).
+- **Secret Memory Clearing**: Memory buffer clearing (`bestEffortClearSecret`) on Arduino String heap is **BEST-EFFORT ONLY**.
+- **Re-enrollment**: `clearDeviceCredentials()` removes NVS credentials without erasing Wi-Fi. Reopening protected enrollment provisioning (`requestDeviceEnrollmentProvisioning`) requires explicit technician trigger (**RE-ENROLLMENT RUNTIME NOT PHYSICALLY VERIFIED**).
+- **Secret Redaction**: Field diagnostic serial output redacts all Wi-Fi passwords, PoPs, enrollment tokens, and device keys.
 - **Ingress Endpoints**: Endpoint URL is fully configurable in `transport.h` (`GASGUARD_INGRESS_URL`), allowing seamless transition from local LAN to cloud HTTPS without firmware code changes.
+- **Firmware Compile & Physical Hardware**: **FIRMWARE COMPILE = NOT TESTED**, **PHYSICAL HARDWARE = NOT TESTED**.

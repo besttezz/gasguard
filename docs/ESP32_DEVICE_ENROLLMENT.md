@@ -2,16 +2,19 @@
 
 ## Overview
 
-HW-3C2A implements the secure ESP32 enrollment handoff and persistent device credential foundation. This enables an ESP32 field node to:
+HW-3C2A & HW-3C2A1 implement the secure ESP32 enrollment handoff and persistent device credential foundation. This enables an ESP32 field node to:
 
 1. Receive a one-time Device Enrollment bootstrap bundle during protected provisioning
 2. Exchange the Enrollment Token for a Device Credential via HTTPS
 3. Persist the Device Credential in NVS for use across reboots
-4. Use the persisted credential for authenticated telemetry via `x-device-key`
+4. Use the persisted credential for authenticated telemetry via HTTP header `x-device-key` (raw credential over HTTPS, hashed server-side before verification; **NOT HMAC**)
 
 > [!WARNING]
 > GasGuard cloud HTTPS enrollment endpoint is **NOT deployed yet**.
 > Maturity: **HTTPS ENROLLMENT CLIENT SOURCE IMPLEMENTED — LIVE CLOUD ENDPOINT NOT TESTED**
+> Memory Clearing: **BEST-EFFORT ONLY** (Arduino String heap allocation; heap copies may remain).
+> Re-enrollment Status: **RE-ENROLLMENT RUNTIME NOT PHYSICALLY VERIFIED**. Reopening protected bootstrap session (`requestDeviceEnrollmentProvisioning`) without clearing Wi-Fi is structured in source, but exact physical re-entry depends on toolchain runtime behavior.
+> Firmware Compile & Physical Hardware: **FIRMWARE COMPILE = NOT TESTED**, **PHYSICAL HARDWARE = NOT TESTED**
 
 ---
 
@@ -209,11 +212,20 @@ Credential storage failure
 |---|---|
 | Device credential store | SOURCE IMPLEMENTED |
 | HTTPS enrollment client | SOURCE IMPLEMENTED |
-| Custom provisioning endpoint | COMPILE-GATED (depends on API availability) |
+| Custom provisioning endpoint | SOURCE IMPLEMENTED |
 | TLS trust configuration | NOT CONFIGURED (no CA cert embedded) |
 | Cloud enrollment endpoint | NOT DEPLOYED |
-| Firmware compile | NOT TESTED |
-| Physical flash/test | NOT TESTED |
+| Firmware compile | **FIRMWARE COMPILE = NOT TESTED** |
+| Physical flash/test | **PHYSICAL HARDWARE = NOT TESTED** |
+
+---
+
+## Telemetry Authentication & Security Notes
+
+- **Header**: `x-device-key: <Device Credential>` (HTTP Header over TLS)
+- **Authentication Model**: Raw Device Credential transported over HTTPS, verified server-side via SHA-256 database lookup (**NOT HMAC**).
+- **Memory Clearing**: All RAM clearing (`bestEffortClearSecret`) on Arduino String heap is **BEST-EFFORT ONLY**.
+- **Re-enrollment**: `clearDeviceCredentials()` clears NVS credentials without erasing Wi-Fi. Re-enrollment requires explicit protected provisioning entry (`requestDeviceEnrollmentProvisioning`); re-enrollment runtime is **NOT PHYSICALLY VERIFIED**.
 
 ---
 

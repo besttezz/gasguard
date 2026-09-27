@@ -24,6 +24,9 @@ const char* enrollmentResultToString(EnrollmentResultCode code) {
         case ENROLL_RESULT_UNKNOWN:                return "ENROLL_RESULT_UNKNOWN";
         case ENROLL_CREDENTIAL_STORE_ERROR:        return "ENROLL_CREDENTIAL_STORE_ERROR";
         case ENROLL_SERVER_REJECTED:               return "ENROLL_SERVER_REJECTED";
+        case ENROLL_TOKEN_EXPIRED:                 return "ENROLL_TOKEN_EXPIRED";
+        case ENROLL_TOKEN_REVOKED:                 return "ENROLL_TOKEN_REVOKED";
+        case ENROLL_NOT_AVAILABLE:                 return "ENROLL_NOT_AVAILABLE";
         default:                                   return "ENROLL_UNKNOWN";
     }
 }
@@ -105,30 +108,35 @@ EnrollmentResult performDeviceEnrollment(
     if (!isValidHex64(normalizedToken)) {
         result.code = ENROLL_TOKEN_INVALID_FORMAT;
         bestEffortClearSecret(enrollmentToken);
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
     if (enrollmentUrl.length() == 0) {
         result.code = ENROLL_URL_MISSING;
         bestEffortClearSecret(enrollmentToken);
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
     if (!isValidEnrollmentUrl(enrollmentUrl)) {
         result.code = ENROLL_URL_NOT_HTTPS;
         bestEffortClearSecret(enrollmentToken);
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
     if (!isTlsTrustConfigured()) {
         result.code = ENROLL_TLS_TRUST_NOT_CONFIGURED;
         bestEffortClearSecret(enrollmentToken);
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
     if (!isValidDeviceUid(deviceUid)) {
         result.code = ENROLL_TOKEN_INVALID_FORMAT;
         bestEffortClearSecret(enrollmentToken);
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
@@ -136,6 +144,7 @@ EnrollmentResult performDeviceEnrollment(
     if (WiFi.status() != WL_CONNECTED) {
         result.code = ENROLL_HTTP_CONNECTION_FAILED;
         // Do NOT clear token yet - network may recover
+        bestEffortClearSecret(normalizedToken);
         return result;
     }
 
@@ -190,14 +199,28 @@ EnrollmentResult performDeviceEnrollment(
 
     // Handle specific HTTP status codes
     if (httpCode == 409) {
-        // Enrollment already claimed - terminal, do not retry
-        result.code = ENROLL_ALREADY_CLAIMED;
-        Serial.println("[GasGuard Enrollment] ENROLLMENT_ALREADY_CLAIMED: Token was already used. New enrollment required.");
+        String serverCode = extractJsonStringValue(responseBody, "code");
+        bestEffortClearSecret(responseBody);
+
+        if (serverCode == "ENROLLMENT_EXPIRED") {
+            result.code = ENROLL_TOKEN_EXPIRED;
+            Serial.println("[GasGuard Enrollment] ENROLL_TOKEN_EXPIRED: Token expired. New enrollment required.");
+        } else if (serverCode == "ENROLLMENT_REVOKED") {
+            result.code = ENROLL_TOKEN_REVOKED;
+            Serial.println("[GasGuard Enrollment] ENROLL_TOKEN_REVOKED: Token revoked. New enrollment required.");
+        } else if (serverCode == "ENROLLMENT_NOT_AVAILABLE") {
+            result.code = ENROLL_NOT_AVAILABLE;
+            Serial.println("[GasGuard Enrollment] ENROLL_NOT_AVAILABLE: Enrollment not available. New enrollment required.");
+        } else {
+            result.code = ENROLL_ALREADY_CLAIMED;
+            Serial.println("[GasGuard Enrollment] ENROLLMENT_ALREADY_CLAIMED: Token was already used. New enrollment required.");
+        }
         return result;
     }
 
     if (httpCode != 201) {
         result.code = (httpCode >= 500) ? ENROLL_HTTP_ERROR : ENROLL_SERVER_REJECTED;
+        bestEffortClearSecret(responseBody);
         Serial.printf("[GasGuard Enrollment] Server returned HTTP %d\n", httpCode);
         return result;
     }
@@ -213,9 +236,13 @@ EnrollmentResult performDeviceEnrollment(
     String responseCredential = extractJsonStringValue(responseBody, "deviceCredential");
     String responseLifecycle = extractJsonStringValue(responseBody, "lifecycle");
 
+    // Immediately clear responseBody after parsing required fields to prevent raw credential remaining in RAM
+    bestEffortClearSecret(responseBody);
+
     result.lifecycle = responseLifecycle;
 
     if (!responseOk) {
+        bestEffortClearSecret(responseCredential);
         result.code = ENROLL_RESPONSE_PARSE_ERROR;
         return result;
     }
