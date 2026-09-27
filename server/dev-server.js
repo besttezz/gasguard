@@ -11,6 +11,7 @@ const { publicAuthConfig } = require('../tools/build-static.js');
 const { createDeviceAuthManager, createDatabaseDeviceAuthenticator } = require('./device-auth.js');
 const { createDeviceEnrollmentService } = require('./device-enrollment.js');
 const { createSupabaseDeviceAdapter, isValidServerSecret } = require('./supabase-device-adapter.js');
+const { classifyRequestTransport, evaluateRemoteGatewayHealth } = require('./request-security.js');
 
 const root = path.resolve(__dirname, '..');
 const contentTypes = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8' };
@@ -69,11 +70,13 @@ function createDevServer({ env = process.env, ingress, enrollmentService: custom
       const databaseRealAuthConfigured = Boolean(env.GASGUARD_SUPABASE_URL && isServerSecretValid && dbAuthenticator);
       const legacyRealAuthConfigured = Boolean(env.GASGUARD_REAL_DEVICE_KEY);
       const testAuthConfigured = Boolean(env.GASGUARD_TEST_DEVICE_KEY);
+      const remoteGateway = evaluateRemoteGatewayHealth({ serverConfig: config, env });
 
       const readiness = {
         overall: integrationStatus.readiness({ server: true, ingress: true, registry: registryReady, realDeviceKey: Boolean(legacyRealAuthConfigured || databaseRealAuthConfigured) }),
         server: 'READY',
         lan: config.lanMode ? 'ENABLED' : 'LOCALHOST_ONLY',
+        remoteGateway,
         ingress: 'AVAILABLE',
         deviceAuth: {
           databaseRealAuthConfigured,
@@ -95,15 +98,10 @@ function createDevServer({ env = process.env, ingress, enrollmentService: custom
         json(response, 503, { ok: false, code: 'ENROLLMENT_BACKEND_UNAVAILABLE', error: 'Supabase service role key not configured for device enrollment' });
         return;
       }
-      // Transport security check: non-localhost or LAN mode HTTP requests require explicit insecure dev flag
-      const clientIp = request.socket?.remoteAddress || '';
-      const hostHeader = (request.headers.host || '').trim();
-      const isLocalhostIp = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'].includes(clientIp);
-      const isLocalhostHost = hostHeader.startsWith('127.0.0.1') || hostHeader.startsWith('localhost') || hostHeader.startsWith('[::1]');
-      const isLocalhost = !config.lanMode && isLocalhostIp && isLocalhostHost;
-      const allowInsecure = String(env.GASGUARD_ALLOW_INSECURE_ENROLLMENT || '').toLowerCase() === 'true';
+      // Transport security check via request-security module
+      const transportSecurity = classifyRequestTransport({ request, serverConfig: config, env });
 
-      if (!isLocalhost && !allowInsecure) {
+      if (!transportSecurity.secure) {
         json(response, 403, { ok: false, code: 'ENROLLMENT_INSECURE_TRANSPORT', error: 'HTTPS required for non-localhost enrollment' });
         return;
       }

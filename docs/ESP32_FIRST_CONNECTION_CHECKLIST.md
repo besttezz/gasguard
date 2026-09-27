@@ -36,7 +36,9 @@ This checklist is to be opened and followed at the bench on the day physical ESP
 - [ ] Verify state transitions to `NODE_STATE_WIFI_CONNECTED` and local IP is assigned.
 
 ## 7. INGRESS
-- [ ] Configure `GASGUARD_INGRESS_URL` to local server (e.g. `http://<server-ip>:5567/api/v1/device/telemetry`).
+- [ ] Configure `GASGUARD_INGRESS_URL`:
+  - **LOCAL BENCH ONLY**: `http://<server-ip>:5567/api/v1/device/telemetry` (Localhost / LAN testing)
+  - **REMOTE HARDWARE PILOT = HTTPS ONLY**: `https://<public-domain>/api/v1/device/telemetry` (Cloudflare Tunnel deployment)
 - [ ] Confirm HTTP POST response returns status `202 Accepted` with code `CALIBRATION_REQUIRED`.
 
 ## 8. RAW DATA
