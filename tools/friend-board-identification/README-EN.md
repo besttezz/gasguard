@@ -29,6 +29,15 @@ This package is designed for a remote tester ("Friend") who physically holds the
 
 ---
 
+## 🔍 Ambiguous COM Port Selection (`AMBIGUOUS_DEVICE_SELECTION`)
+
+If the generated report displays `detectionStatus: "AMBIGUOUS_DEVICE_SELECTION"` (due to multiple existing COM ports):
+1. Disconnect the ESP32 USB cable.
+2. Rerun `detect-board.cmd`.
+3. Choose **BEFORE / AFTER** scan (type `Y`).
+4. Reconnect the ESP32 USB cable only when prompted.
+5. Press Enter to allow the tool to isolate the new candidate device cleanly.
+
 ## 🔒 Non-Destructive Guarantee
 
 - NO automatic driver installation.

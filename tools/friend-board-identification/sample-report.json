@@ -6,25 +6,28 @@
     "version": "10.0.22631",
     "psVersion": "5.1.22621.3880"
   },
+  "detectionStatus": "UNIQUE_CANDIDATE",
   "serialPorts": [
     {
-      "deviceUid": "COM3",
+      "comPort": "COM3",
       "friendlyName": "Silicon Labs CP210x USB to UART Bridge (COM3)",
       "pnpDeviceId": "USB\\VID_10C4&PID_EA60\\0001",
       "vid": "10C4",
-      "pid": "EA60"
+      "pid": "EA60",
+      "usbBridgeClassification": "CP210X"
     }
   ],
   "usbCandidates": [
     {
       "comPort": "COM3",
-      "vid": "10C4",
-      "pid": "EA60",
       "friendlyName": "Silicon Labs CP210x USB to UART Bridge (COM3)",
       "pnpDeviceId": "USB\\VID_10C4&PID_EA60\\0001",
+      "vid": "10C4",
+      "pid": "EA60",
       "usbBridgeClassification": "CP210X"
     }
   ],
+  "pnpDevicesWithoutCom": [],
   "selectedCandidate": {
     "comPort": "COM3",
     "vid": "10C4",
