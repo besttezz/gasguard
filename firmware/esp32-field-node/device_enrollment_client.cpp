@@ -148,18 +148,6 @@ EnrollmentResult performDeviceEnrollment(
         return result;
     }
 
-    // Build request JSON
-    // IMPORTANT: enrollmentToken is used here once and then destroyed.
-    String requestBody = "{";
-    requestBody += "\"enrollmentToken\":\"" + normalizedToken + "\",";
-    requestBody += "\"deviceUid\":\"" + deviceUid + "\"";
-    requestBody += "}";
-
-    // Immediately clear the enrollment token from RAM after building the request
-    // (the request body String now holds the only copy)
-    bestEffortClearSecret(enrollmentToken);
-    bestEffortClearSecret(normalizedToken);
-
     WiFiClientSecure secureClient;
     // Set TLS trust anchor - insecure TLS connections strictly forbidden
     secureClient.setCACert(GASGUARD_ENROLLMENT_CA_CERT);
@@ -169,10 +157,20 @@ EnrollmentResult performDeviceEnrollment(
 
     if (!connected) {
         result.code = ENROLL_HTTP_CONNECTION_FAILED;
-        // Token already cleared above
-        bestEffortClearSecret(requestBody);
+        bestEffortClearSecret(normalizedToken);
+        // Do NOT clear enrollmentToken yet — HTTPS setup failed before network transmission was attempted
         return result;
     }
+
+    // Build request JSON & consume RAM enrollment token ONLY when POST is about to be attempted
+    String requestBody = "{";
+    requestBody += "\"enrollmentToken\":\"" + normalizedToken + "\",";
+    requestBody += "\"deviceUid\":\"" + deviceUid + "\"";
+    requestBody += "}";
+
+    // Clear RAM enrollment token copies immediately before POST attempt
+    bestEffortClearSecret(enrollmentToken);
+    bestEffortClearSecret(normalizedToken);
 
     https.addHeader("Content-Type", "application/json");
 

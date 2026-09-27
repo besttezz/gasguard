@@ -206,17 +206,22 @@ Credential storage failure
 
 ---
 
-## Firmware Compile Maturity
+## Firmware Compile & Target Readiness
 
 | Component | Status |
 |---|---|
 | Device credential store | SOURCE IMPLEMENTED |
 | HTTPS enrollment client | SOURCE IMPLEMENTED |
 | Custom provisioning endpoint | SOURCE IMPLEMENTED |
+| Re-enrollment entry point | SOURCE IMPLEMENTED (`startDeviceEnrollmentProvisioning`) |
+| Technician Client Helper | IMPLEMENTED (`tools/esp32-provisioning-client.js`) |
 | TLS trust configuration | NOT CONFIGURED (no CA cert embedded) |
 | Cloud enrollment endpoint | NOT DEPLOYED |
-| Firmware compile | **FIRMWARE COMPILE = NOT TESTED** |
+| Exact Board Target | **EXACT BOARD TARGET = NOT CONFIRMED** |
+| Firmware compile | **FIRMWARE COMPILE = NOT EXECUTED** (Arduino-ESP32 compiler toolchain & board model not locked) |
 | Physical flash/test | **PHYSICAL HARDWARE = NOT TESTED** |
+
+See [`docs/TECHNICIAN_DEVICE_PROVISIONING.md`](file:///c:/Users/ncpb2/OneDrive/%E0%B9%80%E0%B8%94%E0%B8%AA%E0%B8%81%E0%B9%8C%E0%B8%97%E0%B9%87%E0%B8%AD%E0%B8%9B/Project%20Final%202026/gasguard/docs/TECHNICIAN_DEVICE_PROVISIONING.md) for technician workflow and payload specifications.
 
 ---
 
@@ -225,7 +230,7 @@ Credential storage failure
 - **Header**: `x-device-key: <Device Credential>` (HTTP Header over TLS)
 - **Authentication Model**: Raw Device Credential transported over HTTPS, verified server-side via SHA-256 database lookup (**NOT HMAC**).
 - **Memory Clearing**: All RAM clearing (`bestEffortClearSecret`) on Arduino String heap is **BEST-EFFORT ONLY**.
-- **Re-enrollment**: `clearDeviceCredentials()` clears NVS credentials without erasing Wi-Fi. Re-enrollment requires explicit protected provisioning entry (`requestDeviceEnrollmentProvisioning`); re-enrollment runtime is **NOT PHYSICALLY VERIFIED**.
+- **Re-enrollment**: `clearDeviceCredentials()` clears NVS credentials without erasing Wi-Fi. Re-enrollment requires explicit protected provisioning entry (`startDeviceEnrollmentProvisioning` / `requestDeviceEnrollmentProvisioning`).
 
 ---
 

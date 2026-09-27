@@ -118,16 +118,16 @@ console.log('  [4] Malformed Device Credential rejected: PASS');
 console.log('  [5] Malformed Enrollment Token rejected: PASS');
 
 // =============================================================================
-// 6. MISSING BOOTSTRAP TOKEN → DEVICE_ENROLLMENT_REQUIRED
+// 6. MISSING BOOTSTRAP TOKEN → ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED
 // =============================================================================
 {
   const state = contract.processProvisioningEvent('CONNECTING_WIFI', 'WIFI_GOT_IP', {
     hasDeviceCredential: false,
     hasEnrollmentToken: false
   });
-  assert.equal(state, 'DEVICE_ENROLLMENT_REQUIRED');
+  assert.equal(state, 'ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED');
 }
-console.log('  [6] Missing bootstrap token → DEVICE_ENROLLMENT_REQUIRED: PASS');
+console.log('  [6] Missing bootstrap token → ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED: PASS');
 
 // =============================================================================
 // 7. SUCCESSFUL LOAD AFTER REBOOT SIMULATION
@@ -682,4 +682,79 @@ console.log('  [27] Board profile remains unconfirmed: PASS');
   }
 }
 
-console.log('\nALL HW-3C2A ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');
+// =============================================================================
+// HW-3C2B TECHNICIAN CLIENT & RE-ENROLLMENT CONTRACT TESTS
+// =============================================================================
+{
+  const provClient = require('../tools/esp32-provisioning-client.js');
+  const provCpp = readFirmware('network_provisioning.cpp');
+  const provH = readFirmware('network_provisioning.h');
+  const enrollCpp = readFirmware('device_enrollment_client.cpp');
+
+  // 1. Re-enrollment entry point exists and is separate from prepareWiFiProvisioning
+  assert.ok(provH.includes('startDeviceEnrollmentProvisioning'),
+    'startDeviceEnrollmentProvisioning must be declared in network_provisioning.h');
+  assert.ok(provCpp.includes('startDeviceEnrollmentProvisioning'),
+    'startDeviceEnrollmentProvisioning must be implemented in network_provisioning.cpp');
+
+  // startDeviceEnrollmentProvisioning must not exit when isWiFiProvisioned() is true
+  const startFuncIdx = provCpp.indexOf('ProvisioningStatus startDeviceEnrollmentProvisioning');
+  const reqFuncIdx = provCpp.indexOf('ProvisioningStatus requestDeviceEnrollmentProvisioning');
+  const startFuncBody = provCpp.substring(startFuncIdx, reqFuncIdx);
+  assert.equal(startFuncBody.includes('isWiFiProvisioned()'), false,
+    'startDeviceEnrollmentProvisioning must not check isWiFiProvisioned() to short-circuit');
+  assert.equal(startFuncBody.includes('reset_wifi_provisioning'), false,
+    'startDeviceEnrollmentProvisioning must not erase Wi-Fi');
+
+  // 2. JS / Firmware State Alignment: ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED
+  assert.ok(contract.NODE_STATES.includes('ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED'),
+    'Server contract NODE_STATES must include ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED');
+  const channelReqState = contract.processProvisioningEvent('CONNECTING_WIFI', 'WIFI_GOT_IP', {
+    hasDeviceCredential: false,
+    hasEnrollmentToken: false
+  });
+  assert.equal(channelReqState, 'ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED',
+    'Server contract must transition to ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED when credential and RAM token missing');
+
+  // 3. Technician Client Helper Payload & Response Validation
+  const validPayload = provClient.validateTechnicianEnrollmentPayload({
+    deviceUid: 'ESP32-STATION-99',
+    enrollmentToken: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+  });
+  assert.equal(validPayload.ok, true, 'Valid technician payload must pass');
+  assert.equal(validPayload.payload.enrollmentToken.length, 64);
+
+  const invalidToken = provClient.validateTechnicianEnrollmentPayload({
+    deviceUid: 'ESP32-STATION-99',
+    enrollmentToken: 'not-64-hex'
+  });
+  assert.equal(invalidToken.ok, false, 'Invalid token format must be rejected by technician client');
+
+  const validResp = provClient.parseCustomEndpointResponse({ ok: true, code: 'ENROLLMENT_BOOTSTRAP_ACCEPTED' });
+  assert.equal(validResp.ok, true, 'Valid response must pass technician client validation');
+
+  // 4. Technician Client Secret Redaction Log Formatter
+  const safeLog = provClient.formatSafeTechnicianLog('SEND_CUSTOM_PAYLOAD', {
+    serviceName: 'PROV_GG_A1B2C3',
+    deviceUid: 'ESP32-STATION-99',
+    status: 'ACCEPTED'
+  });
+  assert.ok(safeLog.includes('"secretsRedacted":true'));
+  assert.throws(() => {
+    provClient.formatSafeTechnicianLog('VIOLATION', {
+      enrollmentToken: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    });
+  }, /SECURITY VIOLATION/, 'Formatter must reject secrets in log data');
+
+  // 5. Pre-POST TLS/Begin failure preserves enrollment token
+  const httpBeginIdx = enrollCpp.indexOf('https.begin');
+  const postPathTokenClearIdx = enrollCpp.indexOf('bestEffortClearSecret(enrollmentToken)', httpBeginIdx);
+  const postIdx = enrollCpp.indexOf('https.POST');
+  assert.ok(postPathTokenClearIdx > httpBeginIdx,
+    'enrollmentToken must not be cleared on network POST path before https.begin succeeds');
+  assert.ok(postPathTokenClearIdx <= postIdx,
+    'enrollmentToken must be cleared when POST is about to be attempted');
+}
+console.log('  [28] HW-3C2B Technician client helper, re-enrollment, & state alignment: PASS');
+
+console.log('\nALL HW-3C2A & HW-3C2B ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');

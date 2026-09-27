@@ -93,7 +93,7 @@ function processProvisioningEvent(currentState, event, context = {}) {
       if (context.hasEnrollmentToken) {
         return 'ENROLLING_DEVICE';
       }
-      return 'DEVICE_ENROLLMENT_REQUIRED';
+      return 'ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED';
     case 'ENROLLMENT_SUCCESS':
       return 'CONNECTING_INGRESS';
     case 'ENROLLMENT_ALREADY_CLAIMED':

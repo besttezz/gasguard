@@ -74,7 +74,7 @@ assert.equal(contract.processProvisioningEvent('PROVISIONING', 'CREDENTIAL_SUCCE
 assert.equal(contract.processProvisioningEvent('PROVISIONING', 'CREDENTIAL_FAILURE'), 'PROVISIONING_FAILED');
 
 const enrollmentReqState = contract.processProvisioningEvent('CONNECTING_WIFI', 'WIFI_GOT_IP', { hasDeviceCredential: false });
-assert.equal(enrollmentReqState, 'DEVICE_ENROLLMENT_REQUIRED', 'Wi-Fi got IP without device credential leads to DEVICE_ENROLLMENT_REQUIRED');
+assert.equal(enrollmentReqState, 'ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED', 'Wi-Fi got IP without device credential leads to ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED');
 assert.notEqual(enrollmentReqState, 'READY', 'Provisioned Wi-Fi does NOT imply READY');
 
 const ingressState = contract.processProvisioningEvent('CONNECTING_WIFI', 'WIFI_GOT_IP', { hasDeviceCredential: true });

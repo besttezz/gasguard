@@ -96,8 +96,10 @@ String& getEnrollmentTokenRef();
 // Check if bootstrap enrollment token is available in RAM
 bool hasEnrollmentToken();
 
-// Re-enrollment entry point boundary for technician workflow (HW-3C2B foundation).
-// Reopens protected provisioning session for enrollment bootstrap WITHOUT erasing Wi-Fi credentials.
+// Explicit Device Credential bootstrap session re-entry (HW-3C2B).
+// Reopens protected provisioning SoftAP WITH Security 1 + PoP and gasguard-enroll custom endpoint
+// WITHOUT erasing Wi-Fi credentials or calling network_prov_mgr_reset_wifi_provisioning().
+ProvisioningStatus startDeviceEnrollmentProvisioning(const ProvisioningConfig& config);
 ProvisioningStatus requestDeviceEnrollmentProvisioning(const ProvisioningConfig& config);
 
 #endif // GASGUARD_NETWORK_PROVISIONING_H

@@ -554,10 +554,92 @@ bool hasEnrollmentToken() {
     return g_enrollmentToken.length() == 64;
 }
 
+ProvisioningStatus startDeviceEnrollmentProvisioning(const ProvisioningConfig& config) {
+    String validationErr;
+    if (!validateProvisioningConfig(config, validationErr)) {
+        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+        g_provStatus.lastProvisioningError = "INVALID_PROVISIONING_CONFIG";
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        return g_provStatus;
+    }
+
+    g_provisioningServiceName = String(config.serviceName);
+    g_provStatus.serviceName = g_provisioningServiceName;
+    g_provStatus.securityMode = config.securityMode;
+
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+    registerProvisioningEventHandler();
+
+#if USE_CURRENT_NET_PROV_API
+    // Explicit aggregate initialization compatible with network_prov_mgr_config_t
+    network_prov_mgr_config_t prov_mgr_config = {};
+    prov_mgr_config.scheme = network_prov_scheme_softap;
+    prov_mgr_config.scheme_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE;
+
+    if (g_provManagerState == PROV_MGR_UNINITIALIZED) {
+        esp_err_t init_err = network_prov_mgr_init(prov_mgr_config);
+        if (init_err != ESP_OK) {
+            g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+            g_provStatus.lastProvisioningError = "MGR_INIT_FAILED";
+            g_provManagerState = PROV_MGR_UNINITIALIZED;
+            Serial.printf("[GasGuard Network] Failed to initialize network_prov_mgr: %d\n", (int)init_err);
+            return g_provStatus;
+        }
+        g_provManagerState = PROV_MGR_INITIALIZED;
+    }
+
+    // Preserves saved Wi-Fi credentials while reopening protected SoftAP for gasguard-enroll bootstrap.
+
+    if (!createEnrollmentEndpoint()) {
+        network_prov_mgr_deinit();
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+        g_provStatus.lastProvisioningError = "ENROLLMENT_ENDPOINT_CREATE_FAILED";
+        Serial.println("[GasGuard Network] Custom enrollment endpoint creation failed during re-enrollment. Provisioning aborted.");
+        return g_provStatus;
+    }
+
+    esp_err_t start_err = network_prov_mgr_start_provisioning(
+        NETWORK_PROV_SECURITY_1,
+        (const char*)config.proofOfPossession,
+        g_provisioningServiceName.c_str(),
+        config.serviceKey
+    );
+
+    if (start_err == ESP_OK) {
+        g_provStatus.state = NODE_STATE_PROVISIONING;
+        g_provStatus.lastProvisioningEvent = "RE_ENROLL_START";
+        g_provManagerState = PROV_MGR_RUNNING;
+
+        if (!registerEnrollmentEndpointHandler()) {
+            network_prov_mgr_stop_provisioning();
+            network_prov_mgr_deinit();
+            g_provManagerState = PROV_MGR_UNINITIALIZED;
+            g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+            g_provStatus.lastProvisioningError = "ENROLLMENT_ENDPOINT_REGISTER_FAILED";
+            Serial.println("[GasGuard Network] Custom enrollment endpoint registration failed during re-enrollment. Provisioning stopped.");
+            return g_provStatus;
+        }
+        Serial.printf("[GasGuard Network] Re-enrollment protected SoftAP provisioning started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
+    } else {
+        network_prov_mgr_deinit();
+        g_provManagerState = PROV_MGR_UNINITIALIZED;
+        g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;
+        g_provStatus.lastProvisioningError = "MGR_START_FAILED";
+        Serial.printf("[GasGuard Network] Failed to start re-enrollment provisioning manager: %d\n", (int)start_err);
+    }
+#endif
+#else
+    g_provStatus.state = NODE_STATE_PROVISIONING;
+    g_provStatus.lastProvisioningEvent = "RE_ENROLL_START";
+    g_provManagerState = PROV_MGR_RUNNING;
+    Serial.printf("[GasGuard Network] Re-enrollment provisioning contract started (Service: %s, Security: 1)\n", g_provisioningServiceName.c_str());
+#endif
+
+    return g_provStatus;
+}
+
 ProvisioningStatus requestDeviceEnrollmentProvisioning(const ProvisioningConfig& config) {
-    // Re-enrollment entry point boundary for technician workflow (HW-3C2B foundation).
-    // Allows reopening a protected enrollment-bootstrap provisioning session WITHOUT clearing saved Wi-Fi credentials.
-    // Note: Physical runtime re-entry behavior depends on toolchain/client support and is verified in HW-3C2B.
     Serial.println("[GasGuard Network] Explicit request to open protected enrollment-bootstrap provisioning session.");
-    return prepareWiFiProvisioning(config);
+    return startDeviceEnrollmentProvisioning(config);
 }
