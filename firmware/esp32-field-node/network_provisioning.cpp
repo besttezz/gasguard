@@ -58,6 +58,7 @@ static ProvisioningStatus g_provStatus = {
 static String g_enrollmentToken = "";           // RAM only — cleared after use
 static String g_bootstrapDeviceUid = "";         // RAM only — persisted only after successful enrollment
 static bool g_hasBootstrapData = false;
+static bool g_enrollmentBootstrapAccepted = false;
 
 const char* nodeStateToString(NodeState state) {
     switch (state) {
@@ -197,6 +198,13 @@ static void onWiFiProvEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
             // Update GasGuard managerState bookkeeping to STOPPED/UNINITIALIZED without double-deinit.
             g_provManagerState = PROV_MGR_STOPPED;
             g_provStatus.lastProvisioningEvent = "PROV_END";
+            if (g_enrollmentBootstrapAccepted) {
+                g_provStatus.state = NODE_STATE_ENROLLING_DEVICE;
+            } else if (g_provStatus.provisioned) {
+                g_provStatus.state = NODE_STATE_CONNECTING_WIFI;
+            } else {
+                g_provStatus.state = NODE_STATE_UNPROVISIONED;
+            }
             Serial.println("[GasGuard Event] Provisioning session ended.");
             break;
 
@@ -477,6 +485,7 @@ static esp_err_t enrollmentEndpointHandler(
     g_enrollmentToken = normalizedToken;
     g_bootstrapDeviceUid = deviceUid;
     g_hasBootstrapData = true;
+    g_enrollmentBootstrapAccepted = true;
 
     // Clear local copies
     for (unsigned int i = 0; i < normalizedToken.length(); i++) {
@@ -554,7 +563,40 @@ bool hasEnrollmentToken() {
     return g_enrollmentToken.length() == 64;
 }
 
+bool hasEnrollmentBootstrapAccepted() {
+    return g_enrollmentBootstrapAccepted;
+}
+
+bool requestProvisioningStop() {
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#if USE_CURRENT_NET_PROV_API
+    if (g_provManagerState == PROV_MGR_RUNNING) {
+        esp_err_t err = network_prov_mgr_stop_provisioning();
+        g_provManagerState = PROV_MGR_STOPPED;
+        Serial.printf("[GasGuard Network] Provisioning stop requested: %d\n", (int)err);
+        return err == ESP_OK;
+    }
+#endif
+#else
+    g_provManagerState = PROV_MGR_STOPPED;
+#endif
+    return true;
+}
+
+void clearEnrollmentBootstrapData() {
+    if (g_enrollmentToken.length() > 0) {
+        for (unsigned int i = 0; i < g_enrollmentToken.length(); i++) {
+            g_enrollmentToken.setCharAt(i, '\0');
+        }
+        g_enrollmentToken = "";
+    }
+    g_bootstrapDeviceUid = "";
+    g_hasBootstrapData = false;
+    g_enrollmentBootstrapAccepted = false;
+}
+
 ProvisioningStatus startDeviceEnrollmentProvisioning(const ProvisioningConfig& config) {
+    g_enrollmentBootstrapAccepted = false;
     String validationErr;
     if (!validateProvisioningConfig(config, validationErr)) {
         g_provStatus.state = NODE_STATE_PROVISIONING_FAILED;

@@ -59,8 +59,7 @@ function parseCustomEndpointResponse(responseRaw) {
 
   return {
     ok: false,
-    error: responseRaw.code || 'BOOTSTRAP_REJECTED',
-    details: responseRaw
+    error: typeof responseRaw.code === 'string' ? responseRaw.code : 'BOOTSTRAP_REJECTED'
   };
 }
 

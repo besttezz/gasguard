@@ -96,6 +96,15 @@ String& getEnrollmentTokenRef();
 // Check if bootstrap enrollment token is available in RAM
 bool hasEnrollmentToken();
 
+// Check if re-enrollment bootstrap was accepted
+bool hasEnrollmentBootstrapAccepted();
+
+// Safely request provisioning manager to stop without resetting saved Wi-Fi STA credentials
+bool requestProvisioningStop();
+
+// Clear bootstrap data (token, device UID, accepted flag) upon completion or terminal failure
+void clearEnrollmentBootstrapData();
+
 // Explicit Device Credential bootstrap session re-entry (HW-3C2B).
 // Reopens protected provisioning SoftAP WITH Security 1 + PoP and gasguard-enroll custom endpoint
 // WITHOUT erasing Wi-Fi credentials or calling network_prov_mgr_reset_wifi_provisioning().

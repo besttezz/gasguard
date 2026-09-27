@@ -22,8 +22,14 @@ HW-3C2B completes the Technician Provisioning Client Contract & Compile Readines
 - Node state transitions to `ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED`.
 - Technician explicitly invokes `startDeviceEnrollmentProvisioning(config)` (or `requestDeviceEnrollmentProvisioning(config)`).
 - Reopens protected SoftAP with Security 1 + PoP and `gasguard-enroll` endpoint **WITHOUT checking `isWiFiProvisioned()` or calling `network_prov_mgr_reset_wifi_provisioning()`**.
-- Technician delivers new `deviceUid` + `enrollmentToken` to `gasguard-enroll`.
-- Device proceeds with HTTPS enrollment over preserved Wi-Fi network.
+- Upon accepting bootstrap via `gasguard-enroll`, `g_enrollmentBootstrapAccepted` signal triggers `requestProvisioningStop()`, safely closing the SoftAP session without erasing saved Wi-Fi STA credentials.
+- Device reconnects to saved Wi-Fi STA network, transitions to `ENROLLING_DEVICE`, and performs HTTPS claim.
+
+#### Authorized Technician Client Policy for Re-Enrollment
+When `startDeviceEnrollmentProvisioning` reopens the Espressif `network_prov_mgr` SoftAP session, standard Wi-Fi provisioning endpoints (`prov-config`, `prov-scan`) may be exposed by default by the underlying framework.
+
+**AUTHORIZED TECHNICIAN CLIENT POLICY:**
+Custom endpoint (`gasguard-enroll`) ONLY during re-enrollment. Authorized GasGuard technician tooling MUST NOT invoke Wi-Fi configuration endpoints during re-enrollment, preserving saved Wi-Fi STA credentials.
 
 ---
 

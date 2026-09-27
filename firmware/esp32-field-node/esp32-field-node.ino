@@ -137,9 +137,23 @@ void loop() {
 
     // 1. Connection & Backoff State Machine - Single State Authority Synchronization
     ProvisioningStatus provStatus = getWiFiProvisioningStatus();
-    if (provStatus.state == NODE_STATE_PROVISIONING || provStatus.state == NODE_STATE_PROVISIONING_FAILED ||
-        provStatus.state == NODE_STATE_PROVISIONING_CONFIG_REQUIRED || provStatus.state == NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE ||
-        provStatus.state == NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE) {
+
+    // Re-enrollment bootstrap accepted: request provisioning stop once and resume saved Wi-Fi STA
+    if (hasEnrollmentBootstrapAccepted()) {
+        if (provStatus.managerState == PROV_MGR_RUNNING) {
+            requestProvisioningStop();
+        }
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+        if (WiFi.status() != WL_CONNECTED) {
+            WiFi.mode(WIFI_STA);
+            WiFi.begin();
+        }
+#endif
+    }
+
+    if ((provStatus.state == NODE_STATE_PROVISIONING || provStatus.state == NODE_STATE_PROVISIONING_FAILED ||
+         provStatus.state == NODE_STATE_PROVISIONING_CONFIG_REQUIRED || provStatus.state == NODE_STATE_PROVISIONING_SECURITY_UNAVAILABLE ||
+         provStatus.state == NODE_STATE_PROVISIONING_IDENTITY_UNAVAILABLE) && !hasEnrollmentBootstrapAccepted()) {
         currentState = provStatus.state;
     } else if (WiFi.status() == WL_CONNECTED) {
         if (currentState == NODE_STATE_CONNECTING_WIFI || currentState == NODE_STATE_OFFLINE || currentState == NODE_STATE_PROVISIONING) {
@@ -192,32 +206,39 @@ void loop() {
                         currentState = NODE_STATE_CREDENTIAL_STORAGE_ERROR;
                         credentialStoreState = "VERIFY_FAILED";
                     }
+                    clearEnrollmentBootstrapData();
                 } else if (enrollResult.code == ENROLL_ALREADY_CLAIMED ||
                            enrollResult.code == ENROLL_TOKEN_EXPIRED ||
                            enrollResult.code == ENROLL_TOKEN_REVOKED ||
                            enrollResult.code == ENROLL_NOT_AVAILABLE) {
                     // Terminal 409 responses: token invalid/claimed/expired/revoked, do NOT retry
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
+                    clearEnrollmentBootstrapData();
                     Serial.printf("[GasGuard Node] Enrollment terminal error: %s. New enrollment workflow required.\n", lastEnrollmentErrorCode);
                 } else if (enrollResult.code == ENROLL_RESULT_UNKNOWN) {
                     // Ambiguous: server may have committed. Do NOT retry.
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
+                    clearEnrollmentBootstrapData();
                     Serial.println("[GasGuard Node] ENROLLMENT_RESULT_UNKNOWN. Technician recovery required.");
                 } else if (enrollResult.code == ENROLL_CREDENTIAL_STORE_ERROR) {
                     currentState = NODE_STATE_CREDENTIAL_STORAGE_ERROR;
                     credentialStoreState = "WRITE_FAILED";
+                    clearEnrollmentBootstrapData();
                 } else if (enrollResult.code == ENROLL_TLS_TRUST_NOT_CONFIGURED ||
                            enrollResult.code == ENROLL_URL_MISSING ||
                            enrollResult.code == ENROLL_URL_NOT_HTTPS) {
                     // Configuration errors — not retryable without config change
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
+                    clearEnrollmentBootstrapData();
                 } else {
                     // Other failures (server rejection, parse error, etc.)
                     currentState = NODE_STATE_DEVICE_ENROLLMENT_FAILED;
+                    clearEnrollmentBootstrapData();
                 }
             } else {
                 // Bootstrap data not available
                 currentState = NODE_STATE_ENROLLMENT_BOOTSTRAP_CHANNEL_REQUIRED;
+                clearEnrollmentBootstrapData();
             }
         }
     } else {

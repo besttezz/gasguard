@@ -755,6 +755,82 @@ console.log('  [27] Board profile remains unconfirmed: PASS');
   assert.ok(postPathTokenClearIdx <= postIdx,
     'enrollmentToken must be cleared when POST is about to be attempted');
 }
-console.log('  [28] HW-3C2B Technician client helper, re-enrollment, & state alignment: PASS');
+// =============================================================================
+// 29. HW-3C2B1 RE-ENROLLMENT COMPLETION & PROVISIONING LIFECYCLE FINALIZATION
+// =============================================================================
+{
+  const provClient = require('../tools/esp32-provisioning-client.js');
+  const provCpp = readFirmware('network_provisioning.cpp');
+  const provH = readFirmware('network_provisioning.h');
+  const inoContent = readFirmware('esp32-field-node.ino');
+  const enrollCpp = readFirmware('device_enrollment_client.cpp');
+  const allContent = allFirmwareContent();
 
-console.log('\nALL HW-3C2A & HW-3C2B ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');
+  // 1. Explicit bootstrap completion functions exist
+  assert.ok(provH.includes('hasEnrollmentBootstrapAccepted'),
+    'hasEnrollmentBootstrapAccepted must be declared in network_provisioning.h');
+  assert.ok(provH.includes('requestProvisioningStop'),
+    'requestProvisioningStop must be declared in network_provisioning.h');
+  assert.ok(provH.includes('clearEnrollmentBootstrapData'),
+    'clearEnrollmentBootstrapData must be declared in network_provisioning.h');
+
+  // 2. Endpoint handler sets bootstrap accepted flag
+  const handlerStartIdx = provCpp.indexOf('enrollmentEndpointHandler(');
+  const handlerEndIdx = provCpp.indexOf('bool createEnrollmentEndpoint()');
+  const handlerBody = provCpp.substring(handlerStartIdx, handlerEndIdx);
+  assert.ok(handlerBody.includes('g_enrollmentBootstrapAccepted = true'),
+    'enrollmentEndpointHandler must set g_enrollmentBootstrapAccepted = true');
+
+  // 3. Endpoint handler does NOT perform HTTPS request directly
+  assert.equal(handlerBody.includes('HTTPClient'), false,
+    'Custom endpoint handler must NOT use HTTPClient directly');
+  assert.equal(handlerBody.includes('performDeviceEnrollment'), false,
+    'Custom endpoint handler must NOT trigger HTTPS enrollment directly');
+
+  // 4. PROV_END checks accepted bootstrap signal for transition
+  assert.ok(provCpp.includes('if (g_enrollmentBootstrapAccepted)'),
+    'PROV_END must check g_enrollmentBootstrapAccepted to transition state');
+
+  // 5. Main loop observes bootstrap acceptance, requests stop, and transitions safely
+  assert.ok(inoContent.includes('hasEnrollmentBootstrapAccepted()'),
+    'esp32-field-node.ino must check hasEnrollmentBootstrapAccepted()');
+  assert.ok(inoContent.includes('requestProvisioningStop()'),
+    'esp32-field-node.ino must call requestProvisioningStop()');
+
+  // 6. RAM bootstrap data cleared at terminal completion
+  assert.ok(inoContent.includes('clearEnrollmentBootstrapData()'),
+    'esp32-field-node.ino must call clearEnrollmentBootstrapData()');
+  assert.ok(provCpp.includes('g_enrollmentBootstrapAccepted = false'),
+    'clearEnrollmentBootstrapData must clear g_enrollmentBootstrapAccepted');
+
+  // 7. Saved Wi-Fi reset APIs are NOT called in re-enrollment path
+  const startReEnrollIdx = provCpp.indexOf('startDeviceEnrollmentProvisioning');
+  const reqReEnrollIdx = provCpp.indexOf('requestDeviceEnrollmentProvisioning');
+  const reEnrollBody = provCpp.substring(startReEnrollIdx, reqReEnrollIdx);
+  assert.equal(reEnrollBody.includes('network_prov_mgr_reset_wifi_provisioning'), false,
+    'Re-enrollment path must NOT call network_prov_mgr_reset_wifi_provisioning');
+  assert.equal(reEnrollBody.includes('WiFi.disconnect(true, true)'), false,
+    'Re-enrollment path must NOT call WiFi.disconnect(true, true)');
+  assert.equal(reEnrollBody.includes('nvs_flash_erase'), false,
+    'Re-enrollment path must NOT call nvs_flash_erase');
+
+  // 8. Technician helper parseCustomEndpointResponse never returns raw response object in error details
+  const errResp = provClient.parseCustomEndpointResponse({ ok: false, code: 'BOOTSTRAP_REJECTED', secretData: 'secret' });
+  assert.equal(errResp.ok, false);
+  assert.equal('details' in errResp, false,
+    'parseCustomEndpointResponse must NOT include details field with raw response object');
+
+  // 9. Telemetry uses x-device-key and no HMAC
+  assert.ok(allContent.includes('x-device-key'));
+  assert.equal(allContent.includes('HMAC'), false);
+
+  // 10. No setInsecure
+  assert.equal(allContent.includes('setInsecure'), false);
+
+  // 11. Board profile remains UNCONFIRMED
+  const boardConfig = readFirmware('board_config.h');
+  assert.ok(boardConfig.includes('GASGUARD_HARDWARE_PROFILE_CONFIRMED false'));
+}
+console.log('  [29] HW-3C2B1 Re-enrollment completion & provisioning lifecycle finalization: PASS');
+
+console.log('\nALL HW-3C2A, HW-3C2B, & HW-3C2B1 ESP32 DEVICE CREDENTIAL HANDOFF CONTRACT TESTS PASSED!');
