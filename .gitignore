@@ -42,3 +42,6 @@ supabase/.temp/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Local-only secrets (device keys issued by tools/new-device-key.js)
+.secrets/
