@@ -1,0 +1,11 @@
+# Cloudflare Pages project config (static site in dist/ + Pages Functions in functions/).
+# Public values only. The service-role key is a Pages secret, never stored here:
+#   npx wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY --project-name gasguard-bu
+name = "gasguard-bu"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-09-01"
+
+[vars]
+SUPABASE_URL = "https://bbnwuaobmcdoelziekfn.supabase.co"
+# Publishable (anon) key: safe in browsers; access is enforced by RLS.
+SUPABASE_ANON_KEY = "sb_publishable_cfglcS3-MeZU_u-rBtDm9g_MIs9kbte"
