@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GasGuard Board Identification Report Schema",
+  "type": "object",
+  "required": [
+    "schema",
+    "capturedAt",
+    "os",
+    "detectionStatus",
+    "serialPorts",
+    "usbCandidates",
+    "pnpDevicesWithoutCom",
+    "selectedCandidate",
+    "esptool",
+    "board",
+    "nextEvidenceRequired"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "gasguard.board-identification.v1"
+    },
+    "capturedAt": {
+      "type": "string"
+    },
+    "os": {
+      "type": "object",
+      "required": ["caption", "version", "psVersion"],
+      "properties": {
+        "caption": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "psVersion": { "type": ["string", "null"] }
+      }
+    },
+    "detectionStatus": {
+      "type": "string",
+      "enum": ["UNIQUE_CANDIDATE", "NO_DEVICE", "AMBIGUOUS_DEVICE_SELECTION", "DRIVER_OR_USB_DATA_PATH_REVIEW_REQUIRED"]
+    },
+    "serialPorts": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "usbCandidates": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "pnpDevicesWithoutCom": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "selectedCandidate": {
+      "type": ["object", "null"],
+      "required": ["comPort", "vid", "pid", "friendlyName", "usbBridgeClassification"],
+      "properties": {
+        "comPort": { "type": ["string", "null"] },
+        "vid": { "type": ["string", "null"] },
+        "pid": { "type": ["string", "null"] },
+        "friendlyName": { "type": ["string", "null"] },
+        "usbBridgeClassification": {
+          "type": "string",
+          "enum": ["CP210X", "CH340_CH341", "FTDI", "ESPRESSIF_USB_JTAG_SERIAL", "UNKNOWN"]
+        }
+      }
+    },
+    "esptool": {
+      "type": "object",
+      "required": ["available", "version", "chipFamily", "chipRevision", "deviceMac", "flashId", "flashSize"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "version": { "type": ["string", "null"] },
+        "chipFamily": { "type": ["string", "null"] },
+        "chipRevision": { "type": ["string", "null"] },
+        "deviceMac": { "type": ["string", "null"] },
+        "flashId": { "type": ["string", "null"] },
+        "flashSize": { "type": ["string", "null"] }
+      }
+    },
+    "board": {
+      "type": "object",
+      "required": ["exactModel", "fqbn", "secondSensorModel"],
+      "properties": {
+        "exactModel": { "type": "string", "const": "NOT_CONFIRMED" },
+        "fqbn": { "type": "string", "const": "NOT_CONFIRMED" },
+        "secondSensorModel": { "type": "string", "const": "NOT_CONFIRMED" }
+      }
+    },
+    "nextEvidenceRequired": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

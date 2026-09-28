@@ -1,34 +1,68 @@
 (function () {
   'use strict';
   const now = Date.now();
+  const TELEMETRY_SCHEMA_VERSION = 'gasguard.telemetry.v1.1';
+  const configuredStaleMs = Number(window.GASGUARD_TELEMETRY_CONFIG?.TELEMETRY_STALE_MS);
+  const TELEMETRY_STALE_MS = Number.isFinite(configuredStaleMs) && configuredStaleMs > 0 ? configuredStaleMs : 15000;
+  const SENSOR_TYPES = Object.freeze(['MQ3', 'MQ6', 'SIMULATED']);
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const round = (n, d = 0) => Number(n.toFixed(d));
   // Simulation inputs must replay predictably; this only replaces mock noise, never safety rules.
   const mockNoise = (index, amplitude) => ((Math.sin((index + 1) * 12.9898 + 78.233) * 43758.5453) % 1 + 1) % 1 * amplitude;
 
   const contract = {
-    deviceId: 'GG-KITCHEN-01', sensorId: 'LPG-01', locationId: 'restaurant-a', zoneId: 'kitchen',
-    gas: { value: 0, unit: 'ppm', rawValue: 0, rawAdc: 0, sensorVoltage: 0, sensorResistance: 0, rsR0: 0, calculatedPpm: 0, correctedPpm: 0, calibrationVersion: 'prototype-v0' },
+    schemaVersion: TELEMETRY_SCHEMA_VERSION, deviceId: 'GG-KITCHEN-01', sensorId: 'LPG-01', sensorType:'SIMULATED', bootId:'simulation-boot-1', sequence:0, locationId: 'restaurant-a', zoneId: 'kitchen',
+    gas: { value: 0, unit: 'ppm', rawValue: null, rawAdc: null, sensorVoltage: null, sensorResistance: null, rsR0: null, ppm:0, calculatedPpm: 0, correctedPpm: 0 },
     environment: { temperature: 0, humidity: 0, ventilationState: 'mechanical', fanState: 'on', doorState: 'open' },
     quality: { confidence: 0, warmupComplete: true, timeSinceBootSec: 0, continuousOperatingHours: 0, qualityFlags: [] },
     system: { valve: 'open', commandedValveState: 'open', actualValveState: 'open', valveResponseTimeMs: 620, valveFailedCommandCount: 0, valveCycleCount: 1248, connection: 'online', mqttConnectionState: 'connected', battery: 96, batteryVoltage: 4.08, inputVoltage: 5.02, powerSource: 'AC', backupActive: false, rssi: -58, latencyMs: 38, packetLossPct: 0.3, reconnectCount: 0, activity: 'active', operatingState: 'active', deviceUptimeSec: 152480, bootCount: 3, resetReason: 'power_on', firmwareVersion: 'prototype-v0.2' },
     timestamp: new Date().toISOString()
   };
 
+  const telemetryContract = Object.freeze({
+    schemaVersion:TELEMETRY_SCHEMA_VERSION,
+    required:Object.freeze(['schemaVersion','deviceId','sensorId','sensorType','bootId','sequence','timestamp','gas.ppm']),
+    optional:Object.freeze(['gas.rawAdc','gas.sensorVoltage','gas.rsR0','environment.temperature','environment.humidity','system.connection']),
+    derived:Object.freeze(['receivedAt','clockSkewMs','gas.value','gas.calculatedPpm','gas.correctedPpm'])
+  });
+  const finiteOptional = (object, key, path, errors) => { if (object?.[key] != null && !Number.isFinite(object[key])) errors.push(`${path} must be a finite number`); };
+  function validateTelemetry(input) {
+    const errors=[];
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok:false, errors:['payload must be an object'], value:null };
+    if (input.schemaVersion !== TELEMETRY_SCHEMA_VERSION) errors.push(`schemaVersion must be ${TELEMETRY_SCHEMA_VERSION}`);
+    for (const key of ['deviceId','sensorId','bootId']) if (typeof input[key] !== 'string' || !input[key].trim()) errors.push(`${key} is required`);
+    if (!SENSOR_TYPES.includes(input.sensorType)) errors.push('sensorType is not supported');
+    if (!Number.isInteger(input.sequence) || input.sequence < 0) errors.push('sequence must be an integer >= 0');
+    if (typeof input.timestamp !== 'string' || !input.timestamp.trim() || Number.isNaN(Date.parse(input.timestamp))) errors.push('timestamp must be parseable');
+    if (!input.gas || typeof input.gas !== 'object' || !Number.isFinite(input.gas.ppm)) errors.push('gas.ppm must be a finite number');
+    finiteOptional(input.gas,'rawAdc','gas.rawAdc',errors); finiteOptional(input.gas,'sensorVoltage','gas.sensorVoltage',errors); finiteOptional(input.gas,'rsR0','gas.rsR0',errors);
+    finiteOptional(input.environment,'temperature','environment.temperature',errors); finiteOptional(input.environment,'humidity','environment.humidity',errors);
+    if (input.system?.connection != null && !['online','offline','unknown'].includes(input.system.connection)) errors.push('system.connection is invalid');
+    if (errors.length) return { ok:false, errors, value:null };
+    return { ok:true, errors:[], value:{
+      schemaVersion:input.schemaVersion, deviceId:input.deviceId.trim(), sensorId:input.sensorId.trim(), sensorType:input.sensorType, bootId:input.bootId.trim(), sequence:input.sequence, timestamp:input.timestamp,
+      gas:{ rawAdc:input.gas.rawAdc ?? null, sensorVoltage:input.gas.sensorVoltage ?? null, rsR0:input.gas.rsR0 ?? null, ppm:input.gas.ppm },
+      environment:{ temperature:input.environment?.temperature ?? 30, humidity:input.environment?.humidity ?? 65 },
+      system:{ connection:input.system?.connection ?? 'online' }
+    } };
+  }
+
   function reading(minute, value, extra = {}) {
+    const ppm=round(value), timestamp=extra.timestamp || new Date(Date.now() - minute * 60000).toISOString(), receivedAt=new Date().toISOString();
     return {
       ...contract,
-      gas: { ...contract.gas, value: round(value), rawValue: round(value * 0.98), rawAdc: round(value * 9.8 + 900), sensorVoltage: round(1.1 + value / 800, 2), sensorResistance: round(12 - value / 180, 2), rsR0: round(Math.max(.3, 1.8 - value / 420), 2), calculatedPpm: round(value), correctedPpm: round(value) },
+      schemaVersion:TELEMETRY_SCHEMA_VERSION, sensorType:extra.sensorType || 'SIMULATED', bootId:extra.bootId || 'simulation-boot-1', sequence:extra.sequence ?? 0,
+      gas: { ...contract.gas, ...(extra.gas || {}), value:ppm, ppm, calculatedPpm:ppm, correctedPpm:ppm },
       environment: { ...contract.environment, temperature: round(30.8 + Math.sin(minute / 17) * 1.1, 1), humidity: round(66 + Math.cos(minute / 22) * 4) },
       quality: { ...contract.quality, timeSinceBootSec: Math.max(0, 152480 - minute * 60), continuousOperatingHours: round((152480 - minute * 60) / 3600, 1) },
-      system: { ...contract.system, ...extra.system }, timestamp: new Date(now - minute * 60000).toISOString()
+      system: { ...contract.system, ...extra.system }, timestamp, receivedAt, clockSkewMs:new Date(receivedAt).getTime()-new Date(timestamp).getTime()
     };
   }
 
   const history = Array.from({ length: 120 }, (_, i) => {
     const minute = 119 - i;
     const pattern = 92 + Math.sin(i / 9) * 9 + Math.cos(i / 19) * 6 + (i % 13 === 0 ? 5 : 0);
-    return reading(minute, pattern);
+    return reading(minute, pattern, { sequence:i });
   });
 
   const dailyPattern = [
@@ -60,5 +94,5 @@
     });
   }
 
-  window.GasGuardData = { contract, history, dailyPattern, locations, devices, sensors, sensorFleet, scenarios, reading, now };
+  window.GasGuardData = { contract, telemetryContract, validateTelemetry, TELEMETRY_SCHEMA_VERSION, TELEMETRY_STALE_MS, SENSOR_TYPES, history, dailyPattern, locations, devices, sensors, sensorFleet, scenarios, reading, now };
 })();

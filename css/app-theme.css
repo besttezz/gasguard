@@ -1,0 +1,564 @@
+/* ==========================================================================
+   GasGuard App Theme — conventional product dashboard
+   Flat white surfaces, 1px borders, small radii, one accent color.
+   Color is reserved for meaning: blue = interactive, amber/red = risk.
+   Workspace rules are scoped to non-general roles; the general home keeps
+   its own layout from general-home.css.
+   ========================================================================== */
+
+body.authenticated {
+  --bg: oklch(.978 .003 250);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(1 0 0);
+  --surface-soft: oklch(.972 .004 250);
+  --surface-hover: oklch(.955 .006 250);
+  --ink: oklch(.24 .02 256);
+  --muted: oklch(.5 .02 256);
+  --line: oklch(.915 .006 256);
+  --line-strong: oklch(.86 .01 256);
+  --brand: oklch(.53 .17 257);
+  --brand-dark: oklch(.45 .16 259);
+  --brand-soft: oklch(.965 .018 257);
+  --success: oklch(.55 .13 152);
+  --attention: oklch(.7 .15 70);
+  --danger: oklch(.56 .2 27);
+  --unknown: oklch(.55 .02 256);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px oklch(.2 .02 256 / .05);
+  -webkit-font-smoothing: antialiased;
+}
+
+body.authenticated:focus-visible,
+body.authenticated :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   Workspace shell (admin / technician / developer)
+   -------------------------------------------------------------------------- */
+body.authenticated:not(.general-role) { background: var(--bg); color: var(--ink); }
+body.authenticated:not(.general-role) .app-shell { background: var(--bg); }
+
+body.authenticated:not(.general-role) .sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  background: var(--surface-soft);
+  border-right: 1px solid var(--line);
+}
+
+body.authenticated .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; }
+
+body.authenticated .brand-mark {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: oklch(.53 .17 257);
+  color: white;
+}
+body.authenticated .brand-mark img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+
+body.authenticated .brand-name { display: grid; line-height: 1.2; min-width: 0; }
+body.authenticated .brand-name strong { font-size: 15px; font-weight: 650; color: var(--ink); }
+body.authenticated .brand-name small { font-size: 11.5px; color: var(--muted); font-weight: 400; }
+
+body.authenticated:not(.general-role) .sidebar .workspace-label { display: none; }
+
+body.authenticated:not(.general-role) .navigation { margin-top: 16px; }
+body.authenticated:not(.general-role) .nav-group,
+body.authenticated:not(.general-role) .navigation .nav-group {
+  margin: 14px 10px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+body.authenticated:not(.general-role) .navigation .nav-group:first-child { margin-top: 0; }
+
+body.authenticated:not(.general-role) .nav-item,
+body.authenticated:not(.general-role) .navigation .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: oklch(.34 .02 256);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+body.authenticated:not(.general-role) .nav-item:hover { background: var(--surface-hover); color: var(--ink); }
+body.authenticated:not(.general-role) .nav-item.is-active { background: oklch(.935 .008 256); color: var(--ink); font-weight: 600; }
+
+.nav-icon { display: inline-grid; place-items: center; flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; }
+.nav-icon .gg-icon { width: 17px; height: 17px; }
+body.authenticated:not(.general-role) .nav-item .nav-icon { color: var(--muted); }
+body.authenticated:not(.general-role) .nav-item.is-active .nav-icon { color: var(--brand); }
+
+body.authenticated:not(.general-role) .sidebar-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px 4px;
+  border-top: 1px solid var(--line);
+}
+body.authenticated:not(.general-role) .sidebar-foot > div { min-width: 0; }
+body.authenticated:not(.general-role) .sidebar-foot strong { display: block; font-size: 12px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+body.authenticated:not(.general-role) .sidebar-foot small { display: block; font-size: 11.5px; color: var(--muted); }
+body.authenticated .connection-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+
+body.authenticated .nav-toggle { border-color: var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); }
+
+/* --------------------------------------------------------------------------
+   Page header
+   -------------------------------------------------------------------------- */
+body.authenticated:not(.general-role) .main-content { padding: 16px clamp(20px, 3vw, 40px) 56px; max-width: 1400px; }
+
+body.authenticated:not(.general-role) .topbar { display: block; margin-bottom: 24px; }
+
+.topbar-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  flex-wrap: nowrap;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.topbar-status, .topbar-account { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.topbar-status { flex: 1 1 auto; }
+.topbar-account { flex: 0 0 auto; margin-left: auto; flex-wrap: nowrap; gap: 12px; }
+.topbar-account .auth-user { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
+.topbar-account .button { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+
+.topbar-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+.topbar-heading { flex: 1 1 320px; min-width: 0; }
+
+/* Title carries the page name; the English eyebrow above it is redundant. */
+body.authenticated:not(.general-role) .topbar #page-kicker { display: none; }
+body.authenticated:not(.general-role) .topbar h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+body.authenticated .site-context { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+
+body.authenticated:not(.general-role) .top-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  width: auto;
+}
+body.authenticated .top-actions .scenario-control { gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+body.authenticated .top-actions .scenario-control select { min-width: 160px; }
+body.developer-role .top-actions .scenario-control.developer-only { display: inline-grid; }
+
+/* --------------------------------------------------------------------------
+   Tags / badges (rectangular, not pills)
+   -------------------------------------------------------------------------- */
+body.authenticated:not(.general-role) .data-badge,
+body.authenticated:not(.general-role) .status-pill,
+body.authenticated:not(.general-role) .gasguard-status-chip,
+body.authenticated:not(.general-role) .gasguard-workspace-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: oklch(.4 .02 256);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+  box-shadow: none;
+}
+body.authenticated:not(.general-role) .gasguard-workspace-badge small { padding-left: 6px; border-left: 1px solid var(--line-strong); color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: 0; }
+body.authenticated:not(.general-role) .topbar-status .data-badge.developer-only {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+body.authenticated:not(.general-role) .status-pill.safe { border-color: oklch(.86 .06 152); background: oklch(.97 .02 152); color: oklch(.4 .1 152); }
+body.authenticated:not(.general-role) .status-pill.attention { border-color: oklch(.86 .08 75); background: oklch(.975 .03 80); color: oklch(.45 .1 65); }
+body.authenticated:not(.general-role) .status-pill.danger { border-color: oklch(.85 .07 27); background: oklch(.97 .02 27); color: oklch(.47 .17 27); }
+body.authenticated:not(.general-role) .status-pill.unknown { color: var(--unknown); }
+
+/* --------------------------------------------------------------------------
+   Controls
+   -------------------------------------------------------------------------- */
+body.authenticated .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  box-shadow: var(--shadow);
+  transition: background-color .12s ease, border-color .12s ease;
+}
+body.authenticated .button-primary { background: var(--brand); border-color: var(--brand); color: white; }
+body.authenticated .button-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+body.authenticated .button-secondary { background: var(--surface); color: var(--ink); }
+body.authenticated .button-secondary:hover { background: var(--surface-hover); }
+body.authenticated .button:disabled { opacity: .5; cursor: not-allowed; }
+
+body.authenticated select,
+body.authenticated input[type="text"],
+body.authenticated input[type="search"],
+body.authenticated input[type="number"],
+body.authenticated input[type="email"],
+body.authenticated input[type="url"],
+body.authenticated textarea {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+body.authenticated select { min-height: 36px; padding: 6px 10px; max-width: 100%; }
+body.authenticated select:focus,
+body.authenticated input:focus,
+body.authenticated textarea:focus { border-color: var(--brand); outline: 2px solid oklch(.53 .17 257 / .2); outline-offset: 0; }
+
+/* --------------------------------------------------------------------------
+   Content: headings, panels, metrics
+   -------------------------------------------------------------------------- */
+/* English all-caps eyebrows duplicate the Thai heading that follows — hide those. */
+body.authenticated:not(.general-role) .page .section-label:has(+ h1, + h2, + h3, + h4) { display: none; }
+/* Remaining labels act as small section titles in sentence case. */
+body.authenticated:not(.general-role) .page .section-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  color: var(--ink);
+}
+body.authenticated:not(.general-role) .page .section-label::first-letter { text-transform: uppercase; }
+
+body.authenticated:not(.general-role) .page h2 { color: var(--ink); font-weight: 650; letter-spacing: -.01em; }
+body.authenticated:not(.general-role) .panel h2 { font-size: 16px; }
+body.authenticated:not(.general-role) .page h3 { color: var(--ink); font-weight: 600; }
+
+body.authenticated:not(.general-role) .panel,
+body.authenticated:not(.general-role) .gasguard-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+body.authenticated:not(.general-role) .panel { padding: 20px; }
+
+/* Page intro blocks become plain text under the title instead of a banner. */
+body.authenticated:not(.general-role) .gasguard-page-header {
+  margin-bottom: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+body.authenticated.admin-role #page-admin-dashboard > .events-header {
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+body.authenticated.admin-role #page-admin-dashboard > .events-header h2 { font-size: 18px; }
+body.authenticated:not(.general-role) .gasguard-page-header h2 { font-size: 18px; color: var(--ink); }
+body.authenticated:not(.general-role) .gasguard-page-header p { margin-top: 4px; font-size: 14px; }
+
+body.authenticated:not(.general-role) .metric,
+body.authenticated:not(.general-role) .reason,
+body.authenticated:not(.general-role) .report-item {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+body.authenticated:not(.general-role) .metric { padding: 16px; }
+/* Normal state stays neutral; only risk gets color. */
+body.authenticated:not(.general-role) .metric.is-safe,
+body.authenticated:not(.general-role) .reason.is-safe { background: var(--surface); border-color: var(--line); }
+body.authenticated:not(.general-role) .metric.is-attention,
+body.authenticated:not(.general-role) .reason.is-attention { background: var(--surface); border-color: var(--line); box-shadow: inset 3px 0 0 var(--attention), var(--shadow); }
+body.authenticated:not(.general-role) .metric.is-danger,
+body.authenticated:not(.general-role) .metric.is-critical,
+body.authenticated:not(.general-role) .reason.is-danger,
+body.authenticated:not(.general-role) .reason.is-critical { background: var(--surface); border-color: var(--line); box-shadow: inset 3px 0 0 var(--danger), var(--shadow); }
+body.authenticated:not(.general-role) .metric.is-safe .metric-value,
+body.authenticated:not(.general-role) .reason.is-safe strong { color: var(--ink); }
+
+body.authenticated:not(.general-role) .metric-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+body.authenticated:not(.general-role) .metric-icon { display: inline-grid; place-items: center; flex: 0 0 auto; width: 16px; height: 16px; color: var(--muted); font-size: 12px; line-height: 1; }
+body.authenticated:not(.general-role) .metric-icon .gg-icon { width: 15px; height: 15px; }
+body.authenticated:not(.general-role) .metric-value {
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+body.authenticated:not(.general-role) .metric.is-attention .metric-value { color: oklch(.48 .11 65); }
+body.authenticated:not(.general-role) .metric.is-danger .metric-value,
+body.authenticated:not(.general-role) .metric.is-critical .metric-value { color: oklch(.5 .18 27); }
+body.authenticated:not(.general-role) .metric-detail { margin-top: 4px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+body.authenticated:not(.general-role) .report-item { display: grid; gap: 4px; padding: 16px; }
+body.authenticated:not(.general-role) .report-item-label { font-size: 13px; font-weight: 500; color: var(--muted); }
+body.authenticated:not(.general-role) .report-item strong { font-size: 24px; font-weight: 600; line-height: 1.2; color: var(--ink); font-variant-numeric: tabular-nums; }
+body.authenticated:not(.general-role) .report-item small { font-size: 12.5px; color: var(--muted); }
+
+body.authenticated:not(.general-role) .section-icon { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--surface-soft); color: var(--muted); font-size: 13px; }
+
+/* --------------------------------------------------------------------------
+   Status summary card (Overview / Intelligence / Replay) — white, status by edge
+   -------------------------------------------------------------------------- */
+body.authenticated:not(.general-role) .safety-hero,
+body.authenticated:not(.general-role) .intelligence-summary,
+body.authenticated:not(.general-role) .replay-hero {
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 4px 0 0 var(--success), var(--shadow);
+}
+body.authenticated:not(.general-role) .safety-hero.is-attention { box-shadow: inset 4px 0 0 var(--attention), var(--shadow); }
+body.authenticated:not(.general-role) .safety-hero.is-danger,
+body.authenticated:not(.general-role) .safety-hero.is-critical { box-shadow: inset 4px 0 0 var(--danger), var(--shadow); }
+body.authenticated:not(.general-role) .safety-hero.is-unknown { box-shadow: inset 4px 0 0 var(--unknown), var(--shadow); }
+body.authenticated:not(.general-role) .intelligence-summary,
+body.authenticated:not(.general-role) .replay-hero { box-shadow: inset 4px 0 0 var(--brand), var(--shadow); }
+
+body.authenticated:not(.general-role) .safety-hero .section-label,
+body.authenticated:not(.general-role) .intelligence-summary .section-label,
+body.authenticated:not(.general-role) .replay-hero .section-label { display: block; margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+body.authenticated:not(.general-role) .safety-hero h2,
+body.authenticated:not(.general-role) .intelligence-summary h2,
+body.authenticated:not(.general-role) .replay-hero h2 { margin: 2px 0 6px; font-size: 22px; color: var(--ink); }
+body.authenticated:not(.general-role) .safety-hero p:not(.section-label),
+body.authenticated:not(.general-role) .intelligence-summary p,
+body.authenticated:not(.general-role) .replay-hero p:not(.section-label),
+body.authenticated:not(.general-role) .safety-hero small { color: var(--muted); }
+body.authenticated:not(.general-role) .safety-hero strong,
+body.authenticated:not(.general-role) .intelligence-summary strong,
+body.authenticated:not(.general-role) .replay-hero strong { color: var(--ink); }
+body.authenticated:not(.general-role) .score-block strong { font-size: 44px; font-weight: 600; letter-spacing: -.02em; }
+body.authenticated:not(.general-role) .score-block span,
+body.authenticated:not(.general-role) .score-block small { color: var(--muted); }
+body.authenticated:not(.general-role) .risk-ring { border-color: var(--line); border-top-color: var(--brand); }
+body.authenticated:not(.general-role) .risk-ring span { color: var(--muted); }
+body.authenticated:not(.general-role) .replay-metrics div { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft); }
+body.authenticated:not(.general-role) .replay-metrics span { color: var(--muted); }
+
+/* --------------------------------------------------------------------------
+   Misc components
+   -------------------------------------------------------------------------- */
+body.authenticated .event time { font-variant-numeric: tabular-nums; }
+body.authenticated .toast { border-radius: var(--radius-sm); background: var(--ink); box-shadow: 0 8px 24px oklch(.2 .02 256 / .18); }
+
+body.authenticated:not(.general-role) pre,
+body.authenticated:not(.general-role) .code-block,
+body.authenticated:not(.general-role) .hardware-payload {
+  border-radius: var(--radius-sm);
+  background: oklch(.22 .015 256);
+  color: oklch(.92 .01 256);
+  max-width: 100%;
+  overflow: auto;
+}
+
+body.authenticated:not(.general-role) table { border-collapse: collapse; width: 100%; }
+body.authenticated:not(.general-role) th { color: var(--muted); font-size: 12.5px; font-weight: 500; text-align: left; background: var(--surface-soft); }
+body.authenticated:not(.general-role) th,
+body.authenticated:not(.general-role) td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+
+/* Decorative glyph tiles above panel titles add noise; the title is enough. */
+body.authenticated:not(.general-role) .section-icon { display: none; }
+
+/* Tinted stat tiles and pipeline steps → plain bordered cells */
+body.authenticated:not(.general-role) .developer-pipeline > div,
+body.authenticated:not(.general-role) .developer-status-strip > *,
+body.authenticated:not(.general-role) .developer-facts > *,
+body.authenticated:not(.general-role) .workspace-boundary-facts > *,
+body.authenticated:not(.general-role) .technician-stat-list > *,
+body.authenticated:not(.general-role) .technician-work-summary > * {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: none;
+}
+body.authenticated:not(.general-role) .developer-pipeline span { border-radius: 4px; background: var(--surface-soft); color: var(--muted); font-weight: 600; border: 1px solid var(--line); }
+
+/* Explorer labelling form: columns may shrink instead of overflowing */
+body.authenticated:not(.general-role) .label-panel form { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+body.authenticated:not(.general-role) .label-panel select { width: 100%; min-width: 0; }
+body.authenticated:not(.general-role) .label-panel button { width: auto; max-width: 100%; }
+
+/* Developer advanced panels hold wide JSON; grid tracks must be allowed to shrink */
+body.authenticated:not(.general-role) .developer-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+body.authenticated:not(.general-role) .developer-grid > * { min-width: 0; }
+
+/* Legacy warm-tinted surfaces → neutral */
+body.authenticated .assistant-answer { background: var(--surface-soft); border-radius: var(--radius); }
+body.authenticated .chart-area { fill: oklch(.53 .17 257 / .08); }
+body.authenticated .demo-reset-panel { border-color: var(--line); }
+body.authenticated .demo-scenario-copy { background: var(--surface-soft); border-left-color: var(--brand); }
+body.authenticated .floor-plan,
+body.authenticated .plan-preview-map,
+body.authenticated .spatial-map { background: oklch(.955 .005 256); border-radius: var(--radius-sm); }
+body.authenticated .guide-flow { background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+body.authenticated .heatmap-cell { background: var(--surface-soft); }
+body.authenticated .location-card > span { background: var(--surface-soft); color: var(--muted); border: 1px solid var(--line); }
+body.authenticated .plan-cell { border-color: oklch(.9 .006 256); background: oklch(.99 .002 256); }
+body.authenticated .plan-cell:hover { background: var(--brand-soft); }
+body.authenticated .plan-editor-note { border-color: var(--line); background: var(--surface-soft); border-radius: var(--radius-sm); }
+body.authenticated .plan-tools button.is-active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+body.authenticated .recommendation { background: var(--surface-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+body.authenticated .review-bar { background: oklch(1 0 0 / .97); border-radius: var(--radius); }
+body.authenticated .spatial-fixture { box-shadow: none; }
+body.authenticated .test-result { background: var(--surface-soft); border-radius: var(--radius-sm); }
+body.authenticated .sidebar.is-open { box-shadow: 0 8px 20px oklch(.2 .02 256 / .1); }
+body.authenticated button:focus-visible,
+body.authenticated select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+body.authenticated:not(.general-role) .main-content,
+body.authenticated:not(.general-role) .page { min-width: 0; }
+
+/* --------------------------------------------------------------------------
+   General (home-owner) app — same layout, calmer conventional surfaces
+   -------------------------------------------------------------------------- */
+body.general-role { --gg-pale-blue: oklch(.978 .003 250); --gg-line: oklch(.915 .006 256); }
+body.general-role .general-brand-mark { border-radius: 10px; background: oklch(.53 .17 257); box-shadow: none; }
+body.general-role .general-icon-button,
+body.general-role .general-site-select span { box-shadow: none; }
+
+/* Mascot speech bubble reads as decoration on a safety screen; keep the logo only. */
+body.general-role .general-mascot-hello { display: none; }
+body.general-role .general-welcome { min-height: 0; padding: 18px 0 6px; }
+
+body.general-role .safety-hero,
+body.general-role .safety-hero.is-attention,
+body.general-role .safety-hero.is-critical,
+body.general-role .safety-hero.is-unknown {
+  border: 1px solid var(--gg-line);
+  border-radius: 12px;
+  background: white;
+  box-shadow: inset 4px 0 0 var(--success), 0 1px 2px oklch(.2 .02 256 / .05);
+}
+body.general-role .safety-hero.is-attention { box-shadow: inset 4px 0 0 var(--attention), 0 1px 2px oklch(.2 .02 256 / .05); }
+body.general-role .safety-hero.is-critical { box-shadow: inset 4px 0 0 var(--danger), 0 1px 2px oklch(.2 .02 256 / .05); }
+body.general-role .safety-hero.is-unknown { box-shadow: inset 4px 0 0 var(--unknown), 0 1px 2px oklch(.2 .02 256 / .05); }
+body.general-role .safety-shield { box-shadow: none; }
+
+body.general-role .general-metric,
+body.general-role .general-system-status article,
+body.general-role .general-plan,
+body.general-role .general-recent {
+  border: 1px solid var(--gg-line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px oklch(.2 .02 256 / .05);
+}
+
+body.general-role .general-ai-card {
+  border: 1px solid var(--gg-line);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 2px oklch(.2 .02 256 / .05);
+}
+body.general-role .general-ai-card .ai-mascot { display: none; }
+
+/* --------------------------------------------------------------------------
+   Mobile bottom navigation (all roles)
+   -------------------------------------------------------------------------- */
+body.authenticated .mobile-navigation { border-top-color: var(--line); background: oklch(1 0 0 / .97); box-shadow: none; }
+body.authenticated .mobile-nav-item { color: var(--muted); border-radius: var(--radius-sm); }
+body.authenticated .mobile-nav-item.is-active { background: transparent; color: var(--brand); }
+body.authenticated .mobile-nav-item .nav-icon { width: 22px; height: 22px; }
+body.authenticated .mobile-nav-item .nav-icon .gg-icon { width: 20px; height: 20px; }
+body.authenticated .mobile-more-sheet { border-radius: 12px 12px 0 0; box-shadow: 0 -8px 24px oklch(.2 .02 256 / .14); }
+body.authenticated .mobile-more-sheet::backdrop { background: oklch(.2 .02 256 / .35); }
+body.authenticated .mobile-more-item { border-radius: var(--radius-sm); }
+body.authenticated .mobile-more-item .nav-icon { color: var(--muted); }
+body.authenticated .mobile-more-item:hover,
+body.authenticated .mobile-more-item:focus-visible { border-color: var(--line-strong); background: var(--surface-hover); }
+
+/* --------------------------------------------------------------------------
+   Sign-in screen (before authentication)
+   -------------------------------------------------------------------------- */
+.auth-screen {
+  --brand: oklch(.53 .17 257);
+  --brand-dark: oklch(.45 .16 259);
+  --ink: oklch(.24 .02 256);
+  --muted: oklch(.5 .02 256);
+  --line: oklch(.9 .008 256);
+  color: var(--ink);
+  background: oklch(.975 .003 250);
+}
+.auth-screen .auth-card { border-color: var(--line); border-radius: 12px; box-shadow: 0 1px 3px oklch(.2 .02 256 / .06), 0 8px 24px oklch(.2 .02 256 / .06); }
+.auth-screen .auth-brand img { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; object-position: 50% 12%; background: oklch(.53 .17 257); }
+.auth-screen .auth-brand strong { font-size: 18px; }
+.auth-screen .auth-card h1 { font-size: 22px; letter-spacing: -.01em; }
+.auth-screen input { min-height: 40px; border: 1px solid oklch(.86 .01 256); border-radius: 6px; padding: 8px 12px; font: inherit; color: var(--ink); }
+.auth-screen input:focus { border-color: var(--brand); outline: 2px solid oklch(.53 .17 257 / .2); outline-offset: 0; }
+.auth-screen .button-primary,
+.auth-screen .auth-submit.button-primary { min-height: 40px; border: 1px solid var(--brand); border-radius: 6px; background: var(--brand); color: white; font-weight: 600; box-shadow: none; }
+.auth-screen .button-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  body.authenticated:not(.general-role) .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--line); background: var(--surface); }
+  body.authenticated:not(.general-role) .sidebar .brand { flex: 1 1 auto; }
+  body.authenticated:not(.general-role) .sidebar .navigation { flex-basis: 100%; }
+  body.authenticated:not(.general-role) .main-content { padding: 16px 18px 48px; }
+}
+
+@media (max-width: 760px) {
+  .topbar-strip { flex-wrap: wrap; gap: 8px; padding-bottom: 10px; margin-bottom: 14px; }
+  .topbar-account { margin-left: 0; width: 100%; justify-content: space-between; }
+  .topbar-account .auth-user { max-width: 60vw; }
+  .topbar-status .developer-only { display: none !important; }
+  body.developer-role .top-actions .scenario-control.developer-only { display: none; }
+  body.authenticated:not(.general-role) .top-actions { width: 100%; justify-content: stretch; }
+  body.authenticated:not(.general-role) .top-actions > * { flex: 1 1 160px; }
+  body.authenticated:not(.general-role) .top-actions .scenario-control select { min-width: 0; width: 100%; }
+  body.authenticated:not(.general-role) .main-content { padding: 14px 14px calc(88px + env(safe-area-inset-bottom)); }
+  body.authenticated:not(.general-role) .topbar h1 { font-size: 22px; }
+  body.authenticated:not(.general-role) .panel { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.authenticated * { transition: none !important; }
+}

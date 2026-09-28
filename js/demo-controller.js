@@ -6,15 +6,7 @@
   if (!engine || !providers || !library) return;
 
   const $ = id => document.getElementById(id);
-  const demoKeys = Object.freeze([
-    'gasguard-v2-draft',
-    'gasguard-v2-service-workflow',
-    'gasguard-v2-view-mode',
-    'gasguard-v2-demo-role',
-    'gasguard-v2-setup-profile',
-    'gasguard-v2-managed-sites'
-  ]);
-  const resetMarker = 'gasguard-v2-demo-reset-pending';
+  const demoData = window.GasGuardDemoData;
   const state = { scenarioId:'S01', steps:0, speed:1, startedAt:null, active:false, guideStage:0 };
   let updateReviewContext = () => {};
   const guidedStages = Object.freeze([
@@ -33,7 +25,8 @@
   const escape = value => String(value == null ? '—' : value).replace(/[&<>"']/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char]));
   const openIncidents = () => engine.state.events.filter(event => event.lifecycleStatus !== 'resolved');
   const current = () => library.byId(state.scenarioId);
-  const isDeveloper = () => $('view-mode') && $('view-mode').value === 'developer';
+  const currentRole = () => document.body.dataset.authRole || 'unknown';
+  const isDeveloper = () => currentRole() === 'developer';
   const isDemoPage = () => $('page-demo') && $('page-demo').classList.contains('is-visible');
 
   function refreshApp() {
@@ -115,11 +108,7 @@
   function openGuidedStage() {
     const stage = guidedStages[state.guideStage] || guidedStages[0];
     if (state.scenarioId !== stage.scenario) setScenario(stage.scenario, true);
-    const role = $('view-mode');
-    if (role && role.value !== stage.role) {
-      role.value = stage.role;
-      role.dispatchEvent(new Event('change', { bubbles:true }));
-    }
+    if (currentRole() !== stage.role) return;
     const navButton = document.querySelector(`[data-role-page="${stage.page}"]`);
     navButton?.click();
     updateReviewContext();
@@ -167,16 +156,20 @@
     renderDemo();
   }
   function resetDemo() {
-    const approved = window.confirm('Reset Demo Session จะลบเฉพาะข้อมูล GasGuard ใน browser นี้ และรีโหลดหน้าเว็บ ต้องการดำเนินการหรือไม่?');
+    if (window.GasGuardActiveWorkspaceId !== 'demo-site' || !demoData) return;
+    const approved = window.confirm('Reset Demo Site จะล้าง readings, events, alerts และ service state ของข้อมูลจำลอง แล้วคืนค่าเริ่มต้น ต้องการดำเนินการหรือไม่?');
     if (!approved) return;
-    try {
-      demoKeys.forEach(key => localStorage.removeItem(key));
-      sessionStorage.setItem(resetMarker, '1');
-      window.location.reload();
-    } catch (error) {
-      const notice = $('demo-open-list');
-      if (notice) notice.innerHTML = '<p>ไม่สามารถ reset local browser storage ได้ โปรดตรวจสิทธิ์ storage แล้วลองใหม่</p>';
-    }
+    const result = demoData.reset({ workspaceId:window.GasGuardActiveWorkspaceId, engine, service:window.GasGuardService });
+    if (!result.ok) return;
+    Object.assign(state, { scenarioId:'S01', steps:0, startedAt:null, active:false, guideStage:0 });
+    window.GasGuardDemoScenario = 'NORMAL';
+    if ($('scenario-select')) $('scenario-select').value = 'NORMAL';
+    if ($('mobile-scenario-select')) $('mobile-scenario-select').value = 'NORMAL';
+    providers.reset?.();
+    refreshApp();
+    renderDemo();
+    const notice = $('demo-reset-result');
+    if (notice) notice.textContent = 'DEMO RESET COMPLETE';
   }
   function showDemo() {
     if (!isDeveloper()) return;
@@ -202,8 +195,8 @@
       const page = isDemoPage() ? 'D8 Demo Control' : ($('page-title')?.textContent || 'Unknown page');
       const viewport = window.innerWidth <= 430 ? 'mobile' : window.innerWidth <= 900 ? 'tablet' : 'desktop';
       const incident = openIncidents()[0];
-      $('review-context').textContent = `Page: ${page} · Role: ${$('view-mode')?.value || 'unknown'} · Scenario: ${current().id} · ${viewport}`;
-      return `Page: ${page}\nRole: ${$('view-mode')?.value || 'unknown'}\nScenario: ${current().id} ${current().title}\nViewport: ${viewport} ${window.innerWidth}×${window.innerHeight}\nData source: ${engine.state.source.mode}\nIncident: ${incident ? (incident.eventId || incident.id) : 'none'}\nComment:`;
+      $('review-context').textContent = `Page: ${page} · Role: ${currentRole()} · Scenario: ${current().id} · ${viewport}`;
+      return `Page: ${page}\nRole: ${currentRole()}\nScenario: ${current().id} ${current().title}\nViewport: ${viewport} ${window.innerWidth}×${window.innerHeight}\nData source: ${engine.state.source.mode}\nIncident: ${incident ? (incident.eventId || incident.id) : 'none'}\nComment:`;
     };
     updateReviewContext = update;
     bar.hidden = false;
@@ -253,16 +246,8 @@
       return result;
     };
     new MutationObserver(syncNavigation).observe($('navigation'), { childList:true });
-    $('view-mode')?.addEventListener('change', () => { document.body.dataset.demoPage = ''; syncNavigation(); });
     bindReview();
     bindDrawer();
-    try {
-      if (sessionStorage.getItem(resetMarker) === '1') {
-        sessionStorage.removeItem(resetMarker);
-        engine.setInitializing(true);
-        refreshApp();
-      }
-    } catch (error) {}
     syncNavigation();
     renderDemo();
     renderShell();

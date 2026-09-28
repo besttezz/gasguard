@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const { history, scenarios, reading, contract, sensorFleet } = window.GasGuardData;
+  const { history, scenarios, reading, contract, sensorFleet, validateTelemetry, TELEMETRY_STALE_MS } = window.GasGuardData;
   const mean = a => a.reduce((s, n) => s + n, 0) / (a.length || 1);
   const std = a => { const m = mean(a); return Math.sqrt(mean(a.map(n => (n - m) ** 2))); };
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
@@ -20,7 +20,8 @@
   const storage = typeof localStorage === 'undefined' ? null : localStorage;
   function load() { const raw=storage&&storage.getItem(STORE_KEY); if(raw==null)return{saved:{},integrityFault:null};try{const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('invalid schema');return{saved:parsed,integrityFault:null};}catch(e){return{saved:{},integrityFault:{at:new Date().toISOString(),code:'storage_corrupt',message:'พบข้อมูลเดิมเสียหาย ระบบไม่สามารถยืนยันสถานะได้',raw}};} }
   const loaded = load(), saved = loaded.saved;
-  const state = { scenario: saved.scenario || 'normal', paused: false, initializing: false, readings: Array.isArray(saved.readings) && saved.readings.length ? saved.readings : history.slice(), events: Array.isArray(saved.events) && saved.events.length ? saved.events : [{ id:'evt-system-start', type: 'system', title: 'เริ่ม Data Analysis Engine', detail: 'Mock provider เชื่อมต่อกับ Feature Engine แล้ว', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() - 8 * 60000 }], index: history.length, source: saved.source || { mode: 'simulation', restUrl: '', mqttUrl: '', topic: 'gasguard/+/reading' }, integrityFault:loaded.integrityFault, recoveryTransition:null };
+  const state = { scenario: saved.scenario || 'normal', paused: false, initializing: false, readings: Array.isArray(saved.readings) && saved.readings.length ? saved.readings : history.slice(), events: Array.isArray(saved.events) && saved.events.length ? saved.events : [{ id:'evt-system-start', type: 'system', title: 'เริ่ม Data Analysis Engine', detail: 'Mock provider เชื่อมต่อกับ Feature Engine แล้ว', status:'resolved', label:'maintenance', labelSource:'system', labelConfidence:'confirmed', t: Date.now() - 8 * 60000 }], index: history.length, source: saved.source || { mode: 'simulation', restUrl: '', mqttUrl: '', topic: 'gasguard/+/reading' }, integrityFault:loaded.integrityFault, recoveryTransition:null, lastIngestError:null };
+  state.index=Math.max(state.index,...state.readings.filter(item=>Number.isInteger(item.sequence)).map(item=>item.sequence+1));
   const severityRank = { safe:0, attention:1, critical:2, unknown:0 };
   const eventTime = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString(); };
   const eventContext = f => ({ siteId:f.current.locationId ?? null, zoneId:f.current.zoneId ?? null, deviceIds:[f.current.deviceId,f.current.sensorId].filter(Boolean) });
@@ -54,7 +55,9 @@
   }
 
   function feature(readings) {
-    const current = readings.at(-1);
+    const latest = readings.at(-1), receivedTime=new Date(latest.receivedAt).getTime();
+    const stale = !Number.isFinite(receivedTime) || Date.now() - receivedTime > TELEMETRY_STALE_MS;
+    const current = stale ? { ...latest, system:{ ...latest.system, connection:'offline' } } : latest;
     const values = readings.map(correctedPpm);
     const baselinePool = values.slice(-90, -10);
     const baseline = mean(baselinePool);
@@ -96,7 +99,7 @@
     const batteryHealth=round(clamp((current.system.battery||0)-Math.max(0,3.7-(current.system.batteryVoltage||4))*60,0,100));
     const peakDurationSec=peakIndex>=0?(fiveMinute.length-1-peakIndex)*2:0;
     const recoveryRate=currentCorrected<peak&&peakDurationSec?round((peak-currentCorrected)/Math.max(1,peakDurationSec/60),2):0;
-    const integrityUnknown=Boolean(state.integrityFault)||Boolean(state.initializing);return { current, rawGas: round(current.gas.calculatedPpm ?? current.gas.value), correctedGas: round(currentCorrected), compensation: { temperature: round((current.environment.temperature - 30) * .003, 4), humidity: round((current.environment.humidity - 65) * .0015, 4), formulaVersion: 'prototype-comp-v0.1' }, baseline: round(baseline), rate: round(rate * 0.5, 1), variance: round(variance, 1), exposure: round(exposure), confidence: integrityUnknown?0:round(confidence), anomaly: round(anomaly), risk: integrityUnknown?null:(risk == null ? null : round(risk)), safety:integrityUnknown?'unknown':safety, z: round(z, 2), drift: round(drift, 1), sensorHealth: round(sensorHealth), valveMismatch, classification:state.initializing?'Initializing: waiting for a valid reading':integrityUnknown?'Data integrity fault':classification, integrityFault:state.integrityFault, initializing:Boolean(state.initializing), features:{rates:{rate5s,rate30s,rate1m,rate5m},movingAverages:{avg1m:round(avg1m),avg5m:round(avg5m),avg15m:round(avg15m),avg1h:round(avg1h)},stability:{std1m:round(std(oneMinute),2),std5m:round(std(fiveMinute),2),std1h:round(std(oneHour),2)},eventShape:{peakValue:round(peak),peakDurationSec,recoveryRate,timeAboveBaselineSec:readings.slice(-30).filter(r=>correctedPpm(r)>baseline).length*2,areaUnderCurve:round(exposure)},fusion:{sensors:fleet,mean:round(fusionMean),spread:round(fusionSpread),confidence:fusionConfidence}},reliability:{valveHealth,connectivityHealth,batteryHealth} };
+    const integrityUnknown=Boolean(state.integrityFault)||Boolean(state.initializing);return { current, rawGas: round(current.gas.calculatedPpm ?? current.gas.value), correctedGas: round(currentCorrected), compensation: { temperature: round((current.environment.temperature - 30) * .003, 4), humidity: round((current.environment.humidity - 65) * .0015, 4), formulaVersion: 'prototype-comp-v0.1' }, baseline: round(baseline), rate: round(rate * 0.5, 1), variance: round(variance, 1), exposure: round(exposure), confidence: integrityUnknown?0:round(confidence), anomaly: round(anomaly), risk: integrityUnknown?null:(risk == null ? null : round(risk)), safety:integrityUnknown?'unknown':safety, stale, telemetryAgeMs:Number.isFinite(receivedTime)?Math.max(0,Date.now()-receivedTime):null, clockSkewMs:Number.isFinite(receivedTime)?receivedTime-timeValue(latest):null, z: round(z, 2), drift: round(drift, 1), sensorHealth: round(sensorHealth), valveMismatch, classification:state.initializing?'Initializing: waiting for a valid reading':integrityUnknown?'Data integrity fault':classification, integrityFault:state.integrityFault, initializing:Boolean(state.initializing), features:{rates:{rate5s,rate30s,rate1m,rate5m},movingAverages:{avg1m:round(avg1m),avg5m:round(avg5m),avg15m:round(avg15m),avg1h:round(avg1h)},stability:{std1m:round(std(oneMinute),2),std5m:round(std(fiveMinute),2),std1h:round(std(oneHour),2)},eventShape:{peakValue:round(peak),peakDurationSec,recoveryRate,timeAboveBaselineSec:readings.slice(-30).filter(r=>correctedPpm(r)>baseline).length*2,areaUnderCurve:round(exposure)},fusion:{sensors:fleet,mean:round(fusionMean),spread:round(fusionSpread),confidence:fusionConfidence}},reliability:{valveHealth,connectivityHealth,batteryHealth} };
   }
 
   function describe(f) {
@@ -139,18 +142,17 @@
   }
 
   function normalizeIncoming(input) {
-    const last = state.readings.at(-1) || contract;
-    const gas = input && input.gas ? input.gas.value : (input && (input.ppm ?? input.value ?? input.reading));
-    if (gas == null || Number.isNaN(Number(gas))) return null;
-    const environment = input.environment || {};
-    const system = input.system || {};
+    const validated=validateTelemetry(input);
+    if(!validated.ok){state.lastIngestError={code:'invalid_telemetry',errors:validated.errors};return null;}
+    const canonical=validated.value, simulated=input.sensorType==='SIMULATED', receivedAt=new Date().toISOString();
     return {
-      ...last, ...input,
-      gas: { ...last.gas, ...(input.gas || {}), value: Math.max(0, Math.round(Number(gas))), rawValue: Number(input.rawValue ?? input.raw_value ?? gas) },
-      environment: { ...last.environment, ...environment, temperature: Number(environment.temperature ?? input.temperature ?? input.temp ?? last.environment.temperature), humidity: Number(environment.humidity ?? input.humidity ?? input.hum ?? last.environment.humidity) },
-      quality: { ...(last.quality || {}), ...(input.quality || {}) },
-      system: { ...last.system, ...system, connection: system.connection || 'online' },
-      timestamp: input.timestamp || input.t || new Date().toISOString()
+      ...contract, ...canonical,
+      locationId:simulated ? input.locationId ?? contract.locationId : null, zoneId:simulated ? input.zoneId ?? contract.zoneId : null,
+      gas:{ ...contract.gas, ...canonical.gas, value:canonical.gas.ppm, calculatedPpm:canonical.gas.ppm, correctedPpm:canonical.gas.ppm },
+      environment:{ ...contract.environment, ...canonical.environment },
+      quality:{ ...contract.quality, ...(simulated ? input.quality || {} : {}) },
+      system:{ ...contract.system, ...(simulated ? input.system || {} : {}), connection:canonical.system.connection },
+      timestamp:canonical.timestamp, receivedAt, clockSkewMs:new Date(receivedAt).getTime()-new Date(canonical.timestamp).getTime()
     };
   }
 
@@ -199,7 +201,7 @@
     get explanation() { return describe(this.analysis); },
     setScenario(s) { state.scenario = s; persist(); },
     setInitializing(value) { state.initializing = Boolean(value); },
-    restartSimulation(scenario) { state.scenario = scenario || state.scenario; state.readings = history.slice(); state.index = history.length; state.paused = false; state.initializing = false; persist(); return this.analysis; },
+    restartSimulation(scenario) { state.scenario = scenario || state.scenario; state.readings = history.slice(); state.index = history.length; state.paused = false; state.initializing = false; state.lastIngestError=null; persist(); return this.analysis; },
     togglePause() { state.paused = !state.paused; },
     clearEvents() { state.events = []; persist(); },
     saveSource(source) { state.source = { ...state.source, ...source }; persist(); },
@@ -214,15 +216,14 @@
     saveTechnicianNote(eventId,note) { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,note:String(note||'').trim()||null,updatedAt:at};appendTransition(event,'technician_note',event.technicianReview.note||'No note supplied',at);persist();return true; },
     markTechnicianResolved(eventId,summary='') { const event=state.events.find(x=>(x.eventId||x.id)===eventId); if(!event)return false; const at=new Date().toISOString();event.technicianReview={...event.technicianReview,status:'resolved',resolvedAt:at,updatedAt:at};event.resolutionSummary=String(summary||'').trim()||event.resolutionSummary||null;appendTransition(event,'technician_workflow_resolved','Technician workflow completed; engine detection lifecycle is unchanged',at);persist();return true; },
     get alarmQuality() { const safetyEvents=state.events.filter(x=>x.eventType==='gas_risk'), labelled=safetyEvents.filter(x=>x.label&&x.label!=='unknown'), falseAlarms=labelled.filter(x=>['normal','cooking','sensor_noise','environmental_effect'].includes(x.label));return { total:safetyEvents.length,labelled:labelled.length,falseAlarmCount:falseAlarms.length,falseAlarmRate:labelled.length?round(falseAlarms.length/labelled.length*100):null }; },
-    ingest(input) { const next = normalizeIncoming(input); if (!next) return false; recoverIntegrityFromValidReading(); state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); syncLifecycle(this.analysis); persist(); return true; },
+    ingest(input) { const next = normalizeIncoming(input); if (!next) return false; const previous=state.readings.filter(item=>item.deviceId===next.deviceId&&item.sensorId===next.sensorId&&item.bootId===next.bootId&&Number.isInteger(item.sequence)).at(-1);if(previous&&next.sequence<=previous.sequence){state.lastIngestError={code:next.sequence===previous.sequence?'duplicate_sequence':'out_of_order_sequence',bootId:next.bootId,previousSequence:previous.sequence,receivedSequence:next.sequence};return false;}state.lastIngestError=null;recoverIntegrityFromValidReading(); state.readings.push(next); if (state.readings.length > 360) state.readings.shift(); syncLifecycle(this.analysis); persist(); return true; },
     tick() {
       if (state.paused) return this.analysis;
       state.initializing = false;
       const last = state.readings.at(-1).gas.value;
       const cfg = scenarios[state.scenario];
-      const next = reading(0, cfg.next(last, state.index++), { system: cfg.system });
-      recoverIntegrityFromValidReading(); state.readings.push(next); if (state.readings.length > 180) state.readings.shift();
-      const nextAnalysis = this.analysis; syncLifecycle(nextAnalysis); persist(); return nextAnalysis;
+      const next = reading(0, cfg.next(last, state.index), { sequence:state.index++, system: cfg.system });
+      this.ingest(next); if (state.readings.length > 180) state.readings.shift(); return this.analysis;
     }
   };
   window.GasGuardEngine = engine;

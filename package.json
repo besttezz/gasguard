@@ -3,7 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "build": "node tools/build-static.js",
+    "build:auth": "node --env-file=.env.local tools/build-static.js",
+    "build:cloudflare": "node tools/build-cloudflare.js",
     "dev": "node server/dev-server.js",
-    "test": "node tests/engine.test.js && node tests/demo-scenarios.test.js && node tests/navigation.test.js"
+    "dev:auth": "node --env-file=.env.local server/dev-server.js",
+    "dev:lan": "node tools/dev-lan.js",
+    "integration:check": "node tools/integration-preflight.js",
+    "integration:verify": "node tools/integration-verify.js",
+    "virtual:esp32": "node tools/virtual-esp32.js",
+    "test": "node tests/engine.test.js && node tests/demo-scenarios.test.js && node tests/demo-data.test.js && node tests/navigation.test.js && node tests/auth.test.js && node tests/measurement.test.js && node tests/hardware-lab.test.js && node tests/workspaces.test.js && node tests/device-ingress.test.js && node tests/integration-readiness.test.js && node tests/deployment.test.js && node tests/public-landing.test.js && node tests/core-schema.test.js && node tests/installation-job-schema.test.js && node tests/owner-invitation-schema.test.js && node tests/device-enrollment-schema.test.js && node tests/device-enrollment-workflow.test.js && node tests/device-auth-bootstrap.test.js && node tests/esp32-field-readiness.test.js && node tests/esp32-device-credential.test.js && node tests/remote-hardware-gateway.test.js && node tests/friend-board-identification.test.js && node tests/telemetry-storage.test.js",
+    "deploy": "npm run build:auth && wrangler pages deploy dist --project-name gasguard-bu --branch main"
+  },
+  "devDependencies": {
+    "wrangler": "^4.142.0"
   }
 }

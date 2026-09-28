@@ -9,7 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/general-home.css">
+    <link rel="stylesheet" href="css/general-home.css">
+    <link rel="stylesheet" href="css/role-workspaces.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/public-landing.css">
+  <link rel="stylesheet" href="css/app-theme.css">
     <style>
       @media (min-width: 761px) {
         .sidebar { display: flex; flex-direction: column; }
@@ -39,11 +43,1312 @@
       @media (max-width: 760px) { .general-status-grid { grid-template-columns: 1fr 1fr; } .source-badge { align-self: auto; } }
     </style>
   </head>
-<body>
+<body class="public-view">
+  <!-- Public Product Landing (Shown before login) -->
+  <div class="public-landing" id="public-landing">
+    <header class="public-header">
+      <div class="public-container">
+        <nav class="public-nav" aria-label="เมนูหลัก">
+          <a href="#" class="public-brand" aria-label="GasGuard หน้าหลัก">
+            <span class="public-brand-mark"><img src="assets/gasguard-mascot.png" alt="" aria-hidden="true"></span>
+            <span class="public-brand-text">
+              <strong>GasGuard</strong>
+              <small>Autonomous LPG Safety</small>
+            </span>
+          </a>
+          <div class="public-nav-links" id="public-desktop-links">
+            <a href="#public-product-section" class="public-nav-link">Product</a>
+            <a href="#public-demo-section" class="public-nav-link">Demo</a>
+            <a href="#public-flow-section" class="public-nav-link">How It Works</a>
+            <a href="#public-roles-section" class="public-nav-link">Roles</a>
+            <a href="#public-tech-section" class="public-nav-link">Technology</a>
+            <a href="#public-trust-section" class="public-nav-link">Trust</a>
+          </div>
+          <div class="public-nav-actions">
+            <button type="button" class="public-btn-login" id="nav-login-button">
+              Sign In
+            </button>
+            <button type="button" class="public-mobile-toggle" id="public-mobile-toggle" aria-expanded="false" aria-controls="public-mobile-drawer" aria-label="เปิดเมนูนำทาง">
+              <span class="toggle-bar"></span>
+              <span class="toggle-bar"></span>
+              <span class="toggle-bar"></span>
+            </button>
+          </div>
+        </nav>
+      </div>
+      <!-- Mobile navigation drawer -->
+      <div class="public-mobile-drawer" id="public-mobile-drawer" hidden>
+        <div class="public-mobile-drawer-inner">
+          <a href="#public-product-section" class="public-mobile-link">Product</a>
+          <a href="#public-demo-section" class="public-mobile-link">Demo</a>
+          <a href="#public-flow-section" class="public-mobile-link">How It Works</a>
+          <a href="#public-roles-section" class="public-mobile-link">Roles</a>
+          <a href="#public-tech-section" class="public-mobile-link">Technology</a>
+          <a href="#public-trust-section" class="public-mobile-link">Trust</a>
+          <div class="public-mobile-actions">
+            <button type="button" class="public-btn-login is-full" id="mobile-login-button">
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="public-content">
+      <!-- Hero Section -->
+      <section class="public-hero" aria-labelledby="public-hero-title">
+        <div class="public-container">
+          <div class="public-hero-grid">
+            <!-- Left: Hero Text (~55%) -->
+            <div class="public-hero-content">
+              <div class="public-hero-eyebrow">SAFETY INTELLIGENCE FOR LPG</div>
+              <h1 class="public-hero-title" id="public-hero-title">
+                เข้าใจสถานะ LPG<br>ไม่ใช่แค่ดูตัวเลข
+              </h1>
+              <p class="public-hero-copy">
+                GasGuard ช่วยเปลี่ยนข้อมูลจากเซนเซอร์ ให้เป็นสถานะ แนวโน้ม และเหตุการณ์ ที่ผู้ใช้และทีมเทคนิคเข้าใจได้ง่ายขึ้น
+              </p>
+              <div class="public-hero-actions">
+                <a href="#public-demo-section" class="public-hero-btn-primary" id="hero-demo-button">
+                  ทดลองระบบ
+                </a>
+                <a href="#public-flow-section" class="public-hero-btn-secondary" id="hero-flow-link">
+                  ดูวิธีการทำงาน <span aria-hidden="true">→</span>
+                </a>
+              </div>
+              <div class="public-hero-signin-hint">
+                <span>มีบัญชีผู้ดูแลระบบหรือเจ้าหน้าที่?</span>
+                <button type="button" class="public-hero-signin-link" id="hero-login-button">
+                  เข้าสู่ระบบที่นี่
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Product UI Preview Stage (~45%) -->
+            <div class="public-hero-stage">
+              <div class="public-product-preview-card" aria-label="ตัวอย่างการแสดงผลระบบ GasGuard">
+                <div class="preview-card-header">
+                  <div class="preview-location">
+                    <svg class="preview-pin-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <div>
+                      <strong>Restaurant A</strong>
+                      <small>พื้นที่ตัวอย่าง</small>
+                    </div>
+                  </div>
+                  <div class="preview-state-badge is-safe">
+                    <span class="state-dot" aria-hidden="true"></span>
+                    <span>NORMAL / ปกติ</span>
+                  </div>
+                </div>
+
+                <div class="preview-metrics-grid">
+                  <div class="preview-metric-box">
+                    <span class="metric-caption">ระดับ LPG ปัจจุบัน</span>
+                    <div class="metric-value-row">
+                      <strong class="metric-number">84</strong>
+                      <span class="metric-unit">ppm</span>
+                    </div>
+                    <span class="metric-subtext">Baseline 84 ppm · คงที่</span>
+                  </div>
+                  <div class="preview-metric-box is-highlight">
+                    <span class="metric-caption">Safety Score</span>
+                    <div class="metric-value-row">
+                      <strong class="metric-number">92</strong>
+                      <span class="metric-unit">/ 100</span>
+                    </div>
+                    <span class="metric-subtext is-safe-text">สถานะจำลอง: ปกติ</span>
+                  </div>
+                </div>
+
+                <div class="preview-trend-panel">
+                  <div class="trend-panel-header">
+                    <span class="trend-label">แนวโน้ม 30 นาทีล่าสุด</span>
+                    <span class="trend-rate-tag">+0.2 ppm/min</span>
+                  </div>
+                  <div class="trend-chart-stage" aria-hidden="true">
+                    <svg viewBox="0 0 320 54" class="trend-svg" preserveAspectRatio="none">
+                      <line x1="0" y1="36" x2="320" y2="36" class="trend-baseline" stroke-dasharray="3,3" />
+                      <path d="M 0 36 C 40 35, 80 37, 120 34 C 160 31, 200 37, 240 35 C 280 34, 300 35, 320 34" class="trend-line" />
+                      <circle cx="320" cy="34" r="4" class="trend-point" />
+                    </svg>
+                  </div>
+                  <div class="trend-panel-footer">
+                    <span>Data Source: <strong>SIMULATION</strong></span>
+                    <span>System Mode: <strong>MONITORING</strong></span>
+                    <span>Preview State: <strong>AVAILABLE</strong></span>
+                  </div>
+                </div>
+
+                <div class="preview-disclosure">
+                  <span class="disclosure-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
+                  <span class="disclosure-desc">ภาพตัวอย่างการแสดงผลจำลอง ไม่ใช่ค่าจากอุปกรณ์จริง</span>
+                </div>
+
+                <!-- Small Brand Companion Mascot (~10-15% visual weight) -->
+                <div class="preview-mascot-companion" aria-hidden="true">
+                  <img src="assets/gasguard-mascot.png" alt="" class="companion-avatar">
+                  <span class="companion-speech">ระบบทำงานปกติครับ</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Why GasGuard (Problem-led Storytelling) -->
+      <section class="public-section public-why-section" id="public-product-section" aria-labelledby="public-why-title">
+        <div class="public-container">
+          <div class="public-why-grid">
+            <!-- Left: Editorial Problem Statement -->
+            <div class="public-why-editorial">
+              <span class="public-section-kicker">Why GasGuard</span>
+              <h2 class="public-why-title" id="public-why-title">
+                ตัวเลขจากเซนเซอร์<br>ไม่ได้เล่าเรื่องทั้งหมด
+              </h2>
+              <p class="public-why-lead">
+                การเข้าใจสถานการณ์ LPG ไม่ได้ขึ้นอยู่กับค่าปัจจุบันเพียงอย่างเดียว แต่ยังต้องดูว่าค่ากำลังเปลี่ยนอย่างไร แตกต่างจากภาวะปกติหรือไม่ และเกิดเหตุการณ์อะไรขึ้นในช่วงเวลาเดียวกัน
+              </p>
+              <div class="public-why-conclusion">
+                <div class="conclusion-accent-line" aria-hidden="true"></div>
+                <p>
+                  <strong>GasGuard</strong> รวมข้อมูลเหล่านี้ เพื่อช่วยเปลี่ยนค่าจากเซนเซอร์ ให้เป็นภาพสถานการณ์ที่ผู้ใช้เข้าใจได้ง่ายขึ้น
+                </p>
+              </div>
+            </div>
+
+            <!-- Right: 3-Signal Analytical Framework (LEVEL / CHANGE / CONTEXT) -->
+            <div class="public-why-framework" role="region" aria-label="กรอบการวิเคราะห์ 3 มิติ">
+              <div class="why-signal-item">
+                <div class="signal-index-badge">1</div>
+                <div class="signal-body">
+                  <div class="signal-tag">LEVEL</div>
+                  <h3 class="signal-heading">ตอนนี้ระดับก๊าซอยู่ที่เท่าไร</h3>
+                  <p class="signal-desc">ตรวจวัดค่าความเข้มข้นปัจจุบันเพื่อทราบสเกลของก๊าซในบริเวณนั้น</p>
+                </div>
+              </div>
+
+              <div class="why-signal-connector" aria-hidden="true"></div>
+
+              <div class="why-signal-item">
+                <div class="signal-index-badge">2</div>
+                <div class="signal-body">
+                  <div class="signal-tag">CHANGE</div>
+                  <h3 class="signal-heading">ค่ากำลังเพิ่มขึ้นหรือลดลงเร็วแค่ไหน</h3>
+                  <p class="signal-desc">ใช้ Rate of Rise เพื่อช่วยสังเกตว่าค่ากำลังเปลี่ยนเร็วเพียงใด และใช้ประกอบการวิเคราะห์รูปแบบการเปลี่ยนแปลง</p>
+                </div>
+              </div>
+
+              <div class="why-signal-connector" aria-hidden="true"></div>
+
+              <div class="why-signal-item">
+                <div class="signal-index-badge">3</div>
+                <div class="signal-body">
+                  <div class="signal-tag">CONTEXT</div>
+                  <h3 class="signal-heading">ค่าปัจจุบันแตกต่างจากรูปแบบปกติอย่างไร</h3>
+                  <p class="signal-desc">เปรียบเทียบกับ Rolling Baseline และรูปแบบข้อมูลก่อนหน้าที่ระบบมี</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Product Capabilities (Four Pillars) -->
+      <section class="public-section public-capabilities-section" id="public-capabilities-section" aria-labelledby="public-capabilities-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <span class="public-section-kicker">Core Capabilities</span>
+            <h2 class="public-section-title" id="public-capabilities-title">4 เสาหลักในการเฝ้าระวังความปลอดภัย</h2>
+            <p class="public-section-desc">ผสานข้อมูลหลายมิติ เพื่อช่วยให้ผู้ใช้เห็นภาพสถานการณ์ได้ชัดเจนขึ้น</p>
+          </div>
+
+          <div class="public-capabilities-grid">
+            <!-- Pillar 1: MONITOR -->
+            <div class="capability-card">
+              <div class="capability-header">
+                <div class="capability-badge">
+                  <span class="pillar-label">MONITOR</span>
+                </div>
+                <h3 class="capability-title">ติดตามสถานะ</h3>
+                <p class="capability-desc">ดูข้อมูลปัจจุบัน แนวโน้ม และสถานะของพื้นที่ จาก Dashboard เดียว</p>
+              </div>
+              <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล MONITOR">
+                <div class="fragment-head">
+                  <span class="fragment-label">Status Overview</span>
+                  <span class="fragment-status-pill is-safe">NORMAL / ปกติ</span>
+                </div>
+                <div class="fragment-metric-row">
+                  <div>
+                    <span class="fragment-metric-title">Kitchen A · LPG</span>
+                    <strong class="fragment-metric-val">84 <small>ppm</small></strong>
+                  </div>
+                  <div class="fragment-status-chip">Mode: MONITORING</div>
+                </div>
+                <span class="fragment-disclose">ภาพจำลองสถานะต้นแบบ</span>
+              </div>
+            </div>
+
+            <!-- Pillar 2: ANALYZE -->
+            <div class="capability-card">
+              <div class="capability-header">
+                <div class="capability-badge">
+                  <span class="pillar-label">ANALYZE</span>
+                </div>
+                <h3 class="capability-title">วิเคราะห์การเปลี่ยนแปลง</h3>
+                <p class="capability-desc">วิเคราะห์แนวโน้ม Rate of Rise, baseline และรูปแบบที่ผิดไปจากสภาวะปกติ</p>
+              </div>
+              <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล ANALYZE">
+                <div class="fragment-head">
+                  <span class="fragment-label">Rate of Rise Analysis</span>
+                  <span class="fragment-tag is-safe">+0.2 ppm/min</span>
+                </div>
+                <div class="fragment-trend-visual" aria-hidden="true">
+                  <svg viewBox="0 0 240 38" class="fragment-svg" preserveAspectRatio="none">
+                    <line x1="0" y1="26" x2="240" y2="26" stroke="#D8E5EE" stroke-width="1.5" stroke-dasharray="3,3" />
+                    <path d="M 0 26 Q 60 25, 120 23 T 240 22" fill="none" stroke="#0878E8" stroke-width="2" />
+                    <circle cx="240" cy="22" r="3.5" fill="#0878E8" stroke="#FFFFFF" stroke-width="1.5" />
+                  </svg>
+                </div>
+                <div class="fragment-row-between">
+                  <span>Baseline: 84 ppm</span>
+                  <span>Variance: ต่ำ</span>
+                </div>
+                <span class="fragment-disclose">วิเคราะห์จากข้อมูลอนุกรมเวลาจำลอง</span>
+              </div>
+            </div>
+
+            <!-- Pillar 3: EXPLAIN -->
+            <div class="capability-card">
+              <div class="capability-header">
+                <div class="capability-badge">
+                  <span class="pillar-label">EXPLAIN</span>
+                </div>
+                <h3 class="capability-title">อธิบายสถานการณ์</h3>
+                <p class="capability-desc">ช่วยให้ผู้ใช้เข้าใจว่าเหตุใดสถานะจึงเปลี่ยน โดยไม่ต้องอ่าน telemetry ดิบเอง</p>
+              </div>
+              <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล EXPLAIN">
+                <div class="fragment-head">
+                  <span class="fragment-label">Explainable Safety Engine</span>
+                  <span class="fragment-score">Score 92/100</span>
+                </div>
+                <div class="fragment-reason-box">
+                  <strong>เหตุผลการประเมิน:</strong>
+                  <p>ในตัวอย่างจำลองนี้ ค่าค่อนข้างคงที่และใกล้ Baseline ระบบกฎต้นแบบจึงจัดสถานะเป็นปกติ</p>
+                </div>
+                <span class="fragment-disclose">Safety Rule Engine v0.1 (Rule-based)</span>
+              </div>
+            </div>
+
+            <!-- Pillar 4: RESPOND -->
+            <div class="capability-card">
+              <div class="capability-header">
+                <div class="capability-badge">
+                  <span class="pillar-label">RESPOND</span>
+                </div>
+                <h3 class="capability-title">ติดตามและตอบสนอง</h3>
+                <p class="capability-desc">Alerts, Events และ workflow ช่วยให้เหตุการณ์สามารถถูกติดตาม ตรวจสอบ และย้อนดูได้</p>
+              </div>
+              <div class="capability-fragment" aria-label="ตัวอย่างส่วนแสดงผล RESPOND">
+                <div class="fragment-head">
+                  <span class="fragment-label">Timeline &amp; Audit Trail</span>
+                  <span class="fragment-audit-badge">Recorded</span>
+                </div>
+                <div class="fragment-timeline-item">
+                  <span class="timeline-dot is-safe"></span>
+                  <div class="timeline-text">
+                    <span class="timeline-time">10:05:00 · Baseline stable</span>
+                    <small>บันทึกประวัติและบริบทสภาวะปกติ</small>
+                  </div>
+                </div>
+                <span class="fragment-disclose">เก็บบันทึกหลักฐานเพื่อตรวจสอบย้อนหลัง</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Public Demo Preview Section -->
+      <section class="public-section public-demo-section" id="public-demo-section" aria-labelledby="public-demo-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <span class="public-section-kicker">INTERACTIVE DEMO</span>
+            <h2 class="public-section-title" id="public-demo-title">ลองดูว่า GasGuard<br>ตีความสถานการณ์อย่างไร</h2>
+            <p class="public-section-desc">เลือกสถานการณ์จำลองเพื่อดูว่า ข้อมูล แนวโน้ม และบริบท ถูกสรุปเป็นสถานะที่เข้าใจง่ายขึ้นอย่างไร</p>
+          </div>
+
+          <!-- Dominant Product Window / Demo Stage -->
+          <div class="public-demo-stage" id="public-demo-stage" role="region" aria-label="ห้องทดลองสถานการณ์จำลอง GasGuard" data-scenario-state="safe">
+            <!-- Window Topbar -->
+            <div class="demo-stage-topbar">
+              <div class="stage-window-title">
+                <span class="window-dot" aria-hidden="true"></span>
+                <strong>GasGuard Demo</strong>
+                <span class="stage-version-chip">Prototype Simulation</span>
+              </div>
+              <div class="stage-window-disclosure">
+                <span class="public-sim-tag" id="public-demo-badge">SIMULATION / PROTOTYPE / ข้อมูลจำลอง</span>
+              </div>
+            </div>
+
+            <!-- Stage Body -->
+            <div class="demo-stage-body">
+              <!-- Scenario Controls: Segmented Selector -->
+              <div class="demo-scenario-selector" role="group" aria-label="เลือกสถานการณ์จำลอง">
+                <button type="button" class="demo-scenario-tab is-active" data-public-scenario="NORMAL" aria-pressed="true">
+                  <span class="tab-indicator is-normal" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">NORMAL</strong>
+                    <small class="tab-th">สภาวะปกติ</small>
+                  </span>
+                </button>
+                <button type="button" class="demo-scenario-tab" data-public-scenario="ATTENTION" aria-pressed="false">
+                  <span class="tab-indicator is-attention" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">ATTENTION</strong>
+                    <small class="tab-th">เฝ้าระวัง</small>
+                  </span>
+                </button>
+                <button type="button" class="demo-scenario-tab" data-public-scenario="CRITICAL" aria-pressed="false">
+                  <span class="tab-indicator is-critical" aria-hidden="true"></span>
+                  <span class="tab-content">
+                    <strong class="tab-en">CRITICAL</strong>
+                    <small class="tab-th">ความเสี่ยงสูง</small>
+                  </span>
+                </button>
+              </div>
+
+              <!-- Product Preview Canvas -->
+              <div class="demo-product-canvas">
+                <!-- Status Hero Block -->
+                <div class="demo-status-hero">
+                  <div class="demo-status-eyebrow">สถานะความปลอดภัยจำลอง (Safety Status)</div>
+                  <div class="demo-status-main">
+                    <span class="public-demo-state is-safe" id="public-demo-state-pill" role="status" aria-live="polite">
+                      <span class="state-beacon" aria-hidden="true"></span>
+                      <span id="public-demo-state-text">ปกติ (NORMAL)</span>
+                    </span>
+                    <h3 class="demo-status-heading" id="public-demo-card-title">สถานะความปลอดภัย: ปกติ</h3>
+                  </div>
+                  <div class="demo-status-meta">
+                    <span id="public-demo-time-label">เวลาประมวลผล: ข้อมูลจำลองล่าสุด</span>
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span>Simulated Connection: <strong id="public-demo-connection">AVAILABLE</strong></span>
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span>System Mode: <strong id="public-demo-system-mode">MONITORING</strong></span>
+                  </div>
+                </div>
+
+                <!-- Primary Metrics Strip -->
+                <div class="demo-metrics-strip">
+                  <div class="demo-metric-cell">
+                    <span class="cell-label">LPG ปัจจุบัน</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val" id="public-demo-ppm">84 ppm</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-baseline">Baseline 84 ppm</span>
+                  </div>
+
+                  <div class="demo-metric-cell">
+                    <span class="cell-label">Rate of Change</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val" id="public-demo-rate">+0.2 ppm/min</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-rate-note">แนวโน้มคงที่</span>
+                  </div>
+
+                  <div class="demo-metric-cell is-score-cell">
+                    <span class="cell-label">PROTOTYPE SAFETY SCORE</span>
+                    <div class="cell-value-wrap">
+                      <strong class="cell-val score-val" id="public-demo-score">92 / 100</strong>
+                    </div>
+                    <span class="cell-sub" id="public-demo-risk">ความเสี่ยง: 8/100</span>
+                  </div>
+                </div>
+
+                <!-- Calm Trend Visual Panel -->
+                <div class="demo-trend-card">
+                  <div class="trend-card-head">
+                    <span class="trend-caption">ภาพรวมแนวโน้มจำลอง 30 นาที (Trend Visualization)</span>
+                    <span class="trend-accessibility-text" id="public-demo-trend-desc" aria-live="polite">แนวโน้มจำลอง 30 นาที: ค่าคงที่ใกล้เคียง baseline 84 ppm (+0.2 ppm/min)</span>
+                    <div class="trend-legend" aria-hidden="true">
+                      <span class="legend-item"><span class="legend-line is-baseline"></span> Baseline</span>
+                      <span class="legend-item"><span class="legend-line is-reading"></span> Simulated Trend</span>
+                    </div>
+                  </div>
+                  <div class="trend-canvas-wrap" aria-hidden="true">
+                    <svg viewBox="0 0 680 90" class="demo-trend-svg" preserveAspectRatio="none">
+                      <line x1="0" y1="64" x2="680" y2="64" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4,4" />
+                      <path id="public-demo-trend-path" d="M 0 64 C 120 63, 240 65, 360 62 C 480 60, 560 64, 680 63" fill="none" stroke="var(--trend-color, #0878E8)" stroke-width="2.5" stroke-linecap="round" />
+                      <circle id="public-demo-trend-point" cx="680" cy="63" r="4.5" fill="var(--trend-color, #0878E8)" stroke="#FFFFFF" stroke-width="2" />
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Explanation Panel: WHY THIS STATUS -->
+                <div class="demo-why-card">
+                  <div class="why-card-header">
+                    <span class="why-eyebrow">WHY THIS STATUS</span>
+                    <h4 class="why-title">การประเมินโดย Rule-based Prototype</h4>
+                  </div>
+                  <p class="why-explanation-text" id="public-demo-summary">
+                    ในตัวอย่างจำลองนี้ ค่าค่อนข้างคงที่และใกล้รูปแบบอ้างอิง ระบบกฎต้นแบบจึงจัดสถานะเป็นปกติ
+                  </p>
+                  <div class="why-action-box">
+                    <span class="action-icon" aria-hidden="true">↳</span>
+                    <div class="action-content">
+                      <strong>ตัวอย่างข้อความตอบสนองของ Prototype:</strong>
+                      <p id="public-demo-action">ตัวอย่างข้อความระบบ: ค่าอยู่ในเกณฑ์จำลองปกติ ติดตามสถานะต่อเนื่องตามรอบการทำงาน</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stage Disclosure Footer -->
+              <div class="demo-stage-footer">
+                <span class="disclosure-dot" aria-hidden="true"></span>
+                <p class="disclosure-text">
+                  <strong>ข้อชี้แจงสถานะต้นแบบ:</strong> การจำลองนี้เป็นแบบกำหนดไว้ล่วงหน้า (Deterministic Prototype Simulation) เพื่อแสดงกรอบความคิดในการประมวลผลข้อมูลหลายมิติ ไม่ใช่การเชื่อมต่อเซนเซอร์ฮาร์ดแวร์จริง ไม่ใช่ค่าจากการวัดที่ผ่านการ Calibrate และไม่ใช่ Certified Safety Controller
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works Section -->
+      <section class="public-section public-flow-section" id="public-flow-section" aria-labelledby="public-flow-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <span class="public-section-kicker">HOW IT WORKS</span>
+            <h2 class="public-section-title" id="public-flow-title">จากข้อมูลเซนเซอร์<br>สู่สถานะที่เข้าใจได้</h2>
+            <p class="public-section-desc">GasGuard แยกการรับข้อมูล การตรวจสอบ การวิเคราะห์ และการนำเสนอออกเป็นแต่ละชั้น เพื่อให้ข้อมูลสามารถตรวจสอบย้อนกลับ และพัฒนาแต่ละส่วนได้อย่างเป็นระบบ.</p>
+          </div>
+
+          <div class="flow-architecture-stage">
+            <div class="flow-track" role="list" aria-label="ลำดับการทำงานของระบบ 5 ขั้นตอน">
+              <!-- Stage 1: SENSOR / DATA SOURCE -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 1">01</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 1</span>
+                    <span class="flow-node-en">SENSOR / DATA SOURCE</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">รับข้อมูล</h3>
+                <p class="flow-node-desc">รับข้อมูลจากอุปกรณ์หรือแหล่งข้อมูลจำลอง เช่น บอร์ด ESP32, โครงสร้างเซนเซอร์ MQ-3 / MQ-6 หรือข้อมูลจำลองในระบบ</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>รองรับ HTTP Ingress &amp; โครงสร้าง MQTT Protocol</li>
+                      <li>แยกสัญญาณดิบ Raw ADC reading ออกจากชั้นประมวลผล</li>
+                      <li>โหมดการจำลอง Deterministic Simulation ภายในเบราว์เซอร์</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> อยู่ระหว่างเตรียมการทดสอบกับฮาร์ดแวร์จริง ยังไม่มีการ Calibrate ทางกายภาพ
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 1-2 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 2: MEASUREMENT -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 2">02</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 2</span>
+                    <span class="flow-node-en">MEASUREMENT</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">ตรวจและเตรียมข้อมูล</h3>
+                <p class="flow-node-desc">ตรวจโครงสร้างข้อมูลดิบ และเตรียมข้อมูลก่อนส่งเข้าสู่ Telemetry โดยแยกกระบวนการตรวจสอบออกจากเซนเซอร์</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>ตรวจสอบโครงสร้าง Raw Payload Schema Validation</li>
+                      <li>Sensor Adapter Boundary รองรับ Voltage และสัญญาณดิบ</li>
+                      <li>เตรียมความพร้อมสำหรับกระบวนการแปลงหน่วย ppm</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> ยังไม่แปลงค่าดิบเป็น ppm แท้จริงจนกว่าจะผ่านการ Calibrate ทางกายภาพ
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 2-3 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 3: TELEMETRY -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 3">03</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 3</span>
+                    <span class="flow-node-en">TELEMETRY</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">จัดรูปแบบข้อมูลกลาง</h3>
+                <p class="flow-node-desc">สร้างข้อมูลตาม Telemetry V1.1 พร้อม identity, boot/session sequence และข้อมูลเวลาที่ระบบต้องใช้</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>มาตรฐานข้อมูลกลาง Telemetry V1.1 กำกับด้วย Device Identity</li>
+                      <li>กำกับเซสชันด้วย bootId และ sequence แบบ monotonic</li>
+                      <li>ระบบป้องกันข้อมูลค้าง (Stale), ซ้ำ (Duplicate) หรือสลับลำดับ (Out-of-order)</li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 3-4 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 4: SAFETY ANALYSIS -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 4">04</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 4</span>
+                    <span class="flow-node-en">SAFETY ANALYSIS</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">วิเคราะห์สถานการณ์</h3>
+                <p class="flow-node-desc">ใช้ข้อมูลปัจจุบัน แนวโน้ม baseline และ prototype rule set เพื่อสร้างสถานะสำหรับ UI</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>คำนวณอัตราการเปลี่ยนแปลง Rate of Rise (ppm/min)</li>
+                      <li>เปรียบเทียบแนวโน้มกับ Dynamic Baseline และ Variance</li>
+                      <li>ประเมินระดับความปลอดภัยด้วย Safety Rule Engine v0.1 (Rule-based)</li>
+                    </ul>
+                    <div class="flow-disclosure-note">
+                      <strong>ข้อชี้แจงต้นแบบ:</strong> ประเมินตามกฎต้นแบบ ไม่ใช่การวินิจฉัยก๊าซรั่วสมบูรณ์แบบหรือมาตรฐานรับรองความปลอดภัย
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <!-- Connector 4-5 -->
+              <div class="flow-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+              </div>
+
+              <!-- Stage 5: EXPERIENCE -->
+              <div class="flow-node" role="listitem">
+                <div class="flow-node-header">
+                  <span class="flow-node-num" aria-label="ขั้นตอนที่ 5">05</span>
+                  <div class="flow-node-tags">
+                    <span class="flow-stage-tag">STAGE 5</span>
+                    <span class="flow-node-en">EXPERIENCE</span>
+                  </div>
+                </div>
+                <h3 class="flow-node-title">แจ้งเตือนและแสดงผล</h3>
+                <p class="flow-node-desc">นำผลไปแสดงใน Dashboard, Alerts, Events และ workflow ตามบทบาทผู้ใช้</p>
+                <details class="flow-disclosure">
+                  <summary class="flow-disclosure-trigger">
+                    <span>รายละเอียดทางเทคนิค</span>
+                    <svg class="disclosure-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </summary>
+                  <div class="flow-disclosure-body">
+                    <ul class="flow-detail-list">
+                      <li>แยกพื้นที่ทำงานตาม 4 บทบาท (General, Technician, Admin, Developer)</li>
+                      <li>บันทึก Timeline เหตุการณ์เพื่อการตรวจสอบย้อนหลัง (Audit Trail)</li>
+                      <li>คำอธิบายสถานการณ์แบบ Explainable Safety ที่ผู้ใช้เข้าใจได้ทันที</li>
+                    </ul>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- User Roles Section -->
+      <section class="public-section public-roles-section" id="public-roles-section" aria-labelledby="public-roles-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <span class="public-section-kicker">BUILT FOR EVERY ROLE</span>
+            <h2 class="public-section-title" id="public-roles-title">แต่ละคนเห็นสิ่งที่จำเป็น<br>ต่อหน้าที่ของตัวเอง</h2>
+            <p class="public-section-desc">GasGuard แยกมุมมองตามหน้าที่ เพื่อให้ผู้ใช้ทั่วไป ทีมซ่อมบำรุง ผู้ดูแลระบบ และทีมพัฒนา ไม่ต้องรับข้อมูลที่ซับซ้อนเกินความจำเป็น.</p>
+          </div>
+
+          <div class="roles-interactive-layout" id="public-roles-interactive">
+            <!-- Left: Role Selector Tabs -->
+            <div class="roles-tab-list" role="tablist" aria-label="เลือกบทบาทผู้ใช้งาน">
+              <!-- Role 1: General -->
+              <button type="button" class="role-tab-item is-active" id="role-tab-general" role="tab" aria-selected="true" aria-controls="role-panel-general">
+                <div class="role-tab-badge">GENERAL</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ผู้ใช้งานทั่วไป</strong>
+                  <span class="role-tab-question">“ตอนนี้พื้นที่ของฉันเป็นอย่างไร?”</span>
+                </div>
+              </button>
+
+              <!-- Role 2: Technician -->
+              <button type="button" class="role-tab-item" id="role-tab-technician" role="tab" aria-selected="false" aria-controls="role-panel-technician">
+                <div class="role-tab-badge">TECHNICIAN</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ช่างเทคนิค</strong>
+                  <span class="role-tab-question">“ตอนนี้มีอะไรที่ต้องตรวจสอบหรือบำรุงรักษา?”</span>
+                </div>
+              </button>
+
+              <!-- Role 3: Admin -->
+              <button type="button" class="role-tab-item" id="role-tab-admin" role="tab" aria-selected="false" aria-controls="role-panel-admin">
+                <div class="role-tab-badge">ADMIN</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">ผู้ดูแลระบบ</strong>
+                  <span class="role-tab-question">“ภาพรวมหลายพื้นที่และอุปกรณ์เป็นอย่างไร?”</span>
+                </div>
+              </button>
+
+              <!-- Role 4: Developer -->
+              <button type="button" class="role-tab-item" id="role-tab-developer" role="tab" aria-selected="false" aria-controls="role-panel-developer">
+                <div class="role-tab-badge">DEVELOPER</div>
+                <div class="role-tab-text">
+                  <strong class="role-tab-name">นักพัฒนา / วิศวกร</strong>
+                  <span class="role-tab-question">“Data pipeline และ integration ทำงานถูกต้องหรือไม่?”</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Right: Contextual Role Showcase Stage -->
+            <div class="roles-showcase-stage">
+              <!-- Panel 1: General -->
+              <div class="role-showcase-panel is-active" id="role-panel-general" role="tabpanel" aria-labelledby="role-tab-general">
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">GENERAL</span>
+                      <span class="role-th-label">ผู้ใช้งานทั่วไป</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ตอนนี้พื้นที่ของฉันเป็นอย่างไร?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ผู้ใช้ต้องการทราบสถานะความปลอดภัยในพื้นที่ของตนอย่างรวดเร็ว ได้รับการแจ้งเตือนที่เข้าใจง่าย และมีขั้นตอนที่ชัดเจนเมื่อเกิดเหตุ โดยไม่ต้องมีความรู้ด้านเทคนิคเซนเซอร์
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>ภาพรวมความปลอดภัย:</strong> ดูสถานะรวมของพื้นที่ (ปกติ / เฝ้าระวัง / ความเสี่ยงสูง)</li>
+                        <li><strong>การแจ้งเตือนและเหตุการณ์:</strong> รับข้อความแจ้งเตือนที่เข้าใจได้ทันที ไม่สับสน</li>
+                        <li><strong>คำอธิบายสถานการณ์:</strong> ทราบเหตุผลเบื้องต้นของสถานะโดยไม่ต้องอ่านข้อมูล telemetry ดิบ</li>
+                        <li><strong>การจัดการพื้นที่:</strong> ระบุตำแหน่ง เช่น ครัวร้านอาหาร หรือพื้นที่ถังแก๊สอย่างชัดเจน</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: General -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอผู้ใช้งานทั่วไป">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">General Workspace · Safety Status</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">สถานที่ / พื้นที่</span>
+                          <strong class="fragment-loc-name">Restaurant A · Kitchen Area</strong>
+                        </div>
+                        <span class="fragment-badge is-safe">NORMAL / ปกติ</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>ระดับ LPG ปัจจุบัน</span>
+                          <strong>84 <small>ppm</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>การเปลี่ยนแปลง</span>
+                          <strong>+0.2 <small>ppm/min</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-advice-box">
+                        <span class="advice-icon" aria-hidden="true">✓</span>
+                        <div class="advice-copy">
+                          <strong>สถานะปกติ:</strong>
+                          <p>ค่าอยู่ในเกณฑ์อ้างอิง ระบบเฝ้าระวังทำงานต่อเนื่อง ไม่พบความผิดปกติ</p>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองผู้ใช้งานทั่วไป (General Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 2: Technician -->
+              <div class="role-showcase-panel" id="role-panel-technician" role="tabpanel" aria-labelledby="role-tab-technician" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">TECHNICIAN</span>
+                      <span class="role-th-label">ช่างเทคนิค</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ตอนนี้มีอะไรที่ต้องตรวจสอบหรือบำรุงรักษา?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ช่างเทคนิคต้องการทราบสุขภาพของอุปกรณ์ ตารางงานซ่อมบำรุง การตรวจสอบจุดเสี่ยง และบันทึกผลการเข้าตรวจสอบระบบอย่างเป็นขั้นตอน
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>สุขภาพอุปกรณ์ (Device Health):</strong> ตรวจสอบสัญญาณเครือข่าย แหล่งจ่ายไฟ และสถานะเซนเซอร์</li>
+                        <li><strong>งานซ่อมบำรุง (Maintenance):</strong> จัดการคิวงานเข้าตรวจเช็ก และบันทึกประวัติการบำรุงรักษา</li>
+                        <li><strong>การตรวจสอบเหตุการณ์ (Incidents):</strong> รับการแจ้งเตือนปัญหาทางเทคนิคและยืนยันสาเหตุ</li>
+                        <li><strong>ลำดับขั้นตอนบริการ (Service Workflow):</strong> ตรวจสอบการติดตั้งและบันทึกผลการทดสอบ</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Technician -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอช่างเทคนิค">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Technician Workspace · Maintenance</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">อุปกรณ์ที่ดูแล</span>
+                          <strong class="fragment-loc-name">ESP32-NODE-01 · Kitchen Area</strong>
+                        </div>
+                        <span class="fragment-badge is-ready">HEALTHY</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>สัญญาณ RSSI</span>
+                          <strong>-64 <small>dBm</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>คิวงานตรวจสอบ</span>
+                          <strong>1 <small>งานรอตรวจ</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-workflow-box">
+                        <div class="wf-item is-done">
+                          <span class="wf-check" aria-hidden="true">●</span>
+                          <span>ตรวจสอบการเชื่อมต่อบอร์ด ESP32 และเซนเซอร์</span>
+                        </div>
+                        <div class="wf-item is-current">
+                          <span class="wf-check" aria-hidden="true">○</span>
+                          <span>ตรวจเช็กสภาพแวดล้อมและบันทึกรายงานการบำรุงรักษา</span>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองช่างเทคนิค (Technician Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 3: Admin -->
+              <div class="role-showcase-panel" id="role-panel-admin" role="tabpanel" aria-labelledby="role-tab-admin" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">ADMIN</span>
+                      <span class="role-th-label">ผู้ดูแลระบบ</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “ภาพรวมหลายพื้นที่และอุปกรณ์เป็นอย่างไร?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      ผู้ดูแลระบบต้องการมุมมองจากศูนย์กลางเพื่อติดตามความปลอดภัยของหลายพื้นที่ (Multi-site) ควบคุมความพร้อมของอุปกรณ์ทั้งหมด และเรียกดูรายงานสรุป
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>ภาพรวมหลายสถานที่ (Sites):</strong> ดูสถานะรวมของทุกสาขาและจุดติดตั้งในระบบ</li>
+                        <li><strong>อุปกรณ์ในระบบ (Devices Fleet):</strong> ติดตามการออนไลน์และการทำงานของโหนดทั้งหมด</li>
+                        <li><strong>การแจ้งเตือนและเหตุการณ์:</strong> ติดตามประวัติเหตุการณ์สำคัญที่เกิดขึ้นในภาพรวม</li>
+                        <li><strong>รายงานและบันทึก:</strong> ตรวจสอบประวัติการบำรุงรักษาและสรุปความปลอดภัยประจำรอบ</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Admin -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอผู้ดูแลระบบ">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Admin Dashboard · Fleet &amp; Sites</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">ขอบเขตการดูแล</span>
+                          <strong class="fragment-loc-name">All Active Sites (3 Locations)</strong>
+                        </div>
+                        <span class="fragment-badge is-safe">ALL OPERATIONAL</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>อุปกรณ์ออนไลน์</span>
+                          <strong>6 / 6 <small>nodes</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>เหตุการณ์ที่บันทึก</span>
+                          <strong>0 <small>active alerts</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-sites-summary">
+                        <div class="site-chip-row">
+                          <span class="site-chip">Restaurant A · Normal</span>
+                          <span class="site-chip">Central Kitchen · Normal</span>
+                          <span class="site-chip">Storage Unit · Normal</span>
+                        </div>
+                      </div>
+                      <span class="fragment-watermark">มุมมองผู้ดูแลระบบ (Admin Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 4: Developer -->
+              <div class="role-showcase-panel" id="role-panel-developer" role="tabpanel" aria-labelledby="role-tab-developer" hidden>
+                <div class="role-story-grid">
+                  <div class="role-story-narrative">
+                    <div class="role-story-eyebrow">
+                      <span class="role-tag-pill">DEVELOPER</span>
+                      <span class="role-th-label">นักพัฒนา / วิศวกร</span>
+                    </div>
+                    <blockquote class="role-primary-question">
+                      “Data pipeline และ integration ทำงานถูกต้องหรือไม่?”
+                    </blockquote>
+                    <p class="role-story-intro">
+                      วิศวกรต้องการเครื่องมือวินิจฉัย Telemetry ตรวจสอบความถูกต้องของ Ingress ทดสอบใน Hardware Lab และประเมินพฤติกรรมของ Safety Engine
+                    </p>
+                    <div class="role-focus-block">
+                      <h4 class="role-focus-title">สิ่งที่ต้องการและโฟกัสหลัก:</h4>
+                      <ul class="role-focus-list">
+                        <li><strong>Telemetry Diagnostics:</strong> ตรวจสอบ packet sequence, bootId และ timestamp validation</li>
+                        <li><strong>Data Validation:</strong> ยืนยันการปฏิเสธข้อมูลค้าง (Stale), ข้อมูลซ้ำ (Duplicate) หรือผิดรูปแบบ</li>
+                        <li><strong>Hardware Lab Sandbox:</strong> ทดสอบ Ingress จากอุปกรณ์และทดลอง payload จำลอง</li>
+                        <li><strong>Integration Readiness:</strong> ตรวจสอบความพร้อมของอินเทอร์เฟซ API และการเชื่อมต่อฮาร์ดแวร์</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Mini Product Fragment: Developer -->
+                  <div class="role-product-fragment" aria-label="ตัวอย่างหน้าจอนักพัฒนา">
+                    <div class="fragment-window-top">
+                      <div class="fragment-win-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                      <span class="fragment-win-title">Hardware Lab · Telemetry Ingress</span>
+                    </div>
+                    <div class="fragment-win-body">
+                      <div class="fragment-status-header">
+                        <div class="fragment-location-info">
+                          <span class="fragment-loc-caption">Protocol Version</span>
+                          <strong class="fragment-loc-name">Telemetry V1.1 · Monotonic</strong>
+                        </div>
+                        <span class="fragment-badge is-developer">INGRESS ACTIVE</span>
+                      </div>
+                      <div class="fragment-metrics-compact">
+                        <div class="compact-metric-item">
+                          <span>Session Boot ID</span>
+                          <strong>b7e-9a1 <small>seq #1428</small></strong>
+                        </div>
+                        <div class="compact-metric-item">
+                          <span>Data Protection</span>
+                          <strong>0 <small>dropped / stale</small></strong>
+                        </div>
+                      </div>
+                      <div class="fragment-telemetry-box">
+                        <code>{ "node": "esp32-01", "voltage": 1.24, "status": "VALIDATED" }</code>
+                      </div>
+                      <span class="fragment-watermark">มุมมองนักพัฒนา / วิศวกร (Developer Role)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technology Highlights / Pillars -->
+      <section class="public-section" id="public-tech-section" aria-labelledby="public-tech-title">
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">TECHNOLOGY</p>
+            <h2 class="public-section-title" id="public-tech-title">
+              ออกแบบให้ข้อมูลแต่ละชั้น<br>ตรวจสอบและพัฒนาได้อย่างเป็นระบบ
+            </h2>
+            <p class="public-section-desc">
+              GasGuard แยกชั้นการรับข้อมูล การตรวจสอบข้อมูล และการวิเคราะห์ออกจากกัน เพื่อให้แต่ละส่วนสามารถทดสอบ ตรวจสอบ และพัฒนาต่อได้โดยไม่ปะปนกัน.
+            </p>
+          </div>
+
+          <div class="public-tech-pillars">
+            <!-- Pillar 1: RELIABLE DATA -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-1-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">01</span>
+                  <span class="tech-pillar-tag">RELIABLE DATA</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-1-title">ข้อมูลมีโครงสร้างที่ตรวจสอบได้</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                ข้อมูลที่เข้าสู่ระบบต้องผ่านโครงสร้างและการตรวจสอบที่กำหนดไว้ ก่อนถูกส่งต่อไปยังการวิเคราะห์.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="ผังขั้นตอน Reliable Data">
+                <div class="tech-mini-flow">
+                  <span class="mini-node">Raw Data</span>
+                  <span class="mini-arrow" aria-hidden="true">→</span>
+                  <span class="mini-node is-highlight">Measurement Layer</span>
+                  <span class="mini-arrow" aria-hidden="true">→</span>
+                  <span class="mini-node is-highlight">Telemetry V1.1</span>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>Identity Validation:</strong> ตรวจสอบ deviceId, sensorId, bootId และโครงสร้างข้อมูลตาม contract</li>
+                  <li><strong>Boot-aware Sequence:</strong> กำกับ session ด้วย bootId และ sequence แบบ monotonic</li>
+                  <li><strong>receivedAt Timestamp:</strong> บันทึกเวลาที่เซิร์ฟเวอร์รับข้อมูลจริงเพื่อป้องกัน time drift</li>
+                  <li><strong>Schema Validation:</strong> ตรวจสอบรูปแบบ payload และชนิดข้อมูลตาม Telemetry V1.1</li>
+                </ul>
+              </details>
+            </article>
+
+            <!-- Pillar 2: PROTECTED PIPELINE -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-2-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">02</span>
+                  <span class="tech-pillar-tag">PROTECTED PIPELINE</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-2-title">ป้องกันข้อมูลที่ไม่ควรถูกนำไปใช้</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                ระบบไม่ควรตีความข้อมูลเก่า ข้อมูลซ้ำ หรือข้อมูลที่มาผิดลำดับ เหมือนเป็นข้อมูลใหม่ที่เชื่อถือได้.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="ผังการคัดกรองข้อมูล Pipeline">
+                <div class="tech-pipeline-filter">
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Sequence In-Order</div>
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Non-Stale Window</div>
+                  <div class="pipeline-check"><span class="check-icon" aria-hidden="true">✓</span> Workspace Isolation</div>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>Stale-data Handling:</strong> ตรวจจับและคัดกรองข้อมูลที่ค้างหรือส่งช้ากว่าเกณฑ์ที่กำหนด</li>
+                  <li><strong>Duplicate Rejection:</strong> ปฏิเสธ payload ซ้ำด้วย bootId + sequence tracking</li>
+                  <li><strong>Out-of-order Rejection:</strong> ป้องกันข้อมูลที่มาสลับลำดับไม่ให้กระทบต่อ Rate of Rise</li>
+                  <li><strong>Workspace Isolation:</strong> แยกพื้นที่ Demo, Device Test และ Hardware ไม่ให้ข้อมูลปนเปื้อน</li>
+                </ul>
+              </details>
+            </article>
+
+            <!-- Pillar 3: HARDWARE INTEGRATION PATH -->
+            <article class="tech-pillar-card" aria-labelledby="tech-pillar-3-title">
+              <div class="tech-pillar-header">
+                <div class="tech-pillar-badge-row">
+                  <span class="tech-pillar-num">03</span>
+                  <span class="tech-pillar-tag">HARDWARE INTEGRATION PATH</span>
+                </div>
+                <h3 class="tech-pillar-title" id="tech-pillar-3-title">เตรียมเส้นทางเชื่อมต่อกับอุปกรณ์จริง</h3>
+              </div>
+              <p class="tech-pillar-summary">
+                เตรียมช่องทางรับข้อมูลระดับซอฟต์แวร์ที่พร้อมเชื่อมต่อกับฮาร์ดแวร์ โดยการทดสอบจริงกับเซ็นเซอร์ยังอยู่ระหว่างการพัฒนา.
+              </p>
+              <div class="tech-pillar-diagram" aria-label="เส้นทางเชื่อมต่อฮาร์ดแวร์">
+                <div class="tech-hardware-route">
+                  <span class="hw-node">ESP32 / Virtual</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node is-active">HTTP Ingress</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Measurement</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Telemetry</span>
+                  <span class="hw-arrow" aria-hidden="true">→</span>
+                  <span class="hw-node">Analysis</span>
+                </div>
+              </div>
+              <details class="tech-disclosure">
+                <summary class="tech-disclosure-btn">
+                  <span>รายละเอียดทางเทคนิค (Technical Details)</span>
+                  <span class="disclosure-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <ul class="tech-spec-list">
+                  <li><strong>HTTP Device Ingress:</strong> เส้นทางหลัก (Primary Ingress Path) สำหรับส่ง telemetry เข้าระบบ</li>
+                  <li><strong>Device Key Authentication:</strong> ตรวจสอบอุปกรณ์ก่อนเข้าสู่ trusted ingestion path</li>
+                  <li><strong>Virtual ESP32 Testing:</strong> ทดสอบเส้นทาง ingress เดียวกันกับอุปกรณ์จริงในสภาพแวดล้อมจำลอง</li>
+                  <li><strong>Pending Sensor Calibration:</strong> การเชื่อมต่อ ESP32 จริงและการสอบเทียบ MQ-3 / MQ-6 ยังอยู่ระหว่างรอการทดสอบ</li>
+                </ul>
+              </details>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trust & Transparency Section -->
+      <section class="public-section" id="public-trust-section" aria-labelledby="public-trust-title">
+        <div id="public-status-section" class="anchor-compat" aria-hidden="true"></div>
+        <div class="public-container">
+          <div class="public-section-head">
+            <p class="public-section-kicker">TRUST &amp; TRANSPARENCY</p>
+            <h2 class="public-section-title" id="public-trust-title">
+              บอกให้ชัดว่าส่วนไหนพร้อม<br>และส่วนไหนยังอยู่ระหว่างการตรวจสอบ
+            </h2>
+            <p class="public-section-desc">
+              GasGuard แยกความสามารถที่พัฒนาแล้ว ออกจากส่วนที่ยังต้องทดสอบกับฮาร์ดแวร์จริง Calibration และมาตรฐานด้านความปลอดภัย เพื่อไม่ให้สถานะ Prototype ถูกเข้าใจว่าเป็นระบบที่ผ่านการรับรองแล้ว.
+            </p>
+          </div>
+
+          <div class="public-trust-grid">
+            <!-- Group 1: IMPLEMENTED IN SOFTWARE -->
+            <article class="trust-stage-card" aria-labelledby="trust-stage-1-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-implemented">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  IMPLEMENTED IN SOFTWARE
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-1-title">ซอฟต์แวร์และโครงสร้างระบบ</h3>
+              </div>
+              <p class="trust-stage-desc">
+                ฟังก์ชันการทำงานส่วนซอฟต์แวร์ที่พัฒนาและผ่านการทดสอบระดับโค้ดแล้ว
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Public / Role-based Software Experience</strong>
+                    <span>หน้าเว็บสาธารณะและพื้นที่ทำงาน 4 บทบาทพร้อมระบบแยกสิทธิ์</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Deterministic Simulation</strong>
+                    <span>ระบบจำลองสถานการณ์ 3 รูปแบบเพื่อสาธิตแนวคิดการทำงาน</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Measurement Layer Boundary</strong>
+                    <span>ชั้นตรวจสอบความสมบูรณ์และ validate payload ดิบ</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Telemetry V1.1 Standard</strong>
+                    <span>มาตรฐานข้อมูลพร้อม boot-aware sequence และ receivedAt</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Prototype Rule-based Analysis</strong>
+                    <span>การประเมิน Rate of Rise และความเสี่ยงตามกฎเกณฑ์ต้นแบบ</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Alerts / Events Software Workflows</strong>
+                    <span>การจัดกลุ่มระดับความสนใจและบันทึกประวัติเหตุการณ์</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
+
+            <!-- Group 2: READY FOR DEVICE INTEGRATION -->
+            <article class="trust-stage-card" aria-labelledby="trust-stage-2-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-ready">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  READY FOR DEVICE INTEGRATION
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-2-title">ช่องทางเชื่อมต่ออุปกรณ์</h3>
+              </div>
+              <p class="trust-stage-desc">
+                สถาปัตยกรรมพร้อมรับการเชื่อมต่อจากฮาร์ดแวร์ แต่ยังไม่ใช่การใช้งานจริงระดับโปรดักชัน
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Local HTTP Device Ingress</strong>
+                    <span>Endpoint รับ Telemetry ผ่าน HTTP POST พร้อมตรวจสอบ identity</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Trusted Device Registry</strong>
+                    <span>ทะเบียนควบคุมอุปกรณ์ที่ได้รับอนุญาตและการผูกเข้ากับ Workspace</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>Virtual ESP32 Path</strong>
+                    <span>เครื่องมือทดสอบการส่ง payload ผ่าน ingress เดียวกับอุปกรณ์จริง</span>
+                  </div>
+                </li>
+                <li class="trust-item">
+                  <span class="trust-item-icon" aria-hidden="true">⚡</span>
+                  <div>
+                    <strong>ESP32 Handshake Readiness</strong>
+                    <span>สเปกการเชื่อมต่อระดับซอฟต์แวร์พร้อมสำหรับการเริ่มทดสอบฮาร์ดแวร์</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
+
+            <!-- Group 3: PENDING VALIDATION -->
+            <article class="trust-stage-card is-pending-stage" aria-labelledby="trust-stage-3-title">
+              <div class="trust-stage-header">
+                <div class="trust-badge is-pending">
+                  <span class="trust-dot" aria-hidden="true"></span>
+                  PENDING VALIDATION
+                </div>
+                <h3 class="trust-stage-title" id="trust-stage-3-title">สิ่งที่ยังต้องทดสอบและตรวจสอบ</h3>
+              </div>
+              <p class="trust-stage-desc">
+                ส่วนที่ต้องผ่านการทดสอบทางกายภาพและการรับรองก่อนพิจารณาใช้งานจริง
+              </p>
+              <ul class="trust-item-list">
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Physical ESP32 Validation</strong>
+                    <span>การทดสอบเสถียรภาพและการส่งข้อมูลกับบอร์ดฮาร์ดแวร์จริงยังอยู่ระหว่างรอการทดสอบ</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>MQ-3 Calibration</strong>
+                    <span>การสอบเทียบเซ็นเซอร์ MQ-3 กับสารตัวอย่างจริงยังอยู่ระหว่างรอการทดสอบ</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>MQ-6 Calibration</strong>
+                    <span>การสอบเทียบเซ็นเซอร์ MQ-6 เพื่อแปลงค่าเป็น ppm อย่างเป็นทางการยังอยู่ระหว่างรอการทดสอบ</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Safety Threshold Validation</strong>
+                    <span>เกณฑ์การประเมินความปลอดภัยยังอยู่ระหว่างรอการทดสอบและทบทวน</span>
+                  </div>
+                </li>
+                <li class="trust-item is-pending-item">
+                  <span class="trust-item-icon" aria-hidden="true">○</span>
+                  <div>
+                    <strong>Certification &amp; Real Deployment</strong>
+                    <span>ยังไม่ผ่านการรับรองมาตรฐานความปลอดภัยใดๆ และยังไม่พร้อมสำหรับการใช้งานจริง</span>
+                  </div>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Final CTA Section -->
+      <section class="public-footer-cta" aria-labelledby="public-cta-title">
+        <div class="public-container">
+          <div class="public-footer-card">
+            <div class="footer-cta-content">
+              <h2 id="public-cta-title" class="footer-cta-title">
+                พร้อมลองดูว่า GasGuard<br>นำเสนอข้อมูลอย่างไร?
+              </h2>
+              <p class="footer-cta-desc">
+                ทดลองสถานการณ์จำลองได้ทันที หรือเข้าสู่ Workspace หากคุณมีบัญชีที่ได้รับสิทธิ์แล้ว.
+              </p>
+              <div class="footer-cta-actions">
+                <a href="#public-demo-section" class="public-btn-primary" id="footer-demo-button">
+                  ทดลองระบบ
+                </a>
+                <button type="button" class="public-btn-secondary" id="footer-login-button">
+                  เข้าสู่ระบบ
+                </button>
+              </div>
+            </div>
+            <!-- Small brand companion accent (~10-15% visual weight) -->
+            <div class="footer-cta-companion" aria-hidden="true">
+              <img src="assets/gasguard-mascot.png" alt="" class="footer-companion-img">
+              <span class="footer-companion-label">GasGuard Prototype</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="public-footer">
+      <div class="public-container">
+        <p>GasGuard V2 · Autonomous LPG Safety Project · Prototype Platform 2026</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <button type="button" class="login-back-button" id="login-back-button">← กลับหน้าหลัก (Back to Home)</button>
+      <div class="auth-brand"><img src="assets/gasguard-mascot.png" alt=""><span><strong>GasGuard</strong><small>Autonomous LPG Safety</small></span></div>
+      <h1 id="auth-title">เข้าสู่ระบบ</h1>
+      <p class="auth-copy" id="auth-copy">ใช้บัญชีที่ผู้ดูแลระบบสร้างให้เพื่อเข้าสู่พื้นที่ทำงาน</p>
+      <form class="auth-form" id="login-form">
+        <label class="auth-field">อีเมล<input id="login-email" type="email" autocomplete="username" required></label>
+        <label class="auth-field">รหัสผ่าน<input id="login-password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary auth-submit" id="login-submit" type="submit">เข้าสู่ระบบ</button>
+      </form>
+      <p class="auth-message is-info" id="auth-message" role="alert" aria-live="polite">กำลังตรวจสอบ session</p>
+      <div class="auth-denied-actions"><button class="button button-secondary auth-submit" id="denied-sign-out" type="button">ออกจากระบบ</button></div>
+    </div>
+  </section>
   <a class="skip-link" href="#main-content">ข้ามไปยังเนื้อหาหลัก</a>
   <div class="app-shell">
     <aside class="sidebar" id="app-sidebar" aria-label="เมนูหลัก">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">G</span><span>GasGuard</span><button class="nav-toggle" id="nav-toggle" type="button" aria-label="เปิดหรือปิดเมนู" aria-expanded="false">☰</button></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><img src="assets/gasguard-mascot.png" alt=""></span><span class="brand-name"><strong>GasGuard</strong><small>Autonomous LPG Safety</small></span><button class="nav-toggle" id="nav-toggle" type="button" aria-label="เปิดหรือปิดเมนู" aria-expanded="false">☰</button></div>
       <p class="workspace-label">AUTONOMOUS LPG SAFETY</p>
       <nav class="navigation" id="navigation" aria-label="เมนูตามบทบาท"></nav>
       <div class="sidebar-foot">
@@ -54,23 +1359,25 @@
 
     <main id="main-content" class="main-content">
       <header class="topbar">
-        <div><p class="section-label" id="page-kicker">SAFETY OVERVIEW</p><h1 id="page-title">ภาพรวมความปลอดภัย</h1><p class="site-context" id="site-context">กำลังอ่านข้อมูลสถานที่</p></div>
+        <div class="topbar-strip">
+          <div class="topbar-status">
+            <span class="gasguard-workspace-badge" id="workspace-badge"><strong>Demo Site</strong><small>SIMULATION</small></span>
+            <span class="data-badge source-badge" id="data-source-badge">กำลังตรวจแหล่งข้อมูล</span><span class="data-badge" id="last-reading-badge" aria-live="polite">กำลังรอข้อมูล</span><span class="data-badge developer-only">UNVALIDATED_PROTOTYPE · LOCAL_BROWSER_DATA · NOT_A_PRODUCTION_AUDIT_LOG</span>
+          </div>
+          <div class="topbar-account">
+            <span class="auth-user" id="auth-user-label"></span><button class="button button-secondary" id="sign-out-button" type="button">ออกจากระบบ</button>
+          </div>
+        </div>
+        <div class="topbar-main">
+        <div class="topbar-heading"><p class="section-label" id="page-kicker">SAFETY OVERVIEW</p><h1 id="page-title">ภาพรวมความปลอดภัย</h1><p class="site-context" id="site-context">กำลังอ่านข้อมูลสถานที่</p></div>
         <div class="top-actions">
-          <label class="scenario-control">โหมดผู้ใช้
-            <select id="view-mode" aria-label="เลือกโหมดสาธิตมุมมองผู้ใช้"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select>
-            <span class="demo-role-note">โหมดสาธิตมุมมองผู้ใช้ ไม่ใช่การยืนยันตัวตนหรือสิทธิ์จริง</span>
-          </label>
-          <span class="data-badge source-badge" id="data-source-badge">กำลังตรวจแหล่งข้อมูล</span><span class="data-badge" id="last-reading-badge" aria-live="polite">กำลังรอข้อมูล</span><span class="data-badge developer-only">UNVALIDATED_PROTOTYPE · LOCAL_BROWSER_DATA · NOT_A_PRODUCTION_AUDIT_LOG</span>
-          <label class="scenario-control role-technical-control">สถานการณ์จำลอง
+          <label class="scenario-control developer-only">สถานการณ์จำลอง
             <select id="scenario-select" aria-label="เลือกสถานการณ์จำลอง">
-              <option value="normal">ทำงานตามปกติ</option>
-              <option value="rise">LPG เพิ่มต่อเนื่อง</option>
-              <option value="transient">ค่าสูงชั่วคราวขณะทำอาหาร</option>
-              <option value="critical">เหตุวิกฤต</option>
-              <option value="unknown">เซ็นเซอร์ขาดการเชื่อมต่อ</option>
-              <option value="network">Network failure · MQTT offline</option>
-              <option value="valveFailure">Valve failure · command ≠ feedback</option>
-              <option value="drift">Sensor drift · baseline เปลี่ยน</option>
+              <option value="NORMAL">NORMAL</option>
+              <option value="ATTENTION">ATTENTION</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="RECOVERY">RECOVERY</option>
+              <option value="OFFLINE">OFFLINE</option>
             </select>
           </label>
           <label class="scenario-control role-technical-control">พื้นที่ทดสอบ
@@ -84,7 +1391,20 @@
           <button class="button button-primary role-technician-control" id="open-setup" type="button">ติดตั้งและลงทะเบียนระบบ</button>
           <button class="button button-secondary role-technical-control" id="pause-button" type="button">พักข้อมูล</button>
         </div>
+        </div>
       </header>
+
+      <section class="workspace-boundary gasguard-card workspace-boundary-card" id="workspace-boundary" hidden aria-live="polite"><div><span class="workspace-boundary-icon" aria-hidden="true">⌁</span><div><p class="section-label" id="workspace-boundary-label">DEVICE WORKSPACE</p><h2 id="workspace-boundary-title">Waiting for device</h2><p id="workspace-boundary-copy">ยังไม่มี telemetry จากอุปกรณ์ ระบบจึงไม่แสดงค่า gas, online หรือ safety state จากข้อมูลจำลอง</p></div></div><div class="device-ingress-pipeline" aria-label="Device ingestion pipeline"><span>Device</span><i>→</i><span>Ingress</span><i>→</i><span>Measurement</span><i>→</i><span>Telemetry V1.1</span><i>→</i><span>Safety Engine</span></div><dl class="workspace-boundary-facts" id="workspace-boundary-facts"></dl></section>
+
+      <section id="page-admin-dashboard" class="page" aria-label="Admin Dashboard">
+        <div class="events-header"><div><p class="section-label">PLATFORM ADMINISTRATION</p><h2>ภาพรวมระบบ GasGuard</h2><p>สถานะจาก application state และข้อมูลที่เก็บใน browser ปัจจุบัน</p></div><span class="data-badge">LOCAL APPLICATION DATA</span></div>
+        <div class="admin-summary" id="admin-summary"></div>
+        <div class="admin-dashboard-grid">
+          <article class="panel"><p class="section-label">RECENT EVENTS</p><h2>เหตุการณ์ล่าสุด</h2><div class="admin-event-list" id="admin-recent-events"></div></article>
+          <article class="panel"><p class="section-label">SYSTEM STATUS</p><h2>แหล่งข้อมูลและการเชื่อมต่อ</h2><dl class="feature-list" id="admin-system-status"></dl></article>
+          <article class="panel admin-access-panel"><p class="section-label">USERS &amp; ACCESS</p><h2>การจัดการบัญชีผู้ใช้</h2><p>User accounts and roles are managed through the configured authentication service.</p><p class="form-note">GasGuard frontend ไม่สร้างผู้ใช้ ไม่เปลี่ยน role และไม่อ่านรายชื่อผู้ใช้ทั้งหมด</p></article>
+        </div>
+      </section>
 
       <section id="page-overview" class="page is-visible" aria-label="ภาพรวมความปลอดภัย">
         <section class="general-home-intro" aria-label="ข้อมูลผู้ใช้และสถานที่">
@@ -92,7 +1412,7 @@
             <a class="general-brand" href="#page-overview" aria-label="GasGuard หน้าหลัก"><span class="general-brand-mark"><img src="assets/gasguard-mascot.png" alt=""></span><span><strong>GasGuard</strong><small>Safer Homes&nbsp; Safer Kitchens</small></span></a>
             <div class="general-header-actions"><button class="general-icon-button" data-goto="alerts" type="button" aria-label="เปิดการแจ้งเตือน"><span aria-hidden="true">♧</span><i></i></button><button class="general-icon-button" id="general-profile-button" type="button" aria-label="เปิดเมนูผู้ใช้"><span aria-hidden="true">●</span></button></div>
           </header>
-          <div class="general-welcome"><div><p>สวัสดีตอนเย็น</p><button class="general-site-select" type="button" aria-label="สถานที่ปัจจุบัน Restaurant A">Restaurant A <span aria-hidden="true">⌄</span></button><small>อ.เมืองขอนแก่น, ขอนแก่น</small></div><div class="general-mascot-hello"><span>ดูแลความปลอดภัย<br>ให้คุณเสมอครับ</span><img src="assets/gasguard-mascot.png" alt="GasGuard AI ผู้ช่วยดูแลความปลอดภัย"></div></div>
+          <div class="general-welcome"><div><p>สวัสดีตอนเย็น</p><button class="general-site-select" type="button" aria-label="สถานที่ตัวอย่าง Restaurant A">Restaurant A <span aria-hidden="true">⌄</span></button><small>พื้นที่ตัวอย่าง · ข้อมูลจำลอง · Prototype</small></div><div class="general-mascot-hello"><span>ดูแลความปลอดภัย<br>ให้คุณเสมอครับ</span><img src="assets/gasguard-mascot.png" alt="GasGuard AI ผู้ช่วยดูแลความปลอดภัย"></div></div>
         </section>
         <div class="safety-hero" id="safety-hero">
           <div class="safety-shield" aria-hidden="true">✓</div><div class="safety-hero-copy"><p class="section-label">สถานะความปลอดภัยตอนนี้</p><h2 id="safety-state">กำลังประเมินความปลอดภัย</h2><p id="safety-message">กำลังจัดเตรียมข้อมูลจากเซ็นเซอร์</p><small id="safety-updated">กำลังรอข้อมูลล่าสุด</small></div><div class="score-block"><strong id="safety-score">--</strong><span>/100</span><small id="safety-score-caption">คะแนนความปลอดภัย</small></div><button class="safety-hero-link" data-goto="alerts" type="button" aria-label="ดูรายละเอียดสถานะ"><span aria-hidden="true">›</span></button>
@@ -107,7 +1427,16 @@
           <div class="general-actions"><button class="button button-secondary" data-goto="alerts" type="button"><span aria-hidden="true">⌕</span> ดูรายละเอียด</button><button class="button button-primary" id="general-help-button" data-goto="assistant" type="button"><span aria-hidden="true">☎</span> ขอความช่วยเหลือ</button></div>
         </section>
 
-        <section class="technician-queue" id="technician-queue" aria-label="คิวงานช่างตามลำดับความสำคัญ"><div class="panel-heading"><div><p class="section-label">PRIORITY WORK QUEUE</p><h2>งานที่ควรทำต่อ</h2><p class="queue-copy">เรียงตามเหตุที่เปิดอยู่และเวลา โดยไม่สร้างคะแนนความสำคัญใหม่</p></div><span class="data-badge">SIMULATION</span></div><div class="queue-list" id="technician-queue-list"></div></section>
+        <section class="technician-dashboard" id="technician-dashboard" aria-label="Technician Overview">
+          <header class="gasguard-page-header"><div><p class="section-label">TECHNICIAN OVERVIEW</p><h2>งานที่ต้องตรวจและจัดการ</h2><p>เรียงสถานะงาน เหตุเร่งด่วน และความพร้อมของอุปกรณ์ก่อนข้อมูลเชิงเทคนิค</p></div><span class="gasguard-status-chip">SIMULATION · PROTOTYPE</span></header>
+          <section class="technician-priority gasguard-card" aria-labelledby="technician-work-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">▤</span><div><h3 id="technician-work-title">งานที่ต้องจัดการ</h3><p>คิวจาก incident และ service workflow ที่ยังไม่ปิด</p></div></div><button class="text-button" data-goto="reports" type="button">เปิดคิวงาน <span aria-hidden="true">→</span></button></div><div class="technician-work-summary" id="technician-work-summary"></div><div class="queue-list" id="technician-queue-list"></div></section>
+          <div class="technician-dashboard-grid">
+            <section class="gasguard-card" aria-labelledby="technician-health-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><h3 id="technician-health-title">Device Health</h3></div><button class="text-button" data-goto="devices" type="button">ดูอุปกรณ์</button></div><div class="gasguard-metric-row" id="technician-device-health"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-maintenance-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">◌</span><h3 id="technician-maintenance-title">Maintenance</h3></div><button class="text-button" data-goto="maintenance" type="button">เปิดงานดูแล</button></div><div class="gasguard-list" id="technician-maintenance-summary"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-incidents-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">!</span><h3 id="technician-incidents-title">Recent Incidents</h3></div><button class="text-button" data-goto="replay" type="button">ตรวจเหตุการณ์</button></div><div class="gasguard-list" id="technician-recent-incidents"></div></section>
+            <section class="gasguard-card" aria-labelledby="technician-progress-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">✓</span><h3 id="technician-progress-title">Verification / Task Progress</h3></div><button class="text-button" data-goto="validation" type="button">เปิด Validation</button></div><div class="gasguard-metric-row" id="technician-progress"></div></section>
+          </div>
+        </section>
 
         <div class="metric-grid" id="overview-metrics"></div>
 
@@ -120,14 +1449,14 @@
       </section>
 
       <section id="page-demo" class="page" aria-label="ศูนย์ควบคุมการจำลอง">
-        <div class="events-header"><div><p class="section-label">DEVELOPER DEMO CONTROL</p><h2>เลือกสถานการณ์และควบคุม Playback</h2><p>ส่งเฉพาะ payload จำลองผ่าน Engine เดิม ไม่มีการเชื่อมต่ออุปกรณ์หรือควบคุมวาล์วจริง</p></div><span class="data-badge">SIMULATION ONLY</span></div>
+        <div class="events-header"><div><p class="section-label">DEVELOPER DEMO CONTROL</p><h2>เลือกสถานการณ์และควบคุม Playback</h2><p>ส่งเฉพาะ payload จำลองผ่าน Engine เดิม ไม่มีการเชื่อมต่ออุปกรณ์หรือควบคุมวาล์วจริง</p></div><span class="data-badge">SIMULATION / PROTOTYPE</span></div>
         <div class="demo-layout"><article class="panel"><h3>Scenario library</h3><label class="demo-field">สถานการณ์<select id="demo-scenario-select"></select></label><div class="demo-scenario-copy" id="demo-scenario-copy"></div><div class="demo-actions"><button class="button button-primary" id="demo-start" type="button">เริ่ม Scenario</button><button class="button button-secondary" id="demo-pause" type="button">พัก</button><button class="button button-secondary" id="demo-step" type="button">เดิน 1 Step</button><button class="button button-secondary" id="demo-restart" type="button">เริ่มใหม่</button></div><label class="demo-field">ความเร็ว Playback<select id="demo-speed"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select></label></article><article class="panel"><h3>สถานะการจำลอง</h3><dl class="feature-list demo-facts" id="demo-facts"></dl><div class="demo-open-list" id="demo-open-list"></div></article></div>
         <article class="panel guided-demo" id="guided-demo" hidden aria-label="S10 Guided Presentation"><div class="panel-heading"><div><p class="section-label">S10 GUIDED PRESENTATION</p><h2>ลำดับการสาธิตและจุดที่ต้องตรวจ</h2></div><span class="data-badge" id="guided-demo-stage">Stage 1 / 11</span></div><div class="guided-demo-grid"><div><p class="guided-demo-title" id="guided-demo-title">—</p><p class="guided-demo-copy" id="guided-demo-copy">—</p><dl class="feature-list guided-demo-facts" id="guided-demo-facts"></dl></div><aside class="guided-demo-check"><strong>Checklist ของ stage นี้</strong><ul id="guided-demo-checklist"></ul><p id="guided-demo-human"></p></aside></div><div class="demo-actions"><button class="button button-secondary" id="guided-demo-prev" type="button">Stage ก่อนหน้า</button><button class="button button-secondary" id="guided-demo-open" type="button">เปิดหน้าที่แนะนำ</button><button class="button button-primary" id="guided-demo-next" type="button">Stage ถัดไป</button><button class="button button-secondary" id="guided-demo-restart" type="button">เริ่ม S10 ใหม่</button></div></article>
-        <article class="panel demo-reset-panel"><div><h3>Reset Demo Session</h3><p>ลบเฉพาะข้อมูล localStorage ของ GasGuard Demo: engine draft, service workflow, role/view, setup profile และ managed sites ข้อมูล Browser อื่นจะไม่ถูกแตะ</p></div><button class="button button-secondary" id="demo-reset" type="button">Reset เฉพาะข้อมูล Demo</button></article>
+        <article class="panel demo-reset-panel"><div><h3>Reset Demo Session</h3><p>คืนค่าเฉพาะ readings, events, alerts และ service workflow ของ Demo Site โดยไม่เปลี่ยนบัญชี สิทธิ์ หรือ workspace อื่น</p><p id="demo-reset-result" class="form-note" role="status" aria-live="polite"></p></div><button class="button button-secondary" id="demo-reset" type="button">Reset เฉพาะข้อมูล Demo</button></article>
       </section>
 
       <section id="page-live" class="page" aria-label="ตรวจวัดแบบสด">
-        <div class="live-head"><div><p class="section-label">LIVE TELEMETRY</p><h2>Kitchen LPG sensor</h2><p id="live-updated">—</p></div><span class="status-pill" id="live-status">—</span></div>
+        <div class="live-head"><div><p class="section-label">TELEMETRY MONITOR</p><h2>Kitchen LPG sensor</h2><p id="live-updated">—</p></div><span class="status-pill" id="live-status">—</span></div>
         <div class="live-value"><strong id="live-ppm">—</strong><span>ppm</span><p id="live-trend-copy">—</p></div>
         <article class="panel"><svg id="live-chart" class="line-chart large-chart" viewBox="0 0 920 260" role="img" aria-label="กราฟข้อมูล LPG แบบสด"></svg></article>
         <div class="metric-grid dense-grid" id="live-metrics"></div>
@@ -174,7 +1503,7 @@
       </section>
 
       <section id="page-alerts" class="page" aria-label="การแจ้งเตือน">
-        <div class="events-header"><div><p class="section-label">ALERT CENTER</p><h2>เหตุการณ์ที่ต้องติดตาม</h2></div><span class="data-badge">Rule engine v0.1</span></div>
+        <div class="events-header"><div><p class="section-label">ALERT CENTER</p><h2>เหตุการณ์ที่ต้องติดตาม</h2></div><span class="data-badge">SIMULATION · Rule engine v0.1</span></div>
         <div class="metric-grid" id="alert-metrics"></div><div class="event-list" id="alert-list"></div>
       </section>
 
@@ -229,16 +1558,37 @@
       </section>
 
       <section id="page-developer" class="page" aria-label="Developer Console">
-        <div class="events-header"><div><p class="section-label">DEVELOPER CONSOLE</p><h2>Data pipeline observability</h2><p>อ่านค่าและผลวิเคราะห์ทุกชั้นแบบ read-only สำหรับตรวจสอบ Draft 1</p></div><span class="data-badge" id="developer-version">Draft 1</span></div>
-        <div class="metric-grid dense-grid" id="developer-metrics"></div>
-        <div class="developer-grid">
-          <article class="panel"><p class="section-label">CANONICAL READING</p><h2>Normalized sensor payload</h2><pre class="code-block" id="reading-json"></pre></article>
-          <article class="panel"><p class="section-label">ANALYSIS OUTPUT</p><h2>Derived features & decision</h2><pre class="code-block" id="analysis-json"></pre></article>
-          <article class="panel"><p class="section-label">PROVIDER STATE</p><h2>Source and connection</h2><dl class="feature-list" id="provider-state"></dl></article>
-          <article class="panel"><p class="section-label">INCIDENT LIFECYCLE</p><h2>Last 10 events</h2><div class="developer-events" id="developer-events"></div></article>
-          <article class="panel"><p class="section-label">RELATION EXPLORER</p><h2>Incident ↔ Service workflow</h2><p class="form-note">ความสัมพันธ์นี้ใช้ตรวจสอบ trace ของข้อมูล local browser เท่านั้น ไม่ใช่หลักฐานบริการที่ผ่านการรับรอง</p><label>เลือกข้อมูลที่ต้องการตรวจ trace<select id="relation-explorer-select"></select></label><dl class="feature-list" id="relation-explorer-labels"></dl><pre class="code-block" id="relation-explorer-json"></pre></article>
-          <article class="panel"><p class="section-label">EVIDENCE JSON</p><h2>UNVALIDATED_PROTOTYPE</h2><pre class="code-block" id="incident-evidence-json"></pre></article>
+        <header class="gasguard-page-header"><div><p class="section-label">DEVELOPER DASHBOARD</p><h2>สถานะระบบและ Data Pipeline</h2><p>ดู provider, telemetry, ingest และผลวิเคราะห์ปัจจุบันก่อนเปิด diagnostics เชิงลึก</p></div><span class="gasguard-status-chip" id="developer-version">UNVALIDATED_PROTOTYPE</span></header>
+        <section class="developer-status-strip" id="developer-system-status" aria-label="System Status"></section>
+        <section class="gasguard-card developer-pipeline-section" aria-labelledby="developer-pipeline-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><div><h3 id="developer-pipeline-title">Data Pipeline</h3><p>เส้นทางข้อมูลที่ใช้ร่วมกันใน application</p></div></div></div><div class="developer-pipeline" id="developer-pipeline"></div></section>
+        <div class="developer-dashboard-grid">
+          <section class="gasguard-card" aria-labelledby="developer-telemetry-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">▦</span><h3 id="developer-telemetry-title">Telemetry Diagnostics</h3></div></div><div class="developer-facts" id="developer-telemetry-status"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-safety-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">✓</span><h3 id="developer-safety-title">Safety Summary</h3></div></div><div class="developer-facts" id="developer-safety-summary"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-integration-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">◇</span><h3 id="developer-integration-title">Integration</h3></div></div><div class="developer-integration-list" id="developer-integrations"></div></section>
+          <section class="gasguard-card integration-readiness-card" aria-labelledby="integration-readiness-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌁</span><div><h3 id="integration-readiness-title">ESP32 Integration Readiness</h3><p>Software readiness แยกจากสถานะการเชื่อมต่ออุปกรณ์</p></div></div><span class="gasguard-status-chip" id="integration-readiness-overall">CHECKING</span></div><div class="readiness-list" id="integration-readiness-list"></div></section>
+          <section class="gasguard-card" aria-labelledby="developer-tools-title"><div class="gasguard-section-heading"><div><span class="section-icon" aria-hidden="true">⌘</span><h3 id="developer-tools-title">Quick Tools</h3></div></div><div class="quick-tool-grid"><button data-goto="hardware-lab" type="button"><strong>Hardware Lab</strong><span>ตรวจ Measurement payload</span></button><button data-goto="explorer" type="button"><strong>Explorer</strong><span>ตรวจข้อมูลทุกชั้น</span></button><button data-goto="validation" type="button"><strong>Validation</strong><span>รัน deterministic cases</span></button><button data-goto="settings" type="button"><strong>Settings</strong><span>ดู provider configuration</span></button></div></section>
         </div>
+        <details class="developer-advanced"><summary>Advanced diagnostics</summary><div class="developer-grid"><article class="panel"><p class="section-label">CANONICAL READING</p><h2>Normalized sensor payload</h2><pre class="code-block" id="reading-json"></pre></article><article class="panel"><p class="section-label">ANALYSIS OUTPUT</p><h2>Derived features &amp; decision</h2><pre class="code-block" id="analysis-json"></pre></article><article class="panel"><p class="section-label">PROVIDER STATE</p><h2>Source and connection</h2><dl class="feature-list" id="provider-state"></dl></article><article class="panel"><p class="section-label">INCIDENT LIFECYCLE</p><h2>Last 10 events</h2><div class="developer-events" id="developer-events"></div></article><article class="panel"><p class="section-label">RELATION EXPLORER</p><h2>Incident ↔ Service workflow</h2><p class="form-note">ความสัมพันธ์นี้ใช้ตรวจสอบ trace ของข้อมูล local browser เท่านั้น ไม่ใช่หลักฐานบริการที่ผ่านการรับรอง</p><label>เลือกข้อมูลที่ต้องการตรวจ trace<select id="relation-explorer-select"></select></label><dl class="feature-list" id="relation-explorer-labels"></dl><pre class="code-block" id="relation-explorer-json"></pre></article><article class="panel"><p class="section-label">EVIDENCE JSON</p><h2>UNVALIDATED_PROTOTYPE</h2><pre class="code-block" id="incident-evidence-json"></pre></article></div></details>
+      </section>
+
+      <section id="page-product" class="page" aria-label="Product and Technology">
+        <header class="product-intro"><div><p class="section-label">PRODUCT &amp; TECHNOLOGY</p><h2>GasGuard ช่วยติดตามความปลอดภัย LPG อย่างไร</h2><p>ระบบรับข้อมูลจากอุปกรณ์หรือแหล่งข้อมูลที่กำหนด วิเคราะห์สถานะ และจัดระเบียบ alerts, events และงานบริการให้ผู้ใช้แต่ละบทบาทเห็นสิ่งที่เกี่ยวข้อง</p></div><span class="data-badge">PROTOTYPE PLATFORM</span></header>
+        <section class="product-purpose" aria-labelledby="product-what"><div><h3 id="product-what">What is GasGuard?</h3><p>GasGuard คือแพลตฟอร์มสำหรับติดตาม วิเคราะห์ และช่วยจัดการข้อมูลความปลอดภัย LPG เพื่อให้ผู้ใช้เห็นสถานะล่าสุด เหตุการณ์ที่ควรติดตาม และประวัติการดำเนินงานในที่เดียว</p></div><div class="product-boundary"><strong>ขอบเขตปัจจุบัน</strong><span>Safety Engine เป็น prototype สำหรับพัฒนาและทดสอบ ยังไม่ใช่ certified safety controller และไม่แทนอุปกรณ์ป้องกันที่ผ่านการรับรอง</span></div></section>
+        <section class="panel product-flow-section" aria-labelledby="product-flow-title"><h3 id="product-flow-title">How It Works</h3><div class="product-flow" role="list" aria-label="ลำดับการทำงานของ GasGuard"><div role="listitem"><b>Sensor / Data Source</b><span>รับข้อมูล</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Measurement</b><span>ตรวจรูปแบบ</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Telemetry</b><span>จัดมาตรฐาน</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Safety Analysis</b><span>ประเมินสถานะ</span></div><i aria-hidden="true">→</i><div role="listitem"><b>Alerts / Events</b><span>บันทึกผล</span></div><i aria-hidden="true">→</i><div role="listitem"><b>User</b><span>ติดตามและดำเนินงาน</span></div></div></section>
+        <div class="product-content-grid">
+          <section class="panel" aria-labelledby="product-tech"><h3 id="product-tech">Technology</h3><ul class="product-tech-list"><li><strong>ESP32 readiness</strong><span>เตรียม contract สำหรับเชื่อมอุปกรณ์จริง</span></li><li><strong>MQ-3 / MQ-6 architecture</strong><span>แยก adapter ตามชนิด sensor โดยยังไม่อ้างว่า calibration เสร็จแล้ว</span></li><li><strong>Measurement Layer</strong><span>ตรวจข้อมูล raw ก่อนเข้าสู่ระบบ</span></li><li><strong>Telemetry V1.1</strong><span>รูปแบบข้อมูลกลาง พร้อม boot session และเวลา receive</span></li><li><strong>Data protection</strong><span>ตรวจ stale, duplicate และ out-of-order</span></li><li><strong>Safety Engine</strong><span>สรุป safety และ risk state จากข้อมูลที่รับได้</span></li><li><strong>Data sources</strong><span>รองรับ Simulation และเตรียมขอบเขต REST / MQTT</span></li><li><strong>Role-based access</strong><span>แยกหน้าที่ General, Technician, Admin และ Developer</span></li></ul></section>
+          <section class="panel" aria-labelledby="product-intelligence"><h3 id="product-intelligence">Safety Intelligence</h3><p>ระบบพิจารณาค่าก๊าซ แนวโน้ม ความต่อเนื่อง และคุณภาพข้อมูล เพื่อสร้าง safety state และ risk สำหรับช่วยให้ผู้ใช้ติดตามสถานการณ์</p><div class="product-notice"><strong>Prototype limitation</strong><span>ผลวิเคราะห์ต้องผ่านการตรวจสอบกับ sensor, สภาพแวดล้อม และข้อกำหนดด้านความปลอดภัยจริงก่อนนำไปใช้งานภาคสนาม</span></div><h3 class="product-subheading">User Roles</h3><dl class="product-roles"><div><dt>General</dt><dd>ดูสถานะ แจ้งเตือน และขอรับบริการ</dd></div><div><dt>Technician</dt><dd>ตรวจอุปกรณ์ เหตุการณ์ และงานบำรุงรักษา</dd></div><div><dt>Admin</dt><dd>ดูภาพรวม platform, sites, devices และสถานะบริการ</dd></div><div><dt>Developer</dt><dd>ตรวจ integration, diagnostics และเครื่องมือพัฒนา</dd></div></dl></section>
+        </div>
+        <section class="panel product-status-section" aria-labelledby="product-status"><h3 id="product-status">Current Development Status</h3><div class="product-status-list"><div><span>Software Platform</span><strong>Ready for prototype</strong></div><div><span>Authentication</span><strong>Implemented</strong></div><div><span>Telemetry</span><strong>Implemented</strong></div><div><span>Measurement Layer</span><strong>Implemented</strong></div><div><span>Hardware Integration</span><strong class="attention">Preparing</strong></div><div><span>MQ Calibration</span><strong class="pending">Pending validation</strong></div></div></section>
+      </section>
+
+      <section id="page-hardware-lab" class="page" aria-label="Hardware Integration Lab">
+        <div class="events-header"><div><p class="section-label">DEVELOPER ONLY · HARDWARE INTEGRATION</p><h2>ตรวจ payload ก่อนเชื่อมอุปกรณ์จริง</h2><p>ใช้ Measurement Layer และ ingest path เดียวกับระบบจริง โดยยังไม่มีการสอบเทียบ MQ3/MQ6</p></div><span class="data-badge">Telemetry V1.1</span></div>
+        <div class="hardware-lab-grid">
+          <article class="panel hardware-input-panel"><div class="hardware-lab-head"><div><p class="section-label">INPUT PAYLOAD</p><h2>Measurement JSON</h2></div><label>Sample case<select id="hardware-sample"></select></label></div><textarea id="hardware-payload" class="hardware-payload" spellcheck="false" aria-label="Measurement JSON payload"></textarea><div class="hardware-actions"><button class="button button-secondary" id="hardware-load-sample" type="button">โหลดตัวอย่าง</button><button class="button button-secondary" id="hardware-validate" type="button">Validate Only</button><button class="button button-primary" id="hardware-ingest" type="button">Validate &amp; Ingest</button></div><p class="form-note">Validate Only ไม่เขียนข้อมูลเข้า engine. Raw-only ต้องแสดง CALIBRATION_REQUIRED และไม่อ้างว่า calibrated.</p></article>
+          <article class="panel hardware-result-panel"><div class="hardware-result-head"><div><p class="section-label">RESULT</p><h2 id="hardware-result-title">รอการตรวจสอบ</h2></div><span class="status-pill unknown" id="hardware-result-status">IDLE</span></div><p class="hardware-message" id="hardware-result-message">เลือก sample หรือแก้ JSON แล้วเริ่มตรวจสอบ</p><dl class="feature-list hardware-diagnostics" id="hardware-diagnostics"></dl></article>
+        </div>
+        <div class="hardware-output-grid"><article class="panel"><p class="section-label">CANONICAL TELEMETRY</p><h2>Telemetry V1.1 output</h2><pre class="code-block" id="hardware-telemetry">ยังไม่มี canonical telemetry</pre></article><article class="panel"><p class="section-label">INGEST TIMING</p><h2>Application receive diagnostics</h2><dl class="feature-list" id="hardware-timing"><div><dt>Status</dt><dd>ยังไม่ได้ ingest</dd></div></dl></article><article class="panel"><p class="section-label">ENGINE OUTPUT</p><h2>ผลวิเคราะห์จริงจาก engine</h2><dl class="feature-list" id="hardware-engine"><div><dt>Status</dt><dd>ยังไม่ได้ ingest</dd></div></dl></article></div>
       </section>
 
       <section id="page-explorer" class="page" aria-label="Data Explorer">
@@ -250,7 +1600,7 @@
     </main>
   </div>
   <section class="setup-workspace" id="setup-workspace" aria-label="ติดตั้งและลงทะเบียนระบบ">
-    <header class="setup-topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">G</span><span>GasGuard Provisioning</span></div><div class="setup-topbar-actions"><span class="data-badge">Installation workspace</span><button class="button button-secondary" id="close-setup" type="button">กลับสู่ระบบดูแล</button></div></header>
+    <header class="setup-topbar"><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="assets/gasguard-mascot.png" alt=""></span><span class="brand-name"><strong>GasGuard</strong><small>Provisioning</small></span></div><div class="setup-topbar-actions"><span class="data-badge">Installation workspace</span><button class="button button-secondary" id="close-setup" type="button">กลับสู่ระบบดูแล</button></div></header>
     <main class="setup-main">
       <div class="setup-intro"><div><p class="section-label">INSTALL · REGISTER · HAND OVER</p><h1>เพิ่มระบบใหม่เข้าสู่การดูแลของ GasGuard</h1><p>สร้างข้อมูลสถานที่และผู้ดูแล, ผูก board/sensor, ตรวจ telemetry และลงทะเบียนระบบเพื่อให้ทีมกลับไปติดตามใน dashboard หลักได้</p></div><div class="setup-safety-note"><strong>ขอบเขตความปลอดภัย</strong><span>หน้านี้ช่วย provision ข้อมูลและทดสอบ data flow เท่านั้น การสอบเทียบ sensor และ edge fail-safe ต้องยืนยันกับอุปกรณ์จริง</span></div></div>
       <div class="setup-grid">
@@ -265,18 +1615,28 @@
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
   <nav class="mobile-navigation" id="mobile-navigation" aria-label="เมนูหลักบนมือถือ"></nav>
   <dialog class="mobile-more-sheet" id="mobile-more-sheet" aria-labelledby="mobile-more-title">
-    <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard Demo</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
-    <p class="mobile-sheet-copy">โหมดสาธิตนี้เปลี่ยนมุมมองเพื่อทดสอบหน้าจอ ไม่ใช่การเข้าสู่ระบบหรือการกำหนดสิทธิ์จริง</p>
-    <label class="mobile-role-control">โหมดสาธิต<select id="mobile-view-mode" aria-label="เลือกโหมดสาธิต"><option value="general">บุคคลทั่วไป</option><option value="technician">ช่างเทคนิค</option><option value="developer">นักพัฒนา</option></select></label>
-    <label class="mobile-demo-control">สถานการณ์สาธิต<select id="mobile-scenario-select" aria-label="เลือกสถานการณ์สาธิต"><option value="normal">ปกติ</option><option value="rise">เฝ้าระวัง</option><option value="critical">อันตราย</option><option value="unknown">ออฟไลน์ / ไม่ทราบสถานะ</option></select></label>
+    <div class="mobile-sheet-head"><div><p class="section-label">เมนูเพิ่มเติม</p><h2 id="mobile-more-title">GasGuard</h2></div><button class="icon-button" id="close-mobile-more" type="button" aria-label="ปิดเมนูเพิ่มเติม">×</button></div>
+    <p class="mobile-sheet-copy auth-user" id="mobile-auth-user-label"></p>
+    <button class="button button-secondary" id="mobile-sign-out-button" type="button">ออกจากระบบ</button>
+    <label class="mobile-demo-control">สถานการณ์สาธิต<select id="mobile-scenario-select" aria-label="เลือกสถานการณ์สาธิต"><option value="NORMAL">NORMAL</option><option value="ATTENTION">ATTENTION</option><option value="CRITICAL">CRITICAL</option><option value="RECOVERY">RECOVERY</option><option value="OFFLINE">OFFLINE</option></select></label>
     <div class="mobile-more-list" id="mobile-more-list"></div>
   </dialog>
   <aside class="review-bar" id="review-bar" hidden aria-label="Demo review context"><span id="review-context">Review mode</span><button class="button button-secondary" id="copy-review-context" type="button">Copy review context</button><button class="button button-secondary" id="close-review" type="button">ปิด</button></aside>
   <script src="js/data.js"></script>
   <script src="js/engine.js"></script>
+  <script src="js/measurement.js"></script>
+  <script src="js/hardware-lab.js"></script>
+  <script src="js/workspaces.js"></script>
+  <script src="js/integration-status.js"></script>
+  <script src="js/demo-data.js"></script>
   <script src="js/providers.js"></script>
   <script src="js/service.js"></script>
   <script src="js/navigation.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/auth-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/public-demo.js"></script>
   <script src="js/app.js"></script>
   <script>if(new URLSearchParams(window.location.search).get('overlay')==='more')document.querySelector('#mobile-more-sheet')?.showModal();</script>
   <script src="js/demo-scenarios.js"></script>
