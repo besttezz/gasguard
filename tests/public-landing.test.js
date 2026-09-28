@@ -103,6 +103,7 @@ assert.ok(css.includes('body.auth-view .auth-screen { display: grid !important; 
 assert.ok(css.includes('body.authenticated .public-landing { display: none !important; }'), 'authenticated hides public landing');
 // Authenticated users must keep app.css's desktop grid (sidebar + content); forcing block stacks the sidebar above the page.
 assert.ok(!/body\.authenticated \.app-shell\s*\{[^}]*display:\s*block\s*!important/.test(css), 'authenticated app shell is not forced to display:block');
+assert.ok(css.includes('body:not(.authenticated) .mobile-navigation { display: none !important; }'), 'signed-out views hide the empty app bottom tab bar');
 const appCss = fs.readFileSync(path.join(__dirname, '../css/app.css'), 'utf8');
 assert.ok(/\.app-shell\{display:grid;grid-template-columns:252px/.test(appCss), 'app shell uses sidebar + content grid on desktop');
 

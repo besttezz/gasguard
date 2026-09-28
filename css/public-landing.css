@@ -90,6 +90,8 @@ body.auth-view .app-shell { display: none !important; }
 
 body.authenticated .public-landing { display: none !important; }
 body.authenticated .auth-screen { display: none !important; }
+/* The app's bottom tab bar is empty until a role is signed in; never show it on the landing or sign-in screens. */
+body:not(.authenticated) .mobile-navigation { display: none !important; }
 /* .app-shell keeps its own grid/responsive layout from app.css once authenticated. */
 
 /* Landing Wrapper */
