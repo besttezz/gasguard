@@ -84,7 +84,8 @@
   function renderLive(f) {
     $('live-updated').textContent = `อัปเดตล่าสุด ${time(new Date(f.current.timestamp))} · ${f.current.system.connection}`; $('live-status').className = `status-pill ${statusClass(f.safety)}`; $('live-status').textContent = statusText(f.safety); $('live-ppm').textContent = fmt(f.current.gas.value); $('live-trend-copy').textContent = f.safety === 'unknown' ? 'ข้อมูลล่าสุดไม่เพียงพอสำหรับการประเมิน' : `Rate of rise ${f.rate > 0 ? '+' : ''}${f.rate} ppm/min · ${f.rate > 3 ? 'increasing' : 'stable'}`;
     lineChart('live-chart',engine.state.readings.slice(-60),f.baseline); $('live-metrics').innerHTML = [metric('Baseline',`${f.baseline} ppm`,'Rolling historical mean','◌'),metric('Temperature',`${f.current.environment.temperature}°C`,'Environmental context','◒'),metric('Humidity',`${f.current.environment.humidity}%`,'Confidence adjustment','◑'),metric('Valve',f.current.system.valve.toUpperCase(),'Actuator context','⌘'),metric('Battery',`${f.current.system.battery}%`,'Gateway backup','▰'),metric('Signal',`${f.current.system.rssi} dBm`,'Connection health','⌁')].join('');
-    const pairs = [['Raw reading',`${f.current.gas.rawValue} ADC-equivalent`],['Calibrated LPG',`${f.current.gas.value} ppm`],['Rolling variance',`${f.variance} ppm`],['Z deviation',f.z],['30 min exposure',`${fmt(f.exposure)} ppm·min`],['Calibration',f.current.gas.calibrationVersion]];
+    const gas = f.current.gas, raw = gas.rawAdc ?? gas.rawValue;
+    const pairs = [['Raw reading',raw == null ? 'N/A' : `${raw} ADC-equivalent`],['Calibrated LPG',`${gas.value} ppm`],['Rolling variance',`${f.variance} ppm`],['Z deviation',f.z],['30 min exposure',`${fmt(f.exposure)} ppm·min`],['Calibration',gas.calibrationVersion ?? gas.calibrationStatus ?? 'N/A']];
     $('feature-trace').innerHTML = pairs.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   }
   function renderIntelligence(f,d) {
