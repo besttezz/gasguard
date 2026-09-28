@@ -76,14 +76,30 @@ async function rpc(env, fetchImpl, name, body) {
     },
     body: JSON.stringify(body)
   });
-  if (!response.ok) throw new Error(`RPC ${name} failed with ${response.status}`);
+  if (!response.ok) {
+    // Keep Supabase's error code/message (never contains our key) so failures are diagnosable from the device.
+    const detail = await response.json().catch(() => ({}));
+    throw Object.assign(new Error(`RPC ${name} failed with ${response.status}`), {
+      upstream: { rpc: name, status: response.status, code: detail.code || null, message: String(detail.message || '').slice(0, 160) || null }
+    });
+  }
   return response.json();
 }
 
+// Describes a misconfigured key without revealing it: only its length and which known family it belongs to.
+function keyShape(key) {
+  if (typeof key !== 'string' || !key) return { present: false };
+  const family = key.startsWith('sb_secret_') ? 'secret' : key.startsWith('sb_publishable_') ? 'publishable (wrong key)' : key.split('.').length === 3 ? 'jwt' : 'unknown';
+  return { present: true, length: key.length, family };
+}
+
 export async function handleTelemetry(request, env, fetchImpl = fetch) {
-  if (!env?.SUPABASE_URL || !isServiceSecret(env?.SUPABASE_SERVICE_ROLE_KEY)) {
-    return json(503, { ok: false, code: 'INGRESS_NOT_CONFIGURED' });
+  // Secrets pasted into a terminal often carry stray whitespace or quotes.
+  const serviceKey = String(env?.SUPABASE_SERVICE_ROLE_KEY || '').trim().replace(/^["']|["']$/g, '');
+  if (!env?.SUPABASE_URL || !isServiceSecret(serviceKey)) {
+    return json(503, { ok: false, code: 'INGRESS_NOT_CONFIGURED', serviceKey: keyShape(serviceKey) });
   }
+  env = { ...env, SUPABASE_SERVICE_ROLE_KEY: serviceKey };
 
   const text = await request.text();
   if (text.length > MAX_BODY_BYTES) return json(413, { ok: false, code: 'PAYLOAD_TOO_LARGE' });
@@ -102,8 +118,8 @@ export async function handleTelemetry(request, env, fetchImpl = fetch) {
       p_device_uid: payload.deviceId,
       p_credential_hash: await sha256Hex(key.toLowerCase())
     });
-  } catch (_) {
-    return json(502, { ok: false, code: 'STORE_UNAVAILABLE' });
+  } catch (error) {
+    return json(502, { ok: false, code: 'STORE_UNAVAILABLE', upstream: error.upstream || null });
   }
   if (!device?.valid) return json(401, { ok: false, code: 'INVALID_DEVICE_CREDENTIAL' });
   if (device.device_uid !== payload.deviceId) return json(403, { ok: false, code: 'DEVICE_IDENTITY_MISMATCH' });
@@ -139,8 +155,8 @@ export async function handleTelemetry(request, env, fetchImpl = fetch) {
     const result = await rpc(env, fetchImpl, 'ingest_telemetry', { p_device_uid: device.device_uid, p_reading: reading });
     // Duplicates are acknowledged with 202 so a retrying device advances its sequence.
     return json(202, { ok: true, code: result?.duplicate ? 'DUPLICATE' : 'INGESTED', dataClassification });
-  } catch (_) {
-    return json(502, { ok: false, code: 'STORE_UNAVAILABLE' });
+  } catch (error) {
+    return json(502, { ok: false, code: 'STORE_UNAVAILABLE', upstream: error.upstream || null });
   }
 }
 
