@@ -2,7 +2,7 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
-#include "secrets.h"
+#include "secrets.example.h"
 #include "root_ca.h"
 
 // Two modes, chosen in secrets.h:
