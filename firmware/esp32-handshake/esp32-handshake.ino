@@ -2,7 +2,13 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
+// Real WiFi password and device key live only in secrets.h, which git never uploads.
+// Never point this include at secrets.example.h: that file is public on GitHub.
+#if __has_include("secrets.h")
 #include "secrets.h"
+#else
+#error "Missing secrets.h: copy secrets.example.h to secrets.h (same folder), fill in WiFi and device key, then compile again. Do not put real values in secrets.example.h."
+#endif
 #include "root_ca.h"
 
 // Two modes, chosen in secrets.h:

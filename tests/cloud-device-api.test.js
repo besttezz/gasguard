@@ -136,7 +136,14 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
   const mq2 = store.calls.find(c => c.url.endsWith('/rpc/ingest_telemetry')).body.p_reading;
   assert.deepStrictEqual({ id: mq2.sensorId, type: mq2.sensorType, ppm: mq2.gasPpm }, { id: 'MQ2-01', type: 'MQ2', ppm: null });
   assert.match(firmware, /sendRawSensor\("MQ2-01", "MQ2", GASGUARD_MQ2_ADC_PIN/);
-  assert.match(fs.readFileSync(path.join(root, 'firmware/esp32-handshake/secrets.example.h'), 'utf8'), /\/\/ #define GASGUARD_MQ2_ADC_PIN 35/);
+  const example = fs.readFileSync(path.join(root, 'firmware/esp32-handshake/secrets.example.h'), 'utf8');
+  assert.match(example, /\/\/ #define GASGUARD_MQ2_ADC_PIN 34/);
+  // The public template must never carry real credentials (it was committed with a real WiFi password twice).
+  for (const name of ['GASGUARD_WIFI_SSID', 'GASGUARD_WIFI_PASSWORD', 'GASGUARD_DEVICE_KEY']) {
+    assert.match(example, new RegExp(`#define ${name} "<[A-Z0-9_]+>"`), `${name} must stay a <PLACEHOLDER> in secrets.example.h`);
+  }
+  assert.match(firmware, /#if __has_include\("secrets\.h"\)\s*#include "secrets\.h"/, 'sketch reads secrets.h only');
+  assert.ok(!/#include "secrets\.example\.h"/.test(firmware), 'sketch must never include the public template');
   const mq2Migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260929000000_add_mq2_sensor_type.sql'), 'utf8');
   assert.match(mq2Migration, /check \(sensor_type in \('mq2', 'mq3', 'mq6'\)\)/);
   assert.match(mq2Migration, /v_sensor_type in \('mq2', 'mq3', 'mq6'\)/);
