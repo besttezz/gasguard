@@ -27,6 +27,9 @@
   const info = id => SENSOR_INFO[id] || { name: id, role: 'เซ็นเซอร์', color: 'var(--series-3)' };
   const sortSensors = ids => [...ids].sort((a, b) => (SENSOR_ORDER.indexOf(a) + 1 || 99) - (SENSOR_ORDER.indexOf(b) + 1 || 99));
   const clock = ms => new Date(ms).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // ppm is shown only when the device marked the reading calibrated and actually sent a number.
+  const hasPpm = r => r && r.calibrationStatus !== 'CALIBRATION_REQUIRED' && r.gasPpm != null && Number.isFinite(Number(r.gasPpm));
+  const formatPpm = v => (v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('th-TH'));
 
   function ago(iso, now) {
     const ms = Date.parse(iso);
@@ -52,30 +55,41 @@
     const adc = Number.isFinite(reading.rawAdc) ? reading.rawAdc : null;
     const pct = adc == null ? 0 : Math.round((adc / 4095) * 100);
     const volts = Number.isFinite(reading.sensorVoltage) ? `${Number(reading.sensorVoltage).toFixed(2)} V` : '—';
-    const calibrated = reading.calibrationStatus === 'CALIBRATED';
+    const ppm = hasPpm(reading) ? Number(reading.gasPpm) : null;
+    const value = ppm != null
+      ? `<strong>${formatPpm(ppm)}</strong><span>ppm (ประมาณ)</span>`
+      : `<strong>${adc == null ? '—' : adc}</strong><span>ADC</span>`;
     return `<article class="device-sensor${stale ? ' is-stale' : ''}">
       <header><span class="device-sensor-swatch" style="background:${meta.color}"></span><div><strong>${esc(meta.name)}</strong><small>${esc(meta.role)}</small></div></header>
-      <div class="device-sensor-value"><strong>${adc == null ? '—' : adc}</strong><span>ADC</span></div>
+      <div class="device-sensor-value">${value}</div>
       <div class="device-sensor-bar" role="img" aria-label="ระดับสัญญาณ ${pct}% ของช่วง ADC"><i style="width:${pct}%;background:${meta.color}"></i></div>
-      <dl><div><dt>แรงดัน</dt><dd>${esc(volts)}</dd></div><div><dt>สถานะ</dt><dd>${calibrated ? 'คาลิเบรตแล้ว' : 'ค่าดิบ · ยังไม่คาลิเบรต'}</dd></div><div><dt>อัปเดต</dt><dd>${esc(ago(reading.receivedAt, now))}</dd></div></dl>
+      <dl><div><dt>ADC</dt><dd>${adc == null ? '—' : adc}</dd></div><div><dt>แรงดันที่ขา</dt><dd>${esc(volts)}</dd></div><div><dt>อัปเดต</dt><dd>${esc(ago(reading.receivedAt, now))}</dd></div></dl>
     </article>`;
   }
 
-  // Line chart of raw ADC per sensor over the last hour; lines break where data has gaps.
+  // Line chart per sensor over the last hour, in ppm once calibrated readings exist, otherwise raw ADC.
+  // Lines break where data has gaps.
   function chart(history, now) {
-    const points = history.filter(p => Number.isFinite(p.rawAdc) && Number.isFinite(Date.parse(p.receivedAt)));
+    const ppmMode = history.some(hasPpm);
+    const valueOf = p => (ppmMode ? (hasPpm(p) ? Number(p.gasPpm) : null) : p.rawAdc);
+    const unit = ppmMode ? 'ppm' : 'ADC';
+    const points = history.filter(p => Number.isFinite(valueOf(p)) && Number.isFinite(Date.parse(p.receivedAt)));
     if (!points.length) return '<div class="device-chart-empty">ยังไม่มีข้อมูลใน 60 นาทีที่ผ่านมา</div>';
-    const W = 720, H = 240, L = 48, R = 12, T = 12, B = 28;
+    const W = 720, H = 240, L = 52, R = 12, T = 12, B = 28;
     const start = now - WINDOW_MS;
-    let min = Math.min(...points.map(p => p.rawAdc)), max = Math.max(...points.map(p => p.rawAdc));
-    const pad = Math.max(20, (max - min) * 0.15);
-    min = Math.max(0, Math.floor((min - pad) / 10) * 10); max = Math.min(4095, Math.ceil((max + pad) / 10) * 10);
-    if (max <= min) max = min + 10;
+    const step = ppmMode ? 1 : 10;
+    let min = Math.min(...points.map(valueOf)), max = Math.max(...points.map(valueOf));
+    const pad = Math.max(ppmMode ? 1 : 20, (max - min) * 0.15);
+    min = Math.max(0, Math.floor((min - pad) / step) * step);
+    max = Math.ceil((max + pad) / step) * step;
+    if (!ppmMode) max = Math.min(4095, max);
+    if (max <= min) max = min + step;
     const x = t => L + ((t - start) / WINDOW_MS) * (W - L - R);
     const y = v => T + (1 - (v - min) / (max - min)) * (H - T - B);
+    const label = v => (ppmMode && max - min < 20 ? v.toFixed(1) : Math.round(v));
     const grid = [0, 1, 2, 3, 4].map(i => {
       const v = min + ((max - min) * i) / 4;
-      return `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="device-chart-grid"/><text x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" class="device-chart-label">${Math.round(v)}</text>`;
+      return `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="device-chart-grid"/><text x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" class="device-chart-label">${label(v)}</text>`;
     }).join('');
     const ticks = [60, 45, 30, 15, 0].map(m => {
       const t = now - m * 60000;
@@ -89,20 +103,20 @@
       for (const p of bySensor[id]) {
         const t = Date.parse(p.receivedAt);
         if (t < start) continue;
-        d += `${prev == null || t - prev > GAP_MS ? 'M' : 'L'}${x(t).toFixed(1)},${y(p.rawAdc).toFixed(1)} `;
+        d += `${prev == null || t - prev > GAP_MS ? 'M' : 'L'}${x(t).toFixed(1)},${y(valueOf(p)).toFixed(1)} `;
         prev = t;
       }
       const last = bySensor[id][bySensor[id].length - 1];
-      return `<path d="${d.trim()}" fill="none" stroke="${info(id).color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(Date.parse(last.receivedAt)).toFixed(1)}" cy="${y(last.rawAdc).toFixed(1)}" r="3.5" fill="${info(id).color}"/>`;
+      return `<path d="${d.trim()}" fill="none" stroke="${info(id).color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(Date.parse(last.receivedAt)).toFixed(1)}" cy="${y(valueOf(last)).toFixed(1)}" r="3.5" fill="${info(id).color}"/>`;
     }).join('');
     const legend = ids.map(id => `<span><i style="background:${info(id).color}"></i>${esc(info(id).name)}</span>`).join('');
-    return `<div class="device-chart-legend">${legend}</div><svg class="device-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟค่า ADC ของเซ็นเซอร์ย้อนหลัง 60 นาที">${grid}${ticks}${lines}</svg>`;
+    return `<div class="device-chart-legend">${legend}<span class="device-chart-unit">หน่วย: ${unit}</span></div><svg class="device-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟค่า ${unit} ของเซ็นเซอร์ย้อนหลัง 60 นาที">${grid}${ticks}${lines}</svg>`;
   }
 
   function table(history) {
     const rows = history.slice(-10).reverse();
     if (!rows.length) return '<p class="device-muted">ยังไม่มีข้อมูล</p>';
-    return `<table class="device-table"><thead><tr><th>เวลา</th><th>เซ็นเซอร์</th><th>ADC</th><th>แรงดัน</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(clock(Date.parse(r.receivedAt)))}</td><td>${esc(info(r.sensorId).name)}</td><td>${Number.isFinite(r.rawAdc) ? r.rawAdc : '—'}</td><td>${Number.isFinite(r.sensorVoltage) ? `${Number(r.sensorVoltage).toFixed(2)} V` : '—'}</td></tr>`).join('')}</tbody></table>`;
+    return `<table class="device-table"><thead><tr><th>เวลา</th><th>เซ็นเซอร์</th><th>ppm (ประมาณ)</th><th>ADC</th><th>แรงดันที่ขา</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(clock(Date.parse(r.receivedAt)))}</td><td>${esc(info(r.sensorId).name)}</td><td>${hasPpm(r) ? formatPpm(Number(r.gasPpm)) : '—'}</td><td>${Number.isFinite(r.rawAdc) ? r.rawAdc : '—'}</td><td>${Number.isFinite(r.sensorVoltage) ? `${Number(r.sensorVoltage).toFixed(2)} V` : '—'}</td></tr>`).join('')}</tbody></table>`;
   }
 
   function waitingGuide() {
@@ -124,7 +138,8 @@
     const history = Array.isArray(state?.history) ? state.history : [];
     const deviceId = state?.deviceId || options.workspace?.expectedDevice || 'ESP32';
     const classification = CLASSIFICATION[state?.dataClassification];
-    const raw = Object.values(latest).some(r => r && r.calibrationStatus !== 'CALIBRATED');
+    const raw = Object.values(latest).some(r => r && !hasPpm(r));
+    const anyPpm = Object.values(latest).some(hasPpm);
     const switchLink = options.canSwitchWorkspace
       ? `<a class="device-link" href="?workspace=${options.workspace?.id === 'device-test' ? 'hardware-pilot' : 'device-test'}">${options.workspace?.id === 'device-test' ? 'ดูบอร์ดจริง' : 'ดูบอร์ดจำลอง (ทดสอบ)'}</a>`
       : '';
@@ -135,7 +150,8 @@
         <div><p class="device-eyebrow">${options.workspace?.id === 'device-test' ? 'บอร์ดจำลอง' : 'อุปกรณ์จริง'}</p><h2>${esc(deviceId)}</h2><p class="device-muted">Restaurant A · Kitchen${classification ? ` · ${esc(classification)}` : ''}</p></div>
         <div class="device-head-side"><div class="device-status is-${status.key}"><span class="device-dot"></span><div><strong>${esc(status.label)}</strong><small>${esc(status.hint)}</small></div></div>${switchLink}${signOut}</div>
       </header>
-      ${raw ? '<p class="device-note">ค่าที่แสดงเป็น <strong>ค่าดิบจากเซ็นเซอร์ (ADC 0–4095)</strong> ยังไม่ใช่ ppm เพราะยังไม่ได้คาลิเบรต ใช้ดูแนวโน้มขึ้น-ลงได้ แต่ยังใช้ประเมินความเข้มข้นแก๊สไม่ได้</p>' : ''}
+      ${anyPpm ? '<p class="device-note">ค่า ppm เป็น<strong>ค่าประมาณ</strong>ที่บอร์ดคำนวณจากกราฟใน datasheet กับค่า Ro ที่วัดในอากาศสะอาด ยังไม่ได้เทียบกับแก๊สมาตรฐาน ใช้ดูแนวโน้มและเตือนเบื้องต้นได้ แต่ยังไม่ใช่ค่าที่รับรองความแม่นยำ</p>' : ''}
+      ${raw && !anyPpm ? '<p class="device-note">ค่าที่แสดงเป็น <strong>ค่าดิบจากเซ็นเซอร์ (ADC 0–4095)</strong> ยังไม่ใช่ ppm เพราะยังไม่ได้คาลิเบรต ใช้ดูแนวโน้มขึ้น-ลงได้ แต่ยังใช้ประเมินความเข้มข้นแก๊สไม่ได้</p>' : ''}
       ${state?.connection === 'WAITING_FOR_DEVICE' && !history.length ? waitingGuide() : ''}
       <div class="device-sensors">${ids.map(id => sensorCard(id, latest[id], stale, now)).join('')}</div>
       <section class="device-panel"><div class="device-panel-head"><h3>ค่าเซ็นเซอร์ย้อนหลัง 60 นาที</h3><span class="device-muted">อัปเดตทุก 5 วินาที</span></div>${chart(history, now)}</section>

@@ -10,12 +10,54 @@
 #error "Missing secrets.h: copy secrets.example.h to secrets.h (same folder), fill in WiFi and device key, then compile again. Do not put real values in secrets.example.h."
 #endif
 #include "root_ca.h"
+#include <math.h>
+#include <string.h>
+
+// ==================================================
+// Gas calibration (from bench calibration on this device)
+// ==================================================
+// Voltage divider on the sensor's AO line: AO -> R1 -> ESP32 pin -> R2 -> GND
+static const float GASGUARD_RL_VALUE   = 10.0f;   // kOhm, load resistor on the sensor module
+static const float GASGUARD_SENSOR_VCC = 5.0f;    // volts, sensor supply
+static const float GASGUARD_R1 = 10.0f;
+static const float GASGUARD_R2 = 20.0f;
+static const float GASGUARD_DIVIDER_RATIO = (GASGUARD_R1 + GASGUARD_R2) / GASGUARD_R2;
+
+static const float GASGUARD_RO_MQ2 = 7.5f;   // kOhm, measured in clean air
+static const float GASGUARD_RO_MQ6 = 2.0f;   // kOhm, measured in clean air
+
+// log10(ppm) = (log10(Rs/Ro) - intercept) / slope
+// intercept = y - slope*x, from the {x, y, slope} two-point form in each datasheet's LPG curve
+struct GasGuardCurve {
+  const char* name;
+  float slope;
+  float intercept;
+};
+static const GasGuardCurve GASGUARD_MQ2_CURVE = { "LPG", -0.47f, 1.291f };
+static const GasGuardCurve GASGUARD_MQ6_CURVE = { "LPG", -0.41f, 1.243f };
+
+static float gasguardCalculateRs(float pinVoltage) {
+  float sensorV = pinVoltage * GASGUARD_DIVIDER_RATIO;
+  if (sensorV < 0.01f) sensorV = 0.01f;
+  if (sensorV > GASGUARD_SENSOR_VCC - 0.01f) sensorV = GASGUARD_SENSOR_VCC - 0.01f;
+  return ((GASGUARD_SENSOR_VCC - sensorV) * GASGUARD_RL_VALUE) / sensorV;
+}
+
+static float gasguardCalculatePpm(float rs, float ro, const GasGuardCurve& curve) {
+  if (rs <= 0 || ro <= 0) return 0;
+  const float ratio = rs / ro;
+  const float logPpm = (log10(ratio) - curve.intercept) / curve.slope;
+  const float ppm = pow(10, logPpm);
+  if (isnan(ppm) || isinf(ppm)) return 0;
+  return ppm;
+}
 
 // Two modes, chosen in secrets.h:
 // - Handshake (default): fixed synthetic values to prove WiFi -> HTTPS -> dashboard. NOT gas readings.
-// - Raw sensor: define GASGUARD_MQ6_ADC_PIN and/or GASGUARD_MQ2_ADC_PIN to send the real ADC and
-//   voltage of each wired sensor, uncalibrated. MQ-6 is the primary LPG channel; MQ-2 (LPG/smoke)
-//   is reported as its own channel and never merged into the MQ-6 value.
+// - Sensor mode: define GASGUARD_MQ6_ADC_PIN and/or GASGUARD_MQ2_ADC_PIN to send each wired
+//   sensor's ADC, voltages, Rs and an estimated LPG ppm from the bench calibration above.
+//   MQ-6 is the primary LPG channel; MQ-2 (LPG/smoke) is reported as its own channel and never
+//   merged into the MQ-6 value.
 #if defined(GASGUARD_MQ6_ADC_PIN) || defined(GASGUARD_MQ2_ADC_PIN)
 #define GASGUARD_RAW_SENSOR_MODE 1
 #endif
@@ -94,15 +136,50 @@ bool sendSynthetic(const char* sensorId, const char* sensorType, float ppm, uint
 }
 
 #ifdef GASGUARD_RAW_SENSOR_MODE
+// sensorType selects which calibration curve and Ro to apply ("MQ6" or "MQ2").
+// Any other sensorType is sent uncalibrated, since no curve/Ro exists for it yet.
 bool sendRawSensor(const char* sensorId, const char* sensorType, uint8_t pin, uint32_t sequence) {
   const String timestamp = utcTimestamp();
   if (timestamp.isEmpty()) { Serial.println("Time unavailable, packet not sent"); return false; }
+
   const int adc = analogRead(pin);
-  const float volts = analogReadMilliVolts(pin) / 1000.0f;
-  Serial.printf("%s raw adc=%d voltage=%.3f V\n", sensorType, adc, volts);
-  const String payload = buildPayload(sensorId, sensorType, sequence, timestamp,
-    String("\"raw\":{\"adc\":") + adc + ",\"sensorVoltage\":" + String(volts, 3) +
-    ",\"inputAdjustedVoltage\":null,\"calibrationStatus\":\"CALIBRATION_REQUIRED\"}");
+  const float pinVolts = analogReadMilliVolts(pin) / 1000.0f;   // voltage at the ESP32 pin
+  const float sensorVolts = pinVolts * GASGUARD_DIVIDER_RATIO;  // true AO voltage after the divider
+  const float rs = gasguardCalculateRs(pinVolts);
+
+  bool haveCurve = true;
+  float ro = 0, ppm = 0;
+  const char* gasName = "";
+
+  if (strcmp(sensorType, "MQ6") == 0) {
+    ro = GASGUARD_RO_MQ6;
+    ppm = gasguardCalculatePpm(rs, ro, GASGUARD_MQ6_CURVE);
+    gasName = GASGUARD_MQ6_CURVE.name;
+  } else if (strcmp(sensorType, "MQ2") == 0) {
+    ro = GASGUARD_RO_MQ2;
+    ppm = gasguardCalculatePpm(rs, ro, GASGUARD_MQ2_CURVE);
+    gasName = GASGUARD_MQ2_CURVE.name;
+  } else {
+    haveCurve = false;
+  }
+
+  Serial.printf("%s raw adc=%d pinVoltage=%.3f V sensorVoltage=%.3f V Rs=%.3f kOhm ppm=%.2f\n",
+                sensorType, adc, pinVolts, sensorVolts, rs, ppm);
+
+  // calibrationStatus lives inside "raw" (Raw Measurement contract); the server keeps ppm only when CALIBRATED.
+  String body = String("\"raw\":{\"adc\":") + adc +
+    ",\"sensorVoltage\":" + String(pinVolts, 3) +
+    ",\"inputAdjustedVoltage\":" + String(sensorVolts, 3) +
+    ",\"rs\":" + String(rs, 3) +
+    ",\"calibrationStatus\":\"" + (haveCurve ? "CALIBRATED" : "CALIBRATION_REQUIRED") + "\"}";
+
+  if (haveCurve) {
+    body += String(",\"ro\":") + String(ro, 3) +
+      ",\"upstreamPpm\":" + String(ppm, 2) +
+      ",\"gas\":\"" + gasName + "\"";
+  }
+
+  const String payload = buildPayload(sensorId, sensorType, sequence, timestamp, body);
   return sendWithRetry(sensorId, payload, sequence, false);
 }
 #endif

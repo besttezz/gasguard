@@ -130,7 +130,13 @@ export async function handleTelemetry(request, env, fetchImpl = fetch) {
   const synthetic = String(request.headers.get('x-gasguard-data-classification') || '').toUpperCase() === 'SYNTHETIC_HANDSHAKE';
   const dataClassification = synthetic ? 'SYNTHETIC_HANDSHAKE' : device.device_uid.startsWith('SIM-') ? 'VIRTUAL_TEST_DATA' : 'DEVICE_DATA';
   const raw = payload.raw || {};
-  const calibrated = String(raw.calibrationStatus || '').toUpperCase() === 'CALIBRATED';
+  // Contract puts calibrationStatus in raw; early field firmware sent it at the top level, so accept both.
+  const calibrated = [raw.calibrationStatus, payload.calibrationStatus].some(value => String(value || '').toUpperCase() === 'CALIBRATED');
+  // Calibration inputs travel with the reading so a stored ppm can be traced back and recomputed.
+  const extra = {};
+  if (finiteOrNull(raw.rs) != null) extra.rsKohm = raw.rs;
+  if (finiteOrNull(payload.ro) != null) extra.roKohm = payload.ro;
+  if (typeof payload.gas === 'string' && /^[A-Za-z0-9 _-]{1,24}$/.test(payload.gas)) extra.gas = payload.gas;
   // Raw-only field packets carry no ppm; only calibrated or explicit test packets may report one.
   const gasPpm = calibrated || dataClassification !== 'DEVICE_DATA' ? finiteOrNull(payload.upstreamPpm) : null;
 
@@ -151,7 +157,8 @@ export async function handleTelemetry(request, env, fetchImpl = fetch) {
       humidity: finiteOrNull(payload.environment.humidity)
     } : null,
     dataClassification,
-    gasPpm
+    gasPpm,
+    extra
   };
 
   try {
@@ -206,6 +213,7 @@ export async function handleStatus(request, env, fetchImpl = fetch, now = Date.n
       bySensor[r.sensor_uid] = {
         sensorId: r.sensor_uid, sensorType: r.sensor_type, rawAdc: r.raw_adc, sensorVoltage: r.sensor_voltage,
         inputAdjustedVoltage: r.input_adjusted_voltage, calibrationStatus: r.calibration_status,
+        gasPpm: r.gas_ppm == null ? null : Number(r.gas_ppm),
         receivedAt: r.received_at, stale: now() - Date.parse(r.received_at) > STALE_MS
       };
     }

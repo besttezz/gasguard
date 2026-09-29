@@ -150,5 +150,17 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
   assert.match(mq2Migration, /grant execute on function public\.ingest_telemetry\(text, jsonb\) to service_role;/);
   console.log('  [9] MQ-2 accepted by ingress, wired in firmware, allowed and auto-registered by the database: PASS');
 
+  // [10] Device-side calibration: ppm kept for CALIBRATED packets (raw or top-level flag), Rs/Ro traced
+  store = fakeStore();
+  r = await read(await api.handleTelemetry(post({ ...packet, raw: { adc: 1100, sensorVoltage: 1.05, inputAdjustedVoltage: 1.575, rs: 21.7 }, calibrationStatus: 'CALIBRATED', ro: 2, upstreamPpm: 3.21, gas: 'LPG' }), env, store.fetchImpl));
+  assert.strictEqual(r.status, 202);
+  let cal = store.calls.find(c => c.url.endsWith('/rpc/ingest_telemetry')).body.p_reading;
+  assert.deepStrictEqual({ ppm: cal.gasPpm, cal: cal.raw.calibrationStatus, extra: cal.extra }, { ppm: 3.21, cal: 'CALIBRATED', extra: { rsKohm: 21.7, roKohm: 2, gas: 'LPG' } });
+  store = fakeStore();
+  await api.handleTelemetry(post({ ...packet, raw: { adc: 1100, sensorVoltage: 1.05, calibrationStatus: 'CALIBRATED' }, upstreamPpm: 3.3 }), env, store.fetchImpl);
+  assert.strictEqual(store.calls.find(c => c.url.endsWith('/rpc/ingest_telemetry')).body.p_reading.gasPpm, 3.3);
+  assert.match(firmware, /\\"calibrationStatus\\":\\"" \+ \(haveCurve \? "CALIBRATED" : "CALIBRATION_REQUIRED"\) \+ "\\"}"/, 'firmware sends calibrationStatus inside raw');
+  console.log('  [10] Device-calibrated ppm stored (raw or top-level flag) with Rs/Ro/gas trace; firmware flag inside raw: PASS');
+
   console.log('\nALL CLOUD-1 DEVICE API TESTS PASSED!');
 })().catch(error => { console.error(error); process.exit(1); });

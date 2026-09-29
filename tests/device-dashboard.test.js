@@ -78,4 +78,23 @@ assert.match(html, /id="device-dashboard" hidden/);
 assert.match(html, /<script src="js\/device-dashboard\.js"><\/script>/);
 console.log('  [5] Signed-in default is the real device; demo menus hidden; dashboard wired: PASS');
 
+// [6] Calibrated device ppm becomes the headline value and the chart switches to ppm
+c = container();
+const ppmHistory = [
+  { sensorId: 'MQ6-01', rawAdc: 1100, sensorVoltage: 1.05, gasPpm: 3.2, receivedAt: at(20) },
+  { sensorId: 'MQ6-01', rawAdc: 1120, sensorVoltage: 1.06, gasPpm: 3.4, receivedAt: at(10) },
+  { sensorId: 'MQ2-01', rawAdc: 195, sensorVoltage: 0.31, gasPpm: 2.4, receivedAt: at(9) }
+];
+const ppmLatest = {
+  'MQ6-01': { ...ppmHistory[1], calibrationStatus: 'CALIBRATED' },
+  'MQ2-01': { ...ppmHistory[2], calibrationStatus: 'CALIBRATED' }
+};
+dashboard.render(c, { ...online, history: ppmHistory, sensorLatest: ppmLatest }, { workspace, now });
+assert.match(c.innerHTML, /<strong>3\.4<\/strong><span>ppm \(ประมาณ\)<\/span>/);
+assert.match(c.innerHTML, /<strong>2\.4<\/strong><span>ppm \(ประมาณ\)<\/span>/);
+assert.match(c.innerHTML, /หน่วย: ppm/);
+assert.match(c.innerHTML, /ค่าประมาณ/);
+assert.ok(!/ค่าดิบจากเซ็นเซอร์ \(ADC 0–4095\)/.test(c.innerHTML), 'raw-only notice hidden once ppm arrives');
+console.log('  [6] Calibrated ppm shown as headline value, chart in ppm, estimate notice: PASS');
+
 console.log('\nALL DASH-1 DEVICE DASHBOARD TESTS PASSED!');
