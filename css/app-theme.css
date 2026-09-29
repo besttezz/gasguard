@@ -507,7 +507,6 @@ body.authenticated {
   --series-3: oklch(.55 .15 305);   /* MQ-3 */
 }
 body.has-device-dashboard #workspace-boundary,
-body.has-device-dashboard .navigation,
 body.has-device-dashboard .mobile-navigation,
 body.has-device-dashboard .top-actions,
 body.has-device-dashboard .topbar-status .developer-only { display: none !important; }
@@ -536,6 +535,10 @@ body.general-role.has-device-dashboard .main-content { padding-top: 20px; }
 .device-status.is-error .device-dot { background: var(--attention); }
 .device-link { font-size: 13px; font-weight: 500; color: var(--brand); text-decoration: none; }
 .device-link:hover { text-decoration: underline; }
+body.has-device-dashboard a.nav-item { text-decoration: none; }
+/* The device menu has only a couple of links: keep them at normal height at the top. */
+body.has-device-dashboard .navigation { display: grid; align-content: start; gap: 2px; flex: 0 0 auto; }
+body.has-device-dashboard .navigation .nav-item { align-self: start; }
 
 .device-note {
   margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm);
