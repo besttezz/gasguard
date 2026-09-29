@@ -1353,7 +1353,7 @@
       <nav class="navigation" id="navigation" aria-label="เมนูตามบทบาท"></nav>
       <div class="sidebar-foot">
         <span class="connection-dot" id="connection-dot"></span>
-        <div><strong id="connection-label">Data simulation active</strong><small>อัปเดตอัตโนมัติทุก 2 วินาที</small></div>
+        <div><strong id="connection-label">Data simulation active</strong><small>อัปเดตอัตโนมัติ</small></div>
       </div>
     </aside>
 
@@ -1395,6 +1395,7 @@
       </header>
 
       <section class="workspace-boundary gasguard-card workspace-boundary-card" id="workspace-boundary" hidden aria-live="polite"><div><span class="workspace-boundary-icon" aria-hidden="true">⌁</span><div><p class="section-label" id="workspace-boundary-label">DEVICE WORKSPACE</p><h2 id="workspace-boundary-title">Waiting for device</h2><p id="workspace-boundary-copy">ยังไม่มี telemetry จากอุปกรณ์ ระบบจึงไม่แสดงค่า gas, online หรือ safety state จากข้อมูลจำลอง</p></div></div><div class="device-ingress-pipeline" aria-label="Device ingestion pipeline"><span>Device</span><i>→</i><span>Ingress</span><i>→</i><span>Measurement</span><i>→</i><span>Telemetry V1.1</span><i>→</i><span>Safety Engine</span></div><dl class="workspace-boundary-facts" id="workspace-boundary-facts"></dl></section>
+      <section class="device-dashboard" id="device-dashboard" hidden aria-live="polite" aria-label="แดชบอร์ดอุปกรณ์จริง"></section>
 
       <section id="page-admin-dashboard" class="page" aria-label="Admin Dashboard">
         <div class="events-header"><div><p class="section-label">PLATFORM ADMINISTRATION</p><h2>ภาพรวมระบบ GasGuard</h2><p>สถานะจาก application state และข้อมูลที่เก็บใน browser ปัจจุบัน</p></div><span class="data-badge">LOCAL APPLICATION DATA</span></div>
@@ -1633,6 +1634,7 @@
   <script src="js/service.js"></script>
   <script src="js/navigation.js"></script>
   <script src="js/icons.js"></script>
+  <script src="js/device-dashboard.js"></script>
   <script src="js/auth-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script src="js/auth.js"></script>

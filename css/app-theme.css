@@ -499,6 +499,95 @@ body.general-role .general-ai-card {
 body.general-role .general-ai-card .ai-mascot { display: none; }
 
 /* --------------------------------------------------------------------------
+   Real-device dashboard (device workspaces: no simulated pages or menus)
+   -------------------------------------------------------------------------- */
+body.authenticated {
+  --series-1: oklch(.53 .17 257);   /* MQ-6 */
+  --series-2: oklch(.66 .15 55);    /* MQ-2 */
+  --series-3: oklch(.55 .15 305);   /* MQ-3 */
+}
+body.has-device-dashboard #workspace-boundary,
+body.has-device-dashboard .navigation,
+body.has-device-dashboard .mobile-navigation,
+body.has-device-dashboard .top-actions,
+body.has-device-dashboard .topbar-status .developer-only { display: none !important; }
+body.has-device-dashboard.authenticated:not(.general-role) .main-content { padding-bottom: 40px; }
+body.general-role.has-device-dashboard .main-content { padding-top: 20px; }
+
+.device-dashboard { display: grid; gap: 16px; max-width: 1100px; }
+.device-dashboard[hidden] { display: none; }
+.device-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow);
+}
+.device-head h2 { margin: 2px 0 4px; font-size: 22px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+.device-eyebrow { margin: 0; font-size: 13px; font-weight: 500; color: var(--muted); }
+.device-muted { margin: 0; font-size: 13px; color: var(--muted); }
+.device-head-side { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.device-status {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft);
+}
+.device-status strong { display: block; font-size: 14px; color: var(--ink); }
+.device-status small { display: block; font-size: 12px; color: var(--muted); }
+.device-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--unknown); flex: 0 0 auto; }
+.device-status.is-online .device-dot { background: var(--success); box-shadow: 0 0 0 4px oklch(.55 .13 152 / .18); }
+.device-status.is-offline .device-dot { background: var(--danger); }
+.device-status.is-error .device-dot { background: var(--attention); }
+.device-link { font-size: 13px; font-weight: 500; color: var(--brand); text-decoration: none; }
+.device-link:hover { text-decoration: underline; }
+
+.device-note {
+  margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface-soft); box-shadow: inset 3px 0 0 var(--brand); font-size: 13px; color: var(--ink);
+}
+
+.device-sensors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.device-sensor {
+  display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.device-sensor header { display: flex; align-items: center; gap: 10px; }
+.device-sensor header strong { display: block; font-size: 15px; color: var(--ink); }
+.device-sensor header small { display: block; font-size: 12px; color: var(--muted); }
+.device-sensor-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.device-sensor-value { display: flex; align-items: baseline; gap: 6px; }
+.device-sensor-value strong { font-size: 32px; font-weight: 600; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.device-sensor-value span { font-size: 13px; color: var(--muted); }
+.device-sensor-bar { height: 6px; border-radius: 3px; background: var(--surface-hover); overflow: hidden; }
+.device-sensor-bar i { display: block; height: 100%; border-radius: 3px; }
+.device-sensor dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.device-sensor dt { font-size: 11.5px; color: var(--muted); }
+.device-sensor dd { margin: 2px 0 0; font-size: 13px; font-weight: 500; color: var(--ink); }
+.device-sensor.is-stale { opacity: .6; }
+.device-sensor-empty { margin: 0; font-size: 13px; color: var(--muted); }
+
+.device-panel { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+.device-panel h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.device-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.device-chart { display: block; width: 100%; height: auto; }
+.device-chart-grid { stroke: var(--line); stroke-width: 1; }
+.device-chart-label { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.device-chart-legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 13px; color: var(--ink); }
+.device-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.device-chart-legend i { width: 12px; height: 3px; border-radius: 2px; }
+.device-chart-empty { padding: 32px 0; text-align: center; font-size: 13px; color: var(--muted); }
+.device-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.device-table th { padding: 8px 10px; text-align: left; font-weight: 500; color: var(--muted); background: var(--surface-soft); border-bottom: 1px solid var(--line); }
+.device-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--ink); }
+.device-guide ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--ink); }
+.device-guide code { padding: 1px 5px; border-radius: 4px; background: var(--surface-soft); font-size: 12.5px; }
+
+@media (max-width: 640px) {
+  .device-head { padding: 16px; }
+  .device-head-side { width: 100%; }
+  .device-status { flex: 1 1 auto; }
+  .device-sensor dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .device-panel { padding: 14px; }
+  .device-table th:nth-child(4), .device-table td:nth-child(4) { display: none; }
+}
+
+/* --------------------------------------------------------------------------
    Mobile bottom navigation (all roles)
    -------------------------------------------------------------------------- */
 body.authenticated .mobile-navigation { border-top-color: var(--line); background: oklch(1 0 0 / .97); box-shadow: none; }

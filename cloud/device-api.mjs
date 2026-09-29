@@ -14,6 +14,9 @@ export const WORKSPACE_DEVICES = Object.freeze({
 });
 
 export const STALE_MS = 30000;
+// Dashboard history window: one packet per sensor every ~10 s gives ~360 rows/sensor/hour.
+const HISTORY_MS = 60 * 60 * 1000;
+const HISTORY_LIMIT = 1000;
 const MAX_BODY_BYTES = 8192;
 const CREDENTIAL_PATTERN = /^[0-9a-f]{64}$/i;
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
@@ -164,7 +167,7 @@ function waiting(workspaceId, deviceUid) {
   return {
     workspaceId, deviceId: deviceUid, status: 'WAITING_FOR_DEVICE', connection: 'WAITING_FOR_DEVICE',
     telemetry: 'NO DATA', safety: 'UNKNOWN', gasPpm: null, lastTelemetry: null, ingress: 'READY',
-    packetStatus: 'NO DATA', sensors: [], latestMeasurement: null, latestMeasurementsBySensor: {}
+    packetStatus: 'NO DATA', sensors: [], latestMeasurement: null, latestMeasurementsBySensor: {}, sensorLatest: {}, history: []
   };
 }
 
@@ -193,7 +196,8 @@ export async function handleStatus(request, env, fetchImpl = fetch, now = Date.n
     const state = Array.isArray(device?.device_status) ? device.device_status[0] : device?.device_status;
     if (!device || !state) return json(200, waiting(workspaceId, deviceUid));
 
-    const readings = await get(`telemetry_readings?select=sensor_uid,sensor_type,raw_adc,sensor_voltage,input_adjusted_voltage,calibration_status,gas_ppm,received_at&device_id=eq.${device.id}&order=received_at.desc&limit=20`);
+    const since = new Date(now() - HISTORY_MS).toISOString();
+    const readings = await get(`telemetry_readings?select=sensor_uid,sensor_type,raw_adc,sensor_voltage,input_adjusted_voltage,calibration_status,gas_ppm,received_at&device_id=eq.${device.id}&received_at=gte.${encodeURIComponent(since)}&order=received_at.desc&limit=${HISTORY_LIMIT}`);
     const receivedAt = Date.parse(state.last_seen_at);
     const stale = !Number.isFinite(receivedAt) || now() - receivedAt > STALE_MS;
     const bySensor = {};
@@ -222,7 +226,13 @@ export async function handleStatus(request, env, fetchImpl = fetch, now = Date.n
       packetStatus: state.data_classification === 'SYNTHETIC_HANDSHAKE' ? 'SYNTHETIC HANDSHAKE ACCEPTED' : calibrationRequired ? 'CALIBRATION REQUIRED' : 'ACCEPTED',
       sensors: Object.keys(bySensor),
       latestMeasurement: stale ? null : (bySensor['MQ6-01'] || Object.values(bySensor)[0] || null),
-      latestMeasurementsBySensor: stale ? {} : bySensor
+      latestMeasurementsBySensor: stale ? {} : bySensor,
+      sensorLatest: bySensor,
+      // Oldest first, for charts. Kept even when stale so the dashboard can show what happened.
+      history: readings.slice().reverse().map(r => ({
+        sensorId: r.sensor_uid, sensorType: r.sensor_type, rawAdc: r.raw_adc, sensorVoltage: r.sensor_voltage,
+        gasPpm: r.gas_ppm == null ? null : Number(r.gas_ppm), receivedAt: r.received_at
+      }))
     });
   } catch (error) {
     if (error.status === 401) return json(401, { ok: false, code: 'SIGN_IN_REQUIRED' });

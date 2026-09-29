@@ -113,6 +113,7 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
 
   r = await read(await api.handleStatus(statusReq(), env, statusFetch('2026-09-28T09:58:00Z', rows), () => now));
   assert.deepStrictEqual({ s: r.body.status, c: r.body.connection, safety: r.body.safety, latest: r.body.latestMeasurement }, { s: 'OFFLINE', c: 'OFFLINE', safety: 'UNKNOWN', latest: null });
+  assert.deepStrictEqual({ history: r.body.history.map(h => [h.sensorId, h.rawAdc]), kept: r.body.sensorLatest['MQ6-01'].rawAdc }, { history: [['MQ6-01', 1800]], kept: 1800 }, 'history and last-known values survive going offline');
   console.log('  [7] Status requires sign-in, queries with the user token, reports ONLINE/OFFLINE/WAITING: PASS');
 
   // [8] Routes, config and firmware wiring
