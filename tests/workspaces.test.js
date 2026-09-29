@@ -13,7 +13,7 @@ assert.equal(waiting.safety,'UNKNOWN');
 assert.equal(waiting.gasPpm,null,'hardware workspace must not invent gas ppm');
 assert.equal(waiting.canUseSimulation,false);
 assert.equal(hardware.expectedDevice,'ESP32-KITCHEN-01');
-assert.deepEqual([...hardware.expectedSensors],['MQ3-01','MQ6-01']);
+assert.deepEqual([...hardware.expectedSensors],['MQ2-01','MQ3-01','MQ6-01']);
 assert.equal(hardware.source,'REAL_DEVICE');
 assert.equal(deviceTest.source,'TEST_DEVICE');
 assert.equal(deviceTest.expectedDevice,'SIM-ESP32-KITCHEN-01');

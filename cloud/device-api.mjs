@@ -55,7 +55,7 @@ export function validatePacket(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return { ok: false, errors: ['payload must be a JSON object'] };
   if (typeof payload.deviceId !== 'string' || !ID_PATTERN.test(payload.deviceId)) errors.push('deviceId');
   if (typeof payload.sensorId !== 'string' || !ID_PATTERN.test(payload.sensorId)) errors.push('sensorId');
-  if (!/^(MQ3|MQ6)$/i.test(String(payload.sensorType || ''))) errors.push('sensorType must be MQ3 or MQ6');
+  if (!/^(MQ2|MQ3|MQ6)$/i.test(String(payload.sensorType || ''))) errors.push('sensorType must be MQ2, MQ3 or MQ6');
   if (typeof payload.bootId !== 'string' || !ID_PATTERN.test(payload.bootId)) errors.push('bootId');
   if (!Number.isInteger(payload.sequence) || payload.sequence < 0 || payload.sequence > 0xffffffff) errors.push('sequence');
   if (payload.raw !== undefined && (payload.raw === null || typeof payload.raw !== 'object' || Array.isArray(payload.raw))) errors.push('raw');

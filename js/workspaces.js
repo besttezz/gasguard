@@ -14,12 +14,12 @@
     'hardware-pilot': Object.freeze({
       id:'hardware-pilot', name:'Hardware Pilot', mode:'DEVICE', source:'REAL_DEVICE',
       label:'Waiting for device', expectedDevice:'ESP32-KITCHEN-01',
-      expectedSensors:Object.freeze(['MQ3-01','MQ6-01'])
+      expectedSensors:Object.freeze(['MQ2-01','MQ3-01','MQ6-01'])
     }),
     'device-test': Object.freeze({
       id:'device-test', name:'Device Test', mode:'DEVICE', source:'TEST_DEVICE',
       label:'TEST DATA / VIRTUAL DEVICE', expectedDevice:'SIM-ESP32-KITCHEN-01',
-      expectedSensors:Object.freeze(['MQ3-01','MQ6-01'])
+      expectedSensors:Object.freeze(['MQ2-01','MQ3-01','MQ6-01'])
     })
   });
   const get = id => definitions[id] || definitions['demo-site'];

@@ -10,6 +10,8 @@
 // Internet (any WiFi): the GasGuard website. Same-WiFi computer test: http://<COMPUTER_LAN_IPV4>:5567/api/v1/device/telemetry
 #define GASGUARD_SERVER_URL "https://gasguard-bu.pages.dev/api/v1/device/telemetry"
 
-// Uncomment to send the real MQ-6 reading (raw ADC + voltage) instead of synthetic handshake values.
-// Use an ADC1 pin (GPIO 32-39) behind a voltage divider: MQ modules output up to 5 V, ESP32 accepts 3.3 V.
-// #define GASGUARD_MQ6_ADC_PIN 34
+// Uncomment the sensors that are wired to send real readings (raw ADC + voltage) instead of
+// synthetic handshake values. Use ADC1 pins (GPIO 32-39) behind a voltage divider: MQ modules
+// output up to 5 V, ESP32 accepts 3.3 V. Each sensor needs its own pin.
+// #define GASGUARD_MQ6_ADC_PIN 34   // MQ-6: main LPG sensor
+// #define GASGUARD_MQ2_ADC_PIN 35   // MQ-2: LPG / smoke sensor

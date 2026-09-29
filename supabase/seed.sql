@@ -29,6 +29,7 @@ insert into public.sensors (device_id, sensor_uid, sensor_type)
 values
   ('00000000-0000-4000-8000-000000000301', 'MQ6-01', 'mq6'),
   ('00000000-0000-4000-8000-000000000301', 'MQ3-01', 'mq3'),
+  ('00000000-0000-4000-8000-000000000301', 'MQ2-01', 'mq2'),
   ('00000000-0000-4000-8000-000000000302', 'MQ6-01', 'mq6')
 on conflict (device_id, sensor_uid) do nothing;
 

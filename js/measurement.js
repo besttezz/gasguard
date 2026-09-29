@@ -6,7 +6,7 @@
 })(typeof window === 'undefined' ? globalThis : window, function (root) {
   'use strict';
 
-  const RAW_SENSOR_TYPES = Object.freeze(['MQ3', 'MQ6']);
+  const RAW_SENSOR_TYPES = Object.freeze(['MQ2', 'MQ3', 'MQ6']);
   const CALIBRATION_STATUS = 'CALIBRATION_NOT_CONFIGURED';
   const result = (ok, code, data = {}) => ({ ok, code, ...data });
   const nonEmpty = value => typeof value === 'string' && Boolean(value.trim());
@@ -18,7 +18,7 @@
     const errors=[];
     if (!input || typeof input !== 'object' || Array.isArray(input)) return result(false, 'INVALID_MEASUREMENT', { errors:['measurement must be an object'] });
     for (const key of ['deviceId','sensorId','bootId']) if (!nonEmpty(input[key])) errors.push(`${key} is required`);
-    if (!RAW_SENSOR_TYPES.includes(input.sensorType)) errors.push('sensorType must be MQ3 or MQ6');
+    if (!RAW_SENSOR_TYPES.includes(input.sensorType)) errors.push('sensorType must be MQ2, MQ3 or MQ6');
     if (!Number.isInteger(input.sequence) || input.sequence < 0) errors.push('sequence must be an integer >= 0');
     if (!nonEmpty(input.timestamp) || Number.isNaN(Date.parse(input.timestamp))) errors.push('timestamp must be parseable');
     if (!input.raw || typeof input.raw !== 'object' || Array.isArray(input.raw)) errors.push('raw must be an object');
@@ -38,7 +38,7 @@
     getCalibrationStatus() { return CALIBRATION_STATUS; },
     convertRawToPpm() { return result(false, 'NOT_IMPLEMENTED', { ppm:null, calibrationStatus:CALIBRATION_STATUS }); }
   });
-  const adapters = Object.freeze({ MQ3:adapter('MQ3'), MQ6:adapter('MQ6') });
+  const adapters = Object.freeze({ MQ2:adapter('MQ2'), MQ3:adapter('MQ3'), MQ6:adapter('MQ6') });
 
   function diagnostics(sensorType, conversionStatus, ppmSource) {
     return { sensorType, conversionStatus, ppmSource, calibrationStatus:adapters[sensorType]?.getCalibrationStatus() || CALIBRATION_STATUS };

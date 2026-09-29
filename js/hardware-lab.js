@@ -10,6 +10,7 @@
     mq6_upstream: { label:'MQ6 upstream ppm', payload:{ deviceId:'ESP32-LAB-01', sensorId:'MQ6-LAB-01', sensorType:'MQ6', bootId:'boot-demo-1', sequence:1, raw:{adc:1830,sensorVoltage:1.47}, upstreamPpm:164, environment:{temperature:30,humidity:64} } },
     mq3_upstream: { label:'MQ3 upstream ppm', payload:{ deviceId:'ESP32-LAB-02', sensorId:'MQ3-LAB-01', sensorType:'MQ3', bootId:'boot-demo-1', sequence:1, raw:{adc:1310,sensorVoltage:1.06}, upstreamPpm:72, environment:{temperature:29,humidity:61} } },
     mq6_raw: { label:'MQ6 raw only', payload:{ deviceId:'ESP32-LAB-03', sensorId:'MQ6-LAB-02', sensorType:'MQ6', bootId:'boot-demo-1', sequence:1, raw:{adc:2010,sensorVoltage:1.62}, environment:{temperature:31,humidity:66} } },
+    mq2_raw: { label:'MQ2 raw only', payload:{ deviceId:'ESP32-LAB-04', sensorId:'MQ2-LAB-01', sensorType:'MQ2', bootId:'boot-demo-1', sequence:1, raw:{adc:1520,sensorVoltage:1.22}, environment:{temperature:30,humidity:64} } },
     missing_device: { label:'Missing deviceId', payload:{ sensorId:'MQ6-LAB-03', sensorType:'MQ6', bootId:'boot-demo-1', sequence:1, raw:{adc:1740}, upstreamPpm:142 } },
     duplicate: { label:'Duplicate sequence', payload:{ deviceId:'ESP32-LAB-01', sensorId:'MQ6-LAB-01', sensorType:'MQ6', bootId:'boot-demo-1', sequence:1, raw:{adc:1830,sensorVoltage:1.47}, upstreamPpm:164 } },
     reboot: { label:'New bootId, sequence reset', payload:{ deviceId:'ESP32-LAB-01', sensorId:'MQ6-LAB-01', sensorType:'MQ6', bootId:'boot-demo-2', sequence:0, raw:{adc:1810,sensorVoltage:1.46}, upstreamPpm:160 } }

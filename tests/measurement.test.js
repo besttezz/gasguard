@@ -16,6 +16,9 @@ const raw = (overrides={}) => ({
 
 assert.equal(measurement.validateRaw(raw({sensorType:'MQ3'})).ok,true,'valid MQ3 raw shape');
 assert.equal(measurement.validateRaw(raw({sensorType:'MQ6'})).ok,true,'valid MQ6 raw shape');
+assert.equal(measurement.validateRaw(raw({sensorType:'MQ2'})).ok,true,'valid MQ2 raw shape');
+assert.equal(measurement.toTelemetry(raw({sensorType:'MQ2'})).code,'CALIBRATION_REQUIRED','MQ2 raw-only never invents ppm');
+assert.equal(measurement.validateRaw(raw({sensorType:'MQ9'})).ok,false,'unsupported sensor type rejected');
 assert.equal(measurement.validateRaw(raw({deviceId:undefined})).ok,false,'missing identity rejected');
 assert.equal(measurement.validateRaw(raw({raw:{adc:NaN}})).ok,false,'invalid raw number rejected');
 assert.equal(measurement.validateRaw(raw({sensorType:'MQ5'})).ok,false,'unsupported sensor rejected');

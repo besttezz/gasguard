@@ -47,7 +47,7 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
   assert.strictEqual(r.status, 400);
   r = await read(await api.handleTelemetry(post({ ...packet, raw: { adc: 9999 } }), env, store.fetchImpl));
   assert.strictEqual(r.status, 422);
-  r = await read(await api.handleTelemetry(post({ ...packet, sensorType: 'MQ2' }), env, store.fetchImpl));
+  r = await read(await api.handleTelemetry(post({ ...packet, sensorType: 'MQ9' }), env, store.fetchImpl));
   assert.strictEqual(r.status, 422);
   r = await read(await api.handleTelemetry(post('x'.repeat(9000)), env, store.fetchImpl));
   assert.strictEqual(r.status, 413);
@@ -127,6 +127,20 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
   const ca = fs.readFileSync(path.join(root, 'firmware/esp32-handshake/root_ca.h'), 'utf8');
   assert.strictEqual((ca.match(/BEGIN CERTIFICATE/g) || []).length, 4, 'root CA bundle holds ISRG X1/X2 and GTS R1/R4');
   console.log('  [8] Pages routes, public-only wrangler.toml, verified-TLS firmware and CA bundle present: PASS');
+
+  // [9] MQ-2 support end to end: ingress, firmware option, database constraint and auto-registration
+  store = fakeStore();
+  r = await read(await api.handleTelemetry(post({ ...packet, sensorId: 'MQ2-01', sensorType: 'mq2', raw: { adc: 1520, sensorVoltage: 1.22 } }), env, store.fetchImpl));
+  assert.deepStrictEqual([r.status, r.body.code], [202, 'INGESTED']);
+  const mq2 = store.calls.find(c => c.url.endsWith('/rpc/ingest_telemetry')).body.p_reading;
+  assert.deepStrictEqual({ id: mq2.sensorId, type: mq2.sensorType, ppm: mq2.gasPpm }, { id: 'MQ2-01', type: 'MQ2', ppm: null });
+  assert.match(firmware, /sendRawSensor\("MQ2-01", "MQ2", GASGUARD_MQ2_ADC_PIN/);
+  assert.match(fs.readFileSync(path.join(root, 'firmware/esp32-handshake/secrets.example.h'), 'utf8'), /\/\/ #define GASGUARD_MQ2_ADC_PIN 35/);
+  const mq2Migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260929000000_add_mq2_sensor_type.sql'), 'utf8');
+  assert.match(mq2Migration, /check \(sensor_type in \('mq2', 'mq3', 'mq6'\)\)/);
+  assert.match(mq2Migration, /v_sensor_type in \('mq2', 'mq3', 'mq6'\)/);
+  assert.match(mq2Migration, /grant execute on function public\.ingest_telemetry\(text, jsonb\) to service_role;/);
+  console.log('  [9] MQ-2 accepted by ingress, wired in firmware, allowed and auto-registered by the database: PASS');
 
   console.log('\nALL CLOUD-1 DEVICE API TESTS PASSED!');
 })().catch(error => { console.error(error); process.exit(1); });

@@ -7,7 +7,12 @@
 
 // Two modes, chosen in secrets.h:
 // - Handshake (default): fixed synthetic values to prove WiFi -> HTTPS -> dashboard. NOT gas readings.
-// - Raw sensor: define GASGUARD_MQ6_ADC_PIN to send the real MQ-6 ADC and voltage, uncalibrated.
+// - Raw sensor: define GASGUARD_MQ6_ADC_PIN and/or GASGUARD_MQ2_ADC_PIN to send the real ADC and
+//   voltage of each wired sensor, uncalibrated. MQ-6 is the primary LPG channel; MQ-2 (LPG/smoke)
+//   is reported as its own channel and never merged into the MQ-6 value.
+#if defined(GASGUARD_MQ6_ADC_PIN) || defined(GASGUARD_MQ2_ADC_PIN)
+#define GASGUARD_RAW_SENSOR_MODE 1
+#endif
 static const float SYNTHETIC_MQ6_PPM = 120.0f;
 static const float SYNTHETIC_MQ3_PPM = 60.0f;
 static const bool SEND_OPTIONAL_MQ3 = false;
@@ -16,6 +21,7 @@ static const unsigned long SEND_INTERVAL_MS = 10000;
 String bootId;
 uint32_t mq6Sequence = 0;
 uint32_t mq3Sequence = 0;
+uint32_t mq2Sequence = 0;
 unsigned long lastSendAt = 0;
 
 String utcTimestamp() {
@@ -81,17 +87,17 @@ bool sendSynthetic(const char* sensorId, const char* sensorType, float ppm, uint
   return sendWithRetry(sensorId, payload, sequence, true);
 }
 
-#ifdef GASGUARD_MQ6_ADC_PIN
-bool sendRawMq6(uint32_t sequence) {
+#ifdef GASGUARD_RAW_SENSOR_MODE
+bool sendRawSensor(const char* sensorId, const char* sensorType, uint8_t pin, uint32_t sequence) {
   const String timestamp = utcTimestamp();
   if (timestamp.isEmpty()) { Serial.println("Time unavailable, packet not sent"); return false; }
-  const int adc = analogRead(GASGUARD_MQ6_ADC_PIN);
-  const float volts = analogReadMilliVolts(GASGUARD_MQ6_ADC_PIN) / 1000.0f;
-  Serial.printf("MQ6 raw adc=%d voltage=%.3f V\n", adc, volts);
-  const String payload = buildPayload("MQ6-01", "MQ6", sequence, timestamp,
+  const int adc = analogRead(pin);
+  const float volts = analogReadMilliVolts(pin) / 1000.0f;
+  Serial.printf("%s raw adc=%d voltage=%.3f V\n", sensorType, adc, volts);
+  const String payload = buildPayload(sensorId, sensorType, sequence, timestamp,
     String("\"raw\":{\"adc\":") + adc + ",\"sensorVoltage\":" + String(volts, 3) +
     ",\"inputAdjustedVoltage\":null,\"calibrationStatus\":\"CALIBRATION_REQUIRED\"}");
-  return sendWithRetry("MQ6-01", payload, sequence, false);
+  return sendWithRetry(sensorId, payload, sequence, false);
 }
 #endif
 
@@ -102,6 +108,9 @@ void setup() {
 #ifdef GASGUARD_MQ6_ADC_PIN
   analogSetPinAttenuation(GASGUARD_MQ6_ADC_PIN, ADC_11db);
 #endif
+#ifdef GASGUARD_MQ2_ADC_PIN
+  analogSetPinAttenuation(GASGUARD_MQ2_ADC_PIN, ADC_11db);
+#endif
   connectWiFi();
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // HTTPS certificate checks need the real time
   Serial.printf("GasGuard sender bootId=%s url=%s\n", bootId.c_str(), GASGUARD_SERVER_URL);
@@ -110,8 +119,13 @@ void setup() {
 void loop() {
   if (millis() - lastSendAt < SEND_INTERVAL_MS) { delay(100); return; }
   lastSendAt = millis();
+#ifdef GASGUARD_RAW_SENSOR_MODE
 #ifdef GASGUARD_MQ6_ADC_PIN
-  if (sendRawMq6(mq6Sequence)) mq6Sequence++;
+  if (sendRawSensor("MQ6-01", "MQ6", GASGUARD_MQ6_ADC_PIN, mq6Sequence)) mq6Sequence++;
+#endif
+#ifdef GASGUARD_MQ2_ADC_PIN
+  if (sendRawSensor("MQ2-01", "MQ2", GASGUARD_MQ2_ADC_PIN, mq2Sequence)) mq2Sequence++;
+#endif
 #else
   if (sendSynthetic("MQ6-01", "MQ6", SYNTHETIC_MQ6_PPM, mq6Sequence)) mq6Sequence++;
   if (SEND_OPTIONAL_MQ3 && sendSynthetic("MQ3-01", "MQ3", SYNTHETIC_MQ3_PPM, mq3Sequence)) mq3Sequence++;

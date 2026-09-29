@@ -4,7 +4,7 @@
   const TELEMETRY_SCHEMA_VERSION = 'gasguard.telemetry.v1.1';
   const configuredStaleMs = Number(window.GASGUARD_TELEMETRY_CONFIG?.TELEMETRY_STALE_MS);
   const TELEMETRY_STALE_MS = Number.isFinite(configuredStaleMs) && configuredStaleMs > 0 ? configuredStaleMs : 15000;
-  const SENSOR_TYPES = Object.freeze(['MQ3', 'MQ6', 'SIMULATED']);
+  const SENSOR_TYPES = Object.freeze(['MQ2', 'MQ3', 'MQ6', 'SIMULATED']);
   const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
   const round = (n, d = 0) => Number(n.toFixed(d));
   // Simulation inputs must replay predictably; this only replaces mock noise, never safety rules.
