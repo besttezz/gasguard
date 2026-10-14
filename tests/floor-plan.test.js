@@ -49,6 +49,17 @@ assert.match(overlay, /ยังไม่ผูก/);
 assert.ok(!plan.overlayHtml({ ...p, pins: [{ id: 'x', type: 'sensor', label: '<b>', sensorId: '', x: 1, y: 1 }] }, {}, {}).includes('<b>'), 'labels are escaped');
 console.log('  [3] Heat colours follow the level, red pulses, labels escaped: PASS');
 
+// [3b] 3D view: built from the same template, gas colours on the floor, clearly labelled as a simulation
+for (const t of plan.TEMPLATES) {
+  const iso = plan.isoSvg(plan.defaultPlan(t.id), { 'MQ6-01': { ppm: 2400, level: logic.classify(2400) } });
+  assert.match(iso, /^<svg class="fp-svg fp-iso"[\s\S]*<\/svg>$/);
+  assert.ok(!/NaN|undefined/.test(iso), `${t.id} 3D has no broken coordinates`);
+  assert.match(iso, new RegExp(`stop-color="${logic.LEVELS.warning.color}"`), `${t.id} 3D shows the gas level colour`);
+  assert.match(iso, />LPG</, `${t.id} 3D shows the LPG tank`);
+  assert.match(iso, /ไม่ใช่ภาพถ่ายจริง/, 'the 3D view says it is not a photo');
+}
+console.log('  [3b] 3D simulated view renders every template with tank, sensors and gas colours: PASS');
+
 // [4] Safety console blocks render the status, actions, pre-cook check and scale
 const now = Date.now();
 const r = (id, ppm, s) => ({ sensorId: id, gasPpm: ppm, rawAdc: 1500, calibrationStatus: 'CALIBRATED', receivedAt: new Date(now - s * 1000).toISOString() });

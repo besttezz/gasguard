@@ -26,7 +26,7 @@
         { t: 'table', x: 480, y: 340, w: 200, h: 110, chairs: 6 }, { t: 'plant', x: 812, y: 545 }
       ],
       pins: [{ type: 'stove', x: 300, y: 154 }, { type: 'tank', x: 194, y: 300 },
-        { type: 'sensor', label: 'A', sensorId: 'MQ6-01', x: 196, y: 462 }, { type: 'sensor', label: 'B', sensorId: 'MQ2-01', x: 400, y: 225 },
+        { type: 'sensor', label: 'A', sensorId: 'MQ6-01', x: 196, y: 462 }, { type: 'sensor', label: 'B', sensorId: 'MQ2-01', x: 520, y: 220 },
         { type: 'sensor', label: 'C', sensorId: '', x: 700, y: 510 }]
     },
     {
@@ -300,6 +300,207 @@
     return `<svg class="fp-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="แปลน ${esc(plan.image ? 'ที่อัปโหลด' : t.name)} พร้อมแผนที่ความเข้มข้นแก๊ส">${defs()}${base}${clip}<g data-fp-heat${plan.image ? '' : ' clip-path="url(#fp-clip)"'}>${heatSvg(plan, readings || {})}</g></svg>`;
   }
 
+  // ---- 3D view (isometric "dollhouse" built from the same template) ------------------------------
+  // Floor-level content is drawn in plan coordinates under an affine iso matrix, so floor patterns, door
+  // swings and the heat map project exactly. Walls and furniture are extruded boxes ordered back to front.
+  const C30 = Math.cos(Math.PI / 6), S30 = 0.5;
+  const ISO = `matrix(${C30.toFixed(5)} ${S30} ${(-C30).toFixed(5)} ${S30} 0 0)`;
+  const isoAt = z => (z ? `translate(0 ${-z}) ${ISO}` : ISO);
+  const P = (x, y, z = 0) => [(x - y) * C30, (x + y) * S30 - z];
+  const poly = (points, fill, extra = '') => `<polygon points="${points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}" fill="${fill}"${extra}/>`;
+  const WALL = { top: '#2b3340', front: '#e4e0d8', side: '#cfcac0' };
+  const FURN3D = {
+    counter: [46, '#ebe7df'], island: [46, '#ebe7df'], shelf: [95, '#ece8e0'], fridge: [98, '#eef1f5'], table: [36, '#ead9bf'],
+    desk: [36, '#ead9bf'], wardrobe: [105, '#ece8e0'], tv: [22, '#d8c3a2'], bed: [26, '#f7f8fb'], sofa: [34, '#dde3ec'], basin: [40, '#f6f9fb']
+  };
+
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f));
+    return `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  // An axis-aligned box: footprint x,y,w,h from z0 to z1. Only the faces the viewer can see (+x, +y, top).
+  function boxSvg(b, colors, topDecal = '') {
+    const { x, y, w, h, z0 = 0, z1 } = b;
+    const op = colors.opacity ? ` opacity="${colors.opacity}"` : '';
+    const edge = ' stroke="#2b3340" stroke-opacity=".18" stroke-width="1" stroke-linejoin="round"';
+    return `<g${op}>${poly([P(x, y + h, z0), P(x + w, y + h, z0), P(x + w, y + h, z1), P(x, y + h, z1)], colors.front, edge)}`
+      + `${poly([P(x + w, y, z0), P(x + w, y + h, z0), P(x + w, y + h, z1), P(x + w, y, z1)], colors.side, edge)}`
+      + `${poly([P(x, y, z1), P(x + w, y, z1), P(x + w, y + h, z1), P(x, y + h, z1)], colors.top, edge)}`
+      + `${topDecal ? `<g transform="${isoAt(z1)}">${topDecal}</g>` : ''}</g>`;
+  }
+
+  function cylinderSvg(cx, cy, r, z0, z1, color, topColor) {
+    const rx = r * Math.SQRT2 * C30, ry = r * Math.SQRT2 * S30;
+    const [bx, by] = P(cx, cy, z0), [tx, ty] = P(cx, cy, z1);
+    return `<g><ellipse cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${shade(color, 0.82)}"/>`
+      + `<rect x="${(bx - rx).toFixed(1)}" y="${ty.toFixed(1)}" width="${(2 * rx).toFixed(1)}" height="${(by - ty).toFixed(1)}" fill="${shade(color, 0.9)}"/>`
+      + `<ellipse cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${topColor || color}" stroke="#2b3340" stroke-opacity=".18"/></g>`;
+  }
+
+  // Wall segments from room edges, cut at doors and windows.
+  function wallBoxes(t) {
+    const o = t.rooms.reduce((b, r) => ({ x1: Math.min(b.x1, r.x), y1: Math.min(b.y1, r.y), x2: Math.max(b.x2, r.x + r.w), y2: Math.max(b.y2, r.y + r.h) }), { x1: W, y1: H, x2: 0, y2: 0 });
+    const seen = new Set(), out = [];
+    const edges = [];
+    for (const r of t.rooms) {
+      edges.push({ axis: 'h', c: r.y, a: r.x, b: r.x + r.w }, { axis: 'h', c: r.y + r.h, a: r.x, b: r.x + r.w },
+        { axis: 'v', c: r.x, a: r.y, b: r.y + r.h }, { axis: 'v', c: r.x + r.w, a: r.y, b: r.y + r.h });
+    }
+    for (const e of edges) {
+      const key = `${e.axis}${e.c}:${e.a}-${e.b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const front = (e.axis === 'h' && e.c === o.y2) || (e.axis === 'v' && e.c === o.x2);
+      const back = (e.axis === 'h' && e.c === o.y1) || (e.axis === 'v' && e.c === o.x1);
+      const height = front ? 16 : back ? 112 : 70;
+      const cuts = [...t.doors.map(d => ({ ...d, kind: 'door' })), ...t.windows.map(w => ({ ...w, kind: 'window' }))]
+        .filter(d => d.axis === e.axis && Math.abs((d.axis === 'h' ? d.y : d.x) - e.c) < 1)
+        .map(d => { const s = d.axis === 'h' ? d.x : d.y; return { s: Math.max(e.a, s), f: Math.min(e.b, s + d.len), kind: d.kind }; })
+        .filter(c => c.f > c.s).sort((p, q) => p.s - q.s);
+      let pos = e.a;
+      const pushPart = (a, b, z0, z1, kind) => {
+        if (b - a < 0.5 || z1 <= z0) return;
+        const box = e.axis === 'h' ? { x: a, y: e.c - 4, w: b - a, h: 8, z0, z1 } : { x: e.c - 4, y: a, w: 8, h: b - a, z0, z1 };
+        out.push({ box, kind });
+      };
+      for (const c of cuts) {
+        pushPart(pos, c.s, 0, height, 'wall');
+        if (c.kind === 'window') {
+          if (height >= 90) { pushPart(c.s, c.f, 0, 34, 'wall'); pushPart(c.s, c.f, 34, 86, 'glass'); pushPart(c.s, c.f, 86, height, 'wall'); }
+          else pushPart(c.s, c.f, 0, Math.min(height, 34), 'wall');
+        }
+        pos = Math.max(pos, c.f);
+      }
+      pushPart(pos, e.b, 0, height, 'wall');
+    }
+    return out;
+  }
+
+  function furnitureItems(t) {
+    const items = [];
+    const counters = t.furniture.filter(f => f.t === 'counter' || f.t === 'island');
+    const onCounter = (x, y) => counters.some(c => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h);
+    for (const f of t.furniture) {
+      const spec = FURN3D[f.t];
+      if (spec) {
+        const [h, color] = spec;
+        const decal = f.t === 'table' || f.t === 'desk' ? `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="8" fill="${color}" stroke="#bf9f74" stroke-width="1.4"/>` : f.t === 'tv' ? '' : furniture({ ...f, chairs: 0 });
+        items.push({ box: { x: f.x, y: f.y, w: f.w, h: f.h, z1: h }, svg: boxSvg({ x: f.x, y: f.y, w: f.w, h: f.h, z1: h }, { top: color, front: shade(color, 0.86), side: shade(color, 0.76) }, decal) });
+        if (f.t === 'table' && f.chairs) {
+          const per = Math.ceil(f.chairs / 2);
+          let n = 0;
+          for (let i = 0; i < per && n < f.chairs; i++) {
+            const cx = f.x + (f.w * (i + 1)) / (per + 1);
+            for (const cy of [f.y - 22, f.y + f.h + 6]) {
+              if (n++ >= f.chairs) break;
+              const b = { x: cx - 13, y: cy, w: 26, h: 16, z1: 22 };
+              items.push({ box: b, svg: boxSvg(b, { top: '#efe6d8', front: '#d9cdb8', side: '#cbbda5' }) });
+            }
+          }
+        }
+        if (f.t === 'tv') { const b = { x: f.x + 12, y: f.y + 2, w: f.w - 24, h: 5, z0: 22, z1: 62 }; items.push({ box: { ...b, y: f.y + f.h + 1, h: 0.5 }, svg: boxSvg(b, { top: '#2b3340', front: '#1f252f', side: '#181d25' }) }); }
+        if (f.t === 'desk') items.push({ box: { x: f.x + f.w / 2 - 13, y: f.y - 29, w: 26, h: 26, z1: 22 }, svg: cylinderSvg(f.x + f.w / 2, f.y - 16, 13, 0, 22, '#efe6d8') });
+      } else if (f.t === 'sink') {
+        const z = onCounter(f.x + f.w / 2, f.y + f.h / 2) ? 46 : 0;
+        items.push({ box: { x: f.x, y: f.y, w: f.w, h: f.h, z1: z + 1 }, svg: `<g transform="${isoAt(z + 0.5)}">${furniture(f)}</g>`, decal: true });
+      } else if (f.t === 'round') {
+        [0, 1, 2, 3].forEach(i => {
+          const a = (Math.PI / 2) * i + Math.PI / 4, cx = f.x + Math.cos(a) * 46, cy = f.y + Math.sin(a) * 46;
+          items.push({ box: { x: cx - 11, y: cy - 11, w: 22, h: 22, z1: 22 }, svg: cylinderSvg(cx, cy, 11, 0, 22, '#efe6d8') });
+        });
+        items.push({ box: { x: f.x - 32, y: f.y - 32, w: 64, h: 64, z1: 36 }, svg: cylinderSvg(f.x, f.y, 32, 0, 36, '#ead9bf') });
+      } else if (f.t === 'toilet') {
+        const b = { x: f.x - 16, y: f.y, w: 32, h: 12, z1: 36 };
+        items.push({ box: b, svg: boxSvg(b, { top: '#f6f9fb', front: '#dfe6ec', side: '#cfd8e0' }) });
+        items.push({ box: { x: f.x - 14, y: f.y + 13, w: 28, h: 38, z1: 20 }, svg: cylinderSvg(f.x, f.y + 32, 14, 0, 20, '#f6f9fb') });
+      } else if (f.t === 'plant') {
+        const [tx, ty] = P(f.x, f.y, 44);
+        items.push({ box: { x: f.x - 12, y: f.y - 12, w: 24, h: 24, z1: 50 }, svg: `${cylinderSvg(f.x, f.y, 11, 0, 20, '#b9876b')}<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="21" fill="#8fbf7f"/><circle cx="${(tx - 6).toFixed(1)}" cy="${(ty - 7).toFixed(1)}" r="10" fill="#a9d29a"/>` });
+      } else if (f.t === 'chair') {
+        items.push({ box: { x: f.x - 15, y: f.y - 15, w: 30, h: 30, z1: 22 }, svg: cylinderSvg(f.x, f.y, 15, 0, 22, '#efe6d8') });
+      }
+    }
+    return items;
+  }
+
+  // Back-to-front order for axis-aligned boxes: A is behind B when it lies entirely at smaller x or smaller y.
+  function depthSort(items) {
+    const behind = (a, b) => a.box.x + a.box.w <= b.box.x + 0.01 || a.box.y + a.box.h <= b.box.y + 0.01
+      || (a.decal !== true && b.decal === true && overlaps(a.box, b.box));
+    const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const out = [], state = new Map();
+    const visit = item => {
+      if (state.get(item) === 2) return;
+      if (state.get(item) === 1) return; // cycle: keep current order
+      state.set(item, 1);
+      for (const other of items) if (other !== item && behind(other, item) && !behind(item, other)) visit(other);
+      state.set(item, 2);
+      out.push(item);
+    };
+    items.forEach(visit);
+    return out;
+  }
+
+  function sensorZ(t, p) {
+    const c = t.furniture.find(f => (f.t === 'counter' || f.t === 'island') && p.x >= f.x && p.x <= f.x + f.w && p.y >= f.y && p.y <= f.y + f.h);
+    return c ? 46 : 0;
+  }
+
+  function pin3d(t, p, readings) {
+    if (p.type === 'tank') {
+      const [tx, ty] = P(p.x, p.y, 66);
+      return `${cylinderSvg(p.x, p.y, 15, 0, 58, '#2f6fd0', '#4b86de')}<rect x="${(tx - 5).toFixed(1)}" y="${(ty - 2).toFixed(1)}" width="10" height="10" rx="2" fill="#9aa3b2"/><text x="${tx.toFixed(1)}" y="${(ty + 40).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">LPG</text>`;
+    }
+    if (p.type === 'stove') {
+      const z = sensorZ(t, p);
+      const b = { x: p.x - 26, y: p.y - 18, w: 52, h: 36, z0: z, z1: z + 6 };
+      const burners = `<rect x="${b.x}" y="${b.y}" width="52" height="36" rx="4" fill="#2b3340"/><circle cx="${p.x - 12}" cy="${p.y}" r="9" fill="none" stroke="#ff7a2f" stroke-width="3"/><circle cx="${p.x + 12}" cy="${p.y}" r="9" fill="none" stroke="#ff7a2f" stroke-width="3"/>`;
+      return boxSvg(b, { top: '#2b3340', front: '#1f252f', side: '#181d25' }, burners);
+    }
+    const r = p.sensorId ? readings[p.sensorId] : null;
+    const known = r && Number.isFinite(r.ppm) && r.level && r.level.rank >= 0;
+    const color = known ? r.level.color : '#8a94a6';
+    const z = sensorZ(t, p) + 22;
+    const body = boxSvg({ x: p.x - 9, y: p.y - 9, w: 18, h: 18, z0: z, z1: z + 14 }, { top: '#ffffff', front: '#e7eaef', side: '#d5dae2' });
+    const [lx, ly] = P(p.x, p.y, z + 14), [cx, cy] = P(p.x, p.y, z + 120);
+    const text = `${p.label} · ${!p.sensorId ? 'ยังไม่ผูก' : known ? `${fmtPpm(r.ppm)} ppm` : 'ไม่มีข้อมูล'}`;
+    const w = Math.round(text.length * 10.5 + 34);
+    return `${body}<circle cx="${lx.toFixed(1)}" cy="${(ly - 2).toFixed(1)}" r="6" fill="${color}"${known && r.level.key === 'danger' ? ' class="fp-led-blink"' : ''}/>`
+      + `<line x1="${lx.toFixed(1)}" y1="${(ly - 8).toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy + 15).toFixed(1)}" stroke="${color}" stroke-width="2" stroke-dasharray="3 4"/>`
+      + `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)})"><rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#fff" stroke="${color}" stroke-width="2"/><circle cx="${-w / 2 + 15}" cy="0" r="6" fill="${color}"/><text x="${-w / 2 + 27}" y="5.5" font-size="15" font-weight="700" fill="#24303f">${esc(text)}</text></g>`;
+  }
+
+  function isoSvg(plan, readings) {
+    const t = templateById(plan.template);
+    const pins = plan.pins;
+    let floor, items = [], labels = '', bounds;
+    if (plan.image) {
+      floor = `<image href="${esc(plan.image)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"/>`;
+      bounds = { x1: 0, y1: 0, x2: W, y2: H };
+    } else {
+      bounds = t.rooms.reduce((b, r) => ({ x1: Math.min(b.x1, r.x), y1: Math.min(b.y1, r.y), x2: Math.max(b.x2, r.x + r.w), y2: Math.max(b.y2, r.y + r.h) }), { x1: W, y1: H, x2: 0, y2: 0 });
+      const clip = `<clipPath id="fp-clip3d">${t.rooms.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`).join('')}</clipPath>`;
+      floor = `${clip}<rect x="${bounds.x1 - 40}" y="${bounds.y1 - 40}" width="${bounds.x2 - bounds.x1 + 80}" height="${bounds.y2 - bounds.y1 + 80}" rx="24" fill="#efece5"/>`
+        + t.rooms.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${FLOOR[r.floor] || FLOOR.plain}"/>`).join('')
+        + t.furniture.filter(f => f.t === 'shower' || f.t === 'car').map(furniture).join('')
+        + t.doors.map(door).join('') + t.doors.filter(d => d.main).map(entryMarker).join('');
+      items = [...wallBoxes(t).map(wb => ({ box: wb.box, svg: wb.kind === 'glass' ? boxSvg(wb.box, { top: '#cfe6f5', front: '#bcdcf0', side: '#a9cde6', opacity: 0.6 }) : boxSvg(wb.box, WALL) })), ...furnitureItems(t)];
+      labels = t.rooms.map(r => { const [x, y] = P(r.lx ?? r.x + r.w / 2, r.ly ?? r.y + r.h / 2, 0); return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="fp-iso-label">${esc(r.label)}</text>`; }).join('');
+    }
+    const heat = heatSvg(plan, readings || {});
+    const ordered = depthSort(items).map(i => i.svg).join('');
+    const corners = [[bounds.x1, bounds.y1], [bounds.x2, bounds.y1], [bounds.x1, bounds.y2], [bounds.x2, bounds.y2]];
+    const xs = corners.map(([x, y]) => P(x, y)[0]), ys = corners.map(([x, y]) => P(x, y)[1]);
+    const pad = 60, minX = Math.min(...xs) - pad - 40, maxX = Math.max(...xs) + pad + 40, minY = Math.min(...ys) - 112 - 150, maxY = Math.max(...ys) + pad;
+    const pinSvg = pins.filter(p => p.type !== 'sensor').map(p => pin3d(t, p, readings || {})).join('') + pins.filter(p => p.type === 'sensor').map(p => pin3d(t, p, readings || {})).join('');
+    return `<svg class="fp-svg fp-iso" viewBox="${minX.toFixed(0)} ${minY.toFixed(0)} ${(maxX - minX).toFixed(0)} ${(maxY - minY).toFixed(0)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ภาพจำลอง 3 มิติของ ${esc(plan.image ? 'แปลนที่อัปโหลด' : t.name)} พร้อมค่าแก๊ส">${defs()}
+      <g transform="${ISO}">${floor}<g${plan.image ? '' : ' clip-path="url(#fp-clip3d)"'}>${heat}</g></g>
+      ${ordered}${labels}${pinSvg}
+      <text x="${(minX + 18).toFixed(0)}" y="${(maxY - 18).toFixed(0)}" class="fp-iso-note">ภาพจำลอง 3 มิติจากแปลน (ไม่ใช่ภาพถ่ายจริง)</text></svg>`;
+  }
+
   // ---- HTML overlay (room labels, entry label, pins) ----------------------------------------------
   const pct = (v, total) => `${r1((v / total) * 100)}%`;
   const fmtPpm = v => (v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('th-TH'));
@@ -370,11 +571,12 @@
     const sensorOptions = options.sensorOptions || (() => []);
     let plan = loadPlan(key);
     let readings = {};
-    const ui = { editing: false, tool: null, selected: null, dragging: null, message: '' };
+    const ui = { editing: false, tool: null, selected: null, dragging: null, message: '', view: '2d' };
 
     container.innerHTML = `
       <div class="fp-toolbar">
         <label class="fp-field"><span>แบบแปลน</span><select data-fp-template>${TEMPLATES.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}<option value="__upload">อัปโหลดรูปแปลนบ้านเอง…</option></select></label>
+        <div class="sg-segment fp-view" role="group" aria-label="มุมมอง"><button type="button" class="is-active" data-fp-view="2d">แปลน 2D</button><button type="button" data-fp-view="3d">ภาพจำลอง 3D</button></div>
         <input type="file" accept="image/*" data-fp-file hidden>
         <button type="button" class="button button-secondary fp-edit-toggle" data-fp-edit>แก้ไขตำแหน่ง</button>
       </div>
@@ -400,11 +602,13 @@
     function setHint(text) { hint.textContent = text || ''; hint.hidden = !text; }
 
     function drawAll() {
+      if (ui.view === '3d') { svgHost.innerHTML = isoSvg(plan, readings); overlay.innerHTML = ''; inspector.hidden = true; select.value = plan.image ? '__upload' : plan.template; return; }
       svgHost.innerHTML = stageSvg(plan, readings);
       drawOverlay();
       select.value = plan.image ? '__upload' : plan.template;
     }
     function drawHeat() {
+      if (ui.view === '3d') { svgHost.innerHTML = isoSvg(plan, readings); return; }
       const g = svgHost.querySelector('[data-fp-heat]');
       if (g) g.innerHTML = heatSvg(plan, readings); else svgHost.innerHTML = stageSvg(plan, readings);
     }
@@ -455,7 +659,15 @@
     container.addEventListener('click', evt => {
       const target = evt.target.closest('button');
       if (!target || !container.contains(target)) return;
-      if (target.matches('[data-fp-edit]')) {
+      if (target.matches('[data-fp-view]')) {
+        ui.view = target.dataset.fpView; ui.editing = false; ui.tool = null; ui.selected = null;
+        container.querySelectorAll('[data-fp-view]').forEach(b => b.classList.toggle('is-active', b === target));
+        const edit = $('[data-fp-edit]');
+        edit.hidden = ui.view === '3d'; edit.textContent = 'แก้ไขตำแหน่ง'; edit.classList.remove('is-active');
+        $('[data-fp-editbar]').hidden = true; setHint('');
+        stage.classList.toggle('is-3d', ui.view === '3d');
+        drawAll();
+      } else if (target.matches('[data-fp-edit]')) {
         ui.editing = !ui.editing; ui.tool = null; ui.selected = null;
         target.textContent = ui.editing ? 'เสร็จสิ้น' : 'แก้ไขตำแหน่ง';
         target.classList.toggle('is-active', ui.editing);
@@ -519,11 +731,11 @@
         readings = next || {};
         if (ui.dragging) return;
         drawHeat();
-        drawOverlay(false);
+        if (ui.view === '2d') drawOverlay(false);
       },
       plan: () => plan
     };
   }
 
-  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, nextSensorLabel, heatRadius, stageSvg, heatSvg, overlayHtml, mount });
+  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, nextSensorLabel, heatRadius, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
 });
