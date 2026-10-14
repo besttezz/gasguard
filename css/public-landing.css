@@ -3359,3 +3359,5 @@ details[open] .disclosure-chevron {
     scroll-behavior: auto !important;
   }
 }
+
+.role-tab-item[hidden] { display: none !important; }

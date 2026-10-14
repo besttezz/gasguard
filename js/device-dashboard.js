@@ -18,7 +18,8 @@
   const CLASSIFICATION = Object.freeze({
     DEVICE_DATA: 'ข้อมูลจริงจากเซ็นเซอร์',
     SYNTHETIC_HANDSHAKE: 'ค่าทดสอบการเชื่อมต่อ (ไม่ใช่ค่าเซ็นเซอร์)',
-    VIRTUAL_TEST_DATA: 'บอร์ดจำลองสำหรับทดสอบ'
+    VIRTUAL_TEST_DATA: 'บอร์ดจำลองสำหรับทดสอบ',
+    SIMULATION: 'ข้อมูลจำลองเพื่อสาธิต'
   });
   const GAP_MS = 60 * 1000;
   const WINDOW_MS = 60 * 60 * 1000;
@@ -127,39 +128,61 @@
     </ol></section>`;
   }
 
-  function render(container, state, options = {}) {
-    if (!container) return;
-    const now = options.now || Date.now();
+  function headHtml(state, options) {
     const status = statusOf(state);
-    const stale = status.key !== 'online';
-    const latest = state?.sensorLatest || state?.latestMeasurementsBySensor || {};
-    const expected = options.workspace?.expectedSensors || [];
-    const ids = sortSensors(new Set([...Object.keys(latest), ...expected.filter(id => id !== 'MQ3-01' || latest[id])]));
-    const history = Array.isArray(state?.history) ? state.history : [];
     const deviceId = state?.deviceId || options.workspace?.expectedDevice || 'ESP32';
     const classification = CLASSIFICATION[state?.dataClassification];
-    const raw = Object.values(latest).some(r => r && !hasPpm(r));
-    const anyPpm = Object.values(latest).some(hasPpm);
+    const eyebrow = options.simulated ? 'โหมดจำลอง (ไม่ใช่ข้อมูลจากบอร์ด)' : options.workspace?.id === 'device-test' ? 'บอร์ดจำลอง' : 'อุปกรณ์จริง';
     const switchLink = options.canSwitchWorkspace
       ? `<a class="device-link" href="?workspace=${options.workspace?.id === 'device-test' ? 'hardware-pilot' : 'device-test'}">${options.workspace?.id === 'device-test' ? 'ดูบอร์ดจริง' : 'ดูบอร์ดจำลอง (ทดสอบ)'}</a>`
       : '';
     const signOut = options.showSignOut ? '<button class="button button-secondary" type="button" data-device-sign-out>ออกจากระบบ</button>' : '';
-
-    container.innerHTML = `
-      <header class="device-head">
-        <div><p class="device-eyebrow">${options.workspace?.id === 'device-test' ? 'บอร์ดจำลอง' : 'อุปกรณ์จริง'}</p><h2>${esc(deviceId)}</h2><p class="device-muted">Restaurant A · Kitchen${classification ? ` · ${esc(classification)}` : ''}</p></div>
+    return `<header class="device-head">
+        <div><p class="device-eyebrow">${eyebrow}</p><h2>${esc(deviceId)}</h2><p class="device-muted">Restaurant A · Kitchen${classification ? ` · ${esc(classification)}` : ''}</p></div>
         <div class="device-head-side"><div class="device-status is-${status.key}"><span class="device-dot"></span><div><strong>${esc(status.label)}</strong><small>${esc(status.hint)}</small></div></div>${switchLink}${signOut}</div>
-      </header>
-      ${anyPpm ? '<p class="device-note">ค่า ppm เป็น<strong>ค่าประมาณ</strong>ที่บอร์ดคำนวณจากกราฟใน datasheet กับค่า Ro ที่วัดในอากาศสะอาด ยังไม่ได้เทียบกับแก๊สมาตรฐาน ใช้ดูแนวโน้มและเตือนเบื้องต้นได้ แต่ยังไม่ใช่ค่าที่รับรองความแม่นยำ</p>' : ''}
+      </header>`;
+  }
+
+  function bodyHtml(state, options) {
+    const now = options.now || Date.now();
+    const stale = statusOf(state).key !== 'online';
+    const latest = state?.sensorLatest || state?.latestMeasurementsBySensor || {};
+    const expected = options.workspace?.expectedSensors || [];
+    const ids = sortSensors(new Set([...Object.keys(latest), ...expected.filter(id => id !== 'MQ3-01' || latest[id])]));
+    const history = Array.isArray(state?.history) ? state.history : [];
+    const raw = Object.values(latest).some(r => r && !hasPpm(r));
+    const anyPpm = Object.values(latest).some(hasPpm);
+    const estimateNote = options.simulated
+      ? '<p class="device-note">ค่าทั้งหมดในหน้านี้เป็น<strong>ค่าจำลอง</strong>สำหรับสาธิตการเปลี่ยนสีและการแจ้งเตือน ไม่ได้มาจากเซ็นเซอร์จริง</p>'
+      : '<p class="device-note">ค่า ppm เป็น<strong>ค่าประมาณ</strong>ที่บอร์ดคำนวณจากกราฟใน datasheet กับค่า Ro ที่วัดในอากาศสะอาด ยังไม่ได้เทียบกับแก๊สมาตรฐาน ใช้ดูแนวโน้มและเตือนเบื้องต้นได้ แต่ยังไม่ใช่ค่าที่รับรองความแม่นยำ</p>';
+    return `${anyPpm ? estimateNote : ''}
       ${raw && !anyPpm ? '<p class="device-note">ค่าที่แสดงเป็น <strong>ค่าดิบจากเซ็นเซอร์ (ADC 0–4095)</strong> ยังไม่ใช่ ppm เพราะยังไม่ได้คาลิเบรต ใช้ดูแนวโน้มขึ้น-ลงได้ แต่ยังใช้ประเมินความเข้มข้นแก๊สไม่ได้</p>' : ''}
       ${state?.connection === 'WAITING_FOR_DEVICE' && !history.length ? waitingGuide() : ''}
       <div class="device-sensors">${ids.map(id => sensorCard(id, latest[id], stale, now)).join('')}</div>
-      <section class="device-panel"><div class="device-panel-head"><h3>ค่าเซ็นเซอร์ย้อนหลัง 60 นาที</h3><span class="device-muted">อัปเดตทุก 5 วินาที</span></div>${chart(history, now)}</section>
+      <section class="device-panel"><div class="device-panel-head"><h3>ค่าเซ็นเซอร์ย้อนหลัง 60 นาที</h3><span class="device-muted">${options.simulated ? 'ค่าจำลองใหม่ทุก 10 วินาที' : 'อัปเดตทุก 5 วินาที'}</span></div>${chart(history, now)}</section>
       <section class="device-panel"><div class="device-panel-head"><h3>ข้อมูลล่าสุด</h3><span class="device-muted">${history.length} รายการใน 60 นาที</span></div>${table(history)}</section>`;
+  }
 
-    const button = container.querySelector('[data-device-sign-out]');
+  function wireSignOut(container, options) {
+    const button = container.querySelector && container.querySelector('[data-device-sign-out]');
     if (button && options.onSignOut) button.addEventListener('click', options.onSignOut);
   }
 
-  return Object.freeze({ render, statusOf, SENSOR_INFO });
+  function renderHead(container, state, options = {}) {
+    if (!container) return;
+    container.innerHTML = headHtml(state, options);
+    wireSignOut(container, options);
+  }
+
+  function renderBody(container, state, options = {}) {
+    if (container) container.innerHTML = bodyHtml(state, options);
+  }
+
+  function render(container, state, options = {}) {
+    if (!container) return;
+    container.innerHTML = headHtml(state, options) + bodyHtml(state, options);
+    wireSignOut(container, options);
+  }
+
+  return Object.freeze({ render, renderHead, renderBody, statusOf, SENSOR_INFO });
 });
