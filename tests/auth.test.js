@@ -46,5 +46,11 @@ assert.equal(auth.isUnsafeClientKey(`header.${servicePayload}.signature`), true,
   assert.equal(auth.getRole(await auth.getCurrentUser()), 'general');
   await auth.signOut();
   assert.deepEqual(signOutOptions, { scope:'local' }, 'logout clears the current browser session');
+  const msg = auth.loginErrorMessage;
+  assert.equal(msg({ status:400, code:'invalid_credentials', message:'Invalid login credentials' }), 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+  assert.match(msg(new TypeError('Failed to fetch')), /เชื่อมต่อระบบยืนยันตัวตนไม่ได้/, 'a paused or unreachable backend is not reported as a wrong password');
+  assert.match(msg({ name:'AuthRetryableFetchError', status:0, message:'' }), /เชื่อมต่อระบบ/);
+  assert.match(msg({ status:503, message:'Service Unavailable' }), /เชื่อมต่อระบบ/);
+  assert.equal(msg({ code:'config_missing', message:'cfg' }), 'cfg');
   console.log('auth tests passed');
 })().catch(error => { console.error(error); process.exitCode=1; });

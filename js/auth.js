@@ -86,5 +86,19 @@
     return roleFromUser(user || session?.user || null);
   }
 
-  return Object.freeze({ VALID_ROLES, validRole, roleFromUser, isUnsafeClientKey, initialize, signIn, signOut, getSession, getCurrentUser, getRole });
+  // Tells a wrong password apart from an unreachable backend (e.g. a paused Supabase project).
+  function loginErrorMessage(error) {
+    if (error?.code === 'config_missing') return error.message;
+    const status = Number(error?.status);
+    const text = String(error?.message || '');
+    if (error?.code === 'invalid_credentials' || /invalid login credentials/i.test(text)) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+    if (error?.code === 'email_not_confirmed') return 'บัญชีนี้ยังไม่ได้ยืนยันอีเมล';
+    if (!status || status >= 500 || /failed to fetch|network|fetch/i.test(text) || error?.name === 'AuthRetryableFetchError') {
+      return 'เชื่อมต่อระบบยืนยันตัวตนไม่ได้ (เซิร์ฟเวอร์อาจหยุดทำงานชั่วคราว) ลองใหม่อีกครั้งในอีกสักครู่';
+    }
+    if (status === 429) return 'ลองเข้าสู่ระบบบ่อยเกินไป รอสักครู่แล้วลองใหม่';
+    return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+  }
+
+  return Object.freeze({ VALID_ROLES, validRole, roleFromUser, isUnsafeClientKey, loginErrorMessage, initialize, signIn, signOut, getSession, getCurrentUser, getRole });
 });
