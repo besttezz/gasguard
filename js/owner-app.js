@@ -771,7 +771,8 @@
   }
 
   // ---- Navigation ----------------------------------------------------------------------------------
-  function roleTabs() { return ROLE_TABS[S.role] || ROLE_TABS.general; }
+  // Trial mode (js/trial.js) shows only the gas-detection screens.
+  function roleTabs() { return window.GasGuardTrial ? ['home', 'plan', 'history'] : ROLE_TABS[S.role] || ROLE_TABS.general; }
 
   function renderTabbar() {
     const tabs = roleTabs();

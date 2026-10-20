@@ -308,7 +308,7 @@ button, input, select { font: inherit; color: inherit; }
   .landing-head { padding-bottom: 18px; }
 }
 
-/* Trial mode (?trial=role): a bar on top of every screen, and the role picker on the landing page. */
+/* Trial mode (?trial): a bar on top of every screen, and its card on the landing page. */
 .trial-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; min-height: 44px; padding: 6px 14px; background: #1F2937; color: #fff; font-size: 13.5px; }
 .trial-bar-actions { display: flex; gap: 8px; align-items: center; }
 .trial-bar button, .trial-bar a { min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .35); background: transparent; color: #fff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; cursor: pointer; }
@@ -318,9 +318,6 @@ body.is-trial .landing { display: none; }
 @media (min-width: 900px) { body.is-trial { padding-top: 44px; } body.is-trial .tabbar { top: 44px; } }
 .trial-pick { display: grid; gap: 12px; padding: 24px; }
 .trial-pick h2 { font-size: 20px; }
-.trial-roles { display: grid; gap: 8px; }
-.trial-roles .btn { display: grid; justify-items: start; gap: 2px; min-height: 0; padding: 10px 14px; text-align: left; }
-.trial-roles small { color: var(--muted); font-weight: 400; font-size: 12.5px; }
 
 /* Signed-in account at the bottom of the desktop sidebar (on phones it lives in the "my home" tab). */
 .tabbar-account { display: none; }

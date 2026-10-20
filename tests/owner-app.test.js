@@ -103,18 +103,16 @@ function runTrial(search) {
 }
 (async () => {
   const off = runTrial('');
-  assert.deepStrictEqual(off.GasGuardAuth, { real: true }, 'without ?trial= nothing changes');
-  const member = runTrial('?trial=member');
-  const session = await member.GasGuardAuth.initialize();
-  assert.strictEqual(member.GasGuardAuth.roleFromUser(session.user), 'general');
-  const edit = await member.GasGuardAuth.getClient().rpc('can_edit_site');
-  assert.strictEqual(edit.data, false, 'a trial house member cannot edit');
-  const status = await (await member.fetch('/api/v1/device/status?device=x')).json();
+  assert.deepStrictEqual(off.GasGuardAuth, { real: true }, 'without ?trial nothing changes');
+  assert.ok(!off.GasGuardTrial);
+  const on = runTrial('?trial');
+  assert.strictEqual(on.GasGuardTrial, true);
+  const session = await on.GasGuardAuth.initialize();
+  assert.strictEqual(on.GasGuardAuth.roleFromUser(session.user), 'general', 'the trial is a plain home user, never admin');
+  const status = await (await on.fetch('/api/v1/device/status?device=x')).json();
   assert.strictEqual(status.connection, 'ONLINE');
-  assert.ok(Object.keys(status.sensorLatest).length === 2);
-  const tech = runTrial('?trial=technician');
-  assert.strictEqual(tech.GasGuardAuth.roleFromUser((await tech.GasGuardAuth.initialize()).user), 'technician');
-  assert.ok(runTrial('?trial=root').GasGuardAuth.real, 'unknown trial roles are ignored');
-  console.log('  [6] Trial mode: inactive by default, fake data only, per-role sessions: PASS');
+  assert.strictEqual(Object.keys(status.sensorLatest).length, 2);
+  assert.match(app, /window\.GasGuardTrial \? \['home', 'plan', 'history'\]/, 'the trial shows only the gas-detection screens');
+  console.log('  [6] Trial mode: inactive by default, fake data only, gas-detection screens only: PASS');
   console.log('\nALL OWNER-1 APP TESTS PASSED!');
 })().catch(err => { console.error(err); process.exit(1); });
