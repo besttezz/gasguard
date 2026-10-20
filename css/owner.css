@@ -307,3 +307,11 @@ button, input, select { font: inherit; color: inherit; }
   .landing-side { order: -1; }
   .landing-head { padding-bottom: 18px; }
 }
+
+/* Signed-in account at the bottom of the desktop sidebar (on phones it lives in the "my home" tab). */
+.tabbar-account { display: none; }
+@media (min-width: 900px) {
+  .tabbar-account { display: grid; gap: 4px; margin-top: auto; padding: 12px 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .tabbar-account strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabbar-account small { color: var(--muted); margin-bottom: 6px; }
+}

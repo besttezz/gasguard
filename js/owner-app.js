@@ -702,7 +702,8 @@
   function renderTabbar() {
     const tabs = roleTabs();
     $('#tabbar').innerHTML = `<div class="brand tabbar-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/></svg></span>GasGuard</div>`
-      + tabs.map(t => `<a class="tab" href="#${t}" data-tab="${t}"><svg viewBox="0 0 24 24" aria-hidden="true">${TAB_DEFS[t].icon}</svg><span>${esc(t === 'mine' && S.role === 'technician' ? 'บัญชี' : TAB_DEFS[t].label)}</span></a>`).join('');
+      + tabs.map(t => `<a class="tab" href="#${t}" data-tab="${t}"><svg viewBox="0 0 24 24" aria-hidden="true">${TAB_DEFS[t].icon}</svg><span>${esc(t === 'mine' && S.role === 'technician' ? 'บัญชี' : TAB_DEFS[t].label)}</span></a>`).join('')
+      + `<div class="tabbar-account"><strong>${esc(S.user.email || '')}</strong><small>${esc(ROLE_LABEL[S.role] || 'ผู้ใช้')}</small><button class="btn btn-small" type="button" data-action="sign-out">ออกจากระบบ</button></div>`;
     $('#tabbar').style.setProperty('--tabs', tabs.length);
   }
 
