@@ -102,7 +102,7 @@
     const adc = num(reading.rawAdc);
     if (adc != null && adc < 40) return { key: 'low', ok: false, label: 'สัญญาณต่ำผิดปกติ ตรวจสายสัญญาณหรือไฟเลี้ยงเซ็นเซอร์' };
     if (adc != null && adc > 4085) return { key: 'saturated', ok: false, label: 'ค่าเต็มสเกล ตรวจเซ็นเซอร์หรือวงจรแบ่งแรงดัน' };
-    const values = (recent || []).slice(-12).map(r => (num(r.rawAdc) != null ? num(r.rawAdc) : ppmOf(r))).filter(v => v != null);
+    const values = (recent || []).slice(-12).map(r => (ppmOf(r) != null ? ppmOf(r) : num(r.rawAdc))).filter(v => v != null);
     if (values.length >= 12 && values.every(v => v === values[0])) return { key: 'flat', ok: false, label: 'ค่าไม่เปลี่ยนเลย เซ็นเซอร์อาจค้าง' };
     return { key: 'ok', ok: true, label: 'ทำงานปกติ' };
   }

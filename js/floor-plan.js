@@ -692,8 +692,17 @@
     const stage = $('[data-fp-stage]'), svgHost = $('[data-fp-svg]'), overlay = $('[data-fp-overlay]');
     const select = $('[data-fp-template]'), file = $('[data-fp-file]'), hint = $('[data-fp-hint]'), inspector = $('[data-fp-inspector]');
 
+    // Local copy first (instant, works offline); options.store, when given, keeps the shared copy in the database.
+    let saveTimer = null;
     function persist() {
-      if (!savePlan(key, plan)) setHint('บันทึกแปลนไม่ได้ (พื้นที่เก็บในเบราว์เซอร์เต็ม ลองใช้รูปที่เล็กลง)');
+      const local = savePlan(key, plan);
+      if (options.onChange) options.onChange(plan);
+      if (!options.store) { if (!local) setHint('บันทึกแปลนไม่ได้ (พื้นที่เก็บในเบราว์เซอร์เต็ม ลองใช้รูปที่เล็กลง)'); return; }
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        Promise.resolve(options.store.save(plan)).then(ok => { if (ok === false) setHint('บันทึกแปลนขึ้นระบบไม่ได้ จะลองใหม่เมื่อแก้ไขครั้งถัดไป'); })
+          .catch(() => setHint('บันทึกแปลนขึ้นระบบไม่ได้ (ตรวจอินเทอร์เน็ต) แปลนยังอยู่ในเครื่องนี้'));
+      }, 600);
     }
     function setHint(text) { hint.textContent = text || ''; hint.hidden = !text; }
 
@@ -821,6 +830,16 @@
     stage.addEventListener('pointercancel', endDrag);
 
     drawAll();
+    if (options.readOnly) $('[data-fp-edit]').hidden = true;
+    if (options.store) {
+      Promise.resolve(options.store.load()).then(remote => {
+        if (!remote || ui.dragging || ui.editing) return;
+        plan = normalizePlan(remote);
+        savePlan(key, plan);
+        if (options.onChange) options.onChange(plan);
+        drawAll();
+      }).catch(() => { /* offline: keep the local copy */ });
+    }
 
     return {
       update(next) {
@@ -833,5 +852,5 @@
     };
   }
 
-  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, nextSensorLabel, heatRadius, idwGrid, idwValue, heatColor, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
+  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, loadPlan, nextSensorLabel, heatRadius, idwGrid, idwValue, heatColor, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
 });

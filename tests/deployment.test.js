@@ -15,7 +15,7 @@ buildStatic({ env: {} });
 assert.equal(fs.existsSync(staleFilePath), false, 'stale dist files are removed before build');
 
 // Surface verification
-for (const relative of ['index.html', 'css/app.css', 'js/app.js', 'js/auth-config.js', 'assets/gasguard-mascot.png', '_headers']) {
+for (const relative of ['index.html', 'css/owner.css', 'js/owner-app.js', 'js/auth-config.js', 'assets/gasguard-mascot.png', '_headers']) {
   assert.equal(fs.existsSync(path.join(outputRoot, relative)), true, `static output contains ${relative}`);
 }
 for (const blocked of ['server', 'tools', 'tests', 'config', 'package.json', '.git', '.env', '.env.local']) {
@@ -104,7 +104,7 @@ assert.equal(fs.existsSync(path.join(outputRoot, '.env.local')), false, '.env.lo
 // 14. Dist surface clean & headers present
 assert.equal(fs.existsSync(path.join(outputRoot, '_headers')), true, '_headers present in dist');
 
-const app = fs.readFileSync('js/app.js', 'utf8');
+const app = fs.readFileSync('js/owner-app.js', 'utf8');
 assert.equal(/[A-Z]:\\/.test(app), false, 'frontend runtime has no Windows absolute path');
 
 // Dev server health check integration

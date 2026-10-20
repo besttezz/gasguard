@@ -100,5 +100,8 @@
     return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
   }
 
-  return Object.freeze({ VALID_ROLES, validRole, roleFromUser, isUnsafeClientKey, loginErrorMessage, initialize, signIn, signOut, getSession, getCurrentUser, getRole });
+  // The Supabase client, for RLS-protected reads and writes made as the signed-in user.
+  const getClient = () => client;
+
+  return Object.freeze({ VALID_ROLES, validRole, roleFromUser, isUnsafeClientKey, loginErrorMessage, getClient, initialize, signIn, signOut, getSession, getCurrentUser, getRole });
 });
