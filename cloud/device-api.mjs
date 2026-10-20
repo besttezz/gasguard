@@ -8,6 +8,8 @@
 //
 // Env: SUPABASE_URL, SUPABASE_ANON_KEY (public vars) and SUPABASE_SERVICE_ROLE_KEY (secret).
 
+import { evaluateAndNotify } from './site-api.mjs';
+
 export const WORKSPACE_DEVICES = Object.freeze({
   'hardware-pilot': 'ESP32-KITCHEN-01',
   'device-test': 'SIM-ESP32-KITCHEN-01'
@@ -96,7 +98,7 @@ function keyShape(key) {
   return { present: true, length: key.length, family };
 }
 
-export async function handleTelemetry(request, env, fetchImpl = fetch) {
+export async function handleTelemetry(request, env, fetchImpl = fetch, options = {}) {
   // Secrets pasted into a terminal often carry stray whitespace or quotes.
   const serviceKey = String(env?.SUPABASE_SERVICE_ROLE_KEY || '').trim().replace(/^["']|["']$/g, '');
   if (!env?.SUPABASE_URL || !isServiceSecret(serviceKey)) {
@@ -163,6 +165,11 @@ export async function handleTelemetry(request, env, fetchImpl = fetch) {
 
   try {
     const result = await rpc(env, fetchImpl, 'ingest_telemetry', { p_device_uid: device.device_uid, p_reading: reading });
+    // Site alert level and LINE messages run after the reply when the runtime allows, so the board is not kept waiting.
+    if (!result?.duplicate && dataClassification !== 'SYNTHETIC_HANDSHAKE' && gasPpm != null) {
+      const work = evaluateAndNotify(env, fetchImpl, device.device_uid).catch(() => null);
+      if (typeof options.waitUntil === 'function') options.waitUntil(work); else await work;
+    }
     // Duplicates are acknowledged with 202 so a retrying device advances its sequence.
     return json(202, { ok: true, code: result?.duplicate ? 'DUPLICATE' : 'INGESTED', dataClassification });
   } catch (error) {
@@ -180,8 +187,10 @@ function waiting(workspaceId, deviceUid) {
 
 export async function handleStatus(request, env, fetchImpl = fetch, now = Date.now) {
   const url = new URL(request.url);
-  const workspaceId = url.searchParams.get('workspace') || 'hardware-pilot';
-  const deviceUid = WORKSPACE_DEVICES[workspaceId];
+  // ?device=<uid> for any board the caller can see (RLS decides); ?workspace= kept for older links.
+  const requested = url.searchParams.get('device');
+  const workspaceId = requested ? 'device' : (url.searchParams.get('workspace') || 'hardware-pilot');
+  const deviceUid = requested ? (ID_PATTERN.test(requested) ? requested : null) : WORKSPACE_DEVICES[workspaceId];
   if (!deviceUid) return json(404, { ok: false, code: 'UNKNOWN_WORKSPACE' });
   if (!env?.SUPABASE_URL || !env?.SUPABASE_ANON_KEY) return json(503, { ok: false, code: 'STATUS_NOT_CONFIGURED' });
 
