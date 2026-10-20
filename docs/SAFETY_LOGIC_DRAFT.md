@@ -104,7 +104,47 @@ flowchart LR
 - [ ] เก็บแปลนบ้านลงฐานข้อมูล (ตอนนี้เก็บในเบราว์เซอร์เครื่องนั้นเครื่องเดียว)
 - [ ] เลือกช่องทางเตือนตอนปิดแอป (LINE / Web Push)
 
-### อ้างอิง (ต้องตรวจกับมาตรฐานตัวจริงก่อนใส่ในเล่ม)
+## 9. ค่า ppm มาจากไหน (คำนวณในบอร์ด ESP32)
+
+ขั้นตอนตามโค้ด `firmware/esp32-handshake/esp32-handshake.ino` (ทำทุก 10 วินาที ต่อเซ็นเซอร์):
+
+1. อ่านแรงดันที่ขา ESP32 ด้วย `analogReadMilliVolts()`
+   - ESP32 รับได้ไม่เกินประมาณ 3.1–3.3 V จึงต้องมีวงจรแบ่งแรงดัน R1 = 10k, R2 = 20k
+2. แรงดันจริงของเซ็นเซอร์ = แรงดันที่ขา × (R1 + R2) / R2 = × 1.5
+3. Rs = (Vc − V_RL) × RL / V_RL โดย Vc = 5 V และ RL = 10 kΩ
+4. Rs / Ro
+   - Ro ของ MQ-6 = 2.0 kΩ และ MQ-2 = 7.5 kΩ
+5. ppm = 10 ^ ((log10(Rs/Ro) − b) / m)
+   - MQ-6: m = −0.41, b = 1.243
+   - MQ-2: m = −0.47, b = 1.291
+
+**ตัวอย่าง MQ-6**
+- ที่ขาอ่านได้ 0.8 V → แรงดันจริง 1.2 V → Rs = 31.7 kΩ
+- Rs/Ro = 15.8 → ได้ประมาณ 1.3 ppm
+
+**Ro ต้องได้มาอย่างถูกต้อง**
+- datasheet นิยาม Ro = ค่า Rs ที่ LPG 1,000 ppm ไม่ใช่ Rs ตอนอากาศสะอาด
+- วิธีที่ใช้กันทั่วไปคือ วัด Rs ในอากาศสะอาด แล้วหารด้วย "clean-air ratio" ที่อ่านจากกราฟใน datasheet
+  - MQ-2 ประมาณ 9.83
+  - MQ-6 ประมาณ 10 (อ่านจากกราฟ ต้องเช็คกับ datasheet ฉบับที่ใช้จริง)
+- ก่อนวัด ให้เปิดอุ่นเซ็นเซอร์อย่างน้อย 24 ชม. ตามเงื่อนไขทดสอบใน datasheet
+
+### อ้างอิงเรื่องการคำนวณ ppm
+
+- [Hanwei MQ-6 datasheet (components101)](https://components101.com/sites/default/files/component_datasheet/MQ-6%20Gas%20Sensor%20Datasheet.pdf)
+  - ช่วงวัด 200–10,000 ppm
+  - Rs ที่ LPG 1,000 ppm = 10–60 kΩ
+  - preheat 24 ชม.
+  - ทดสอบที่ 20°C / 65%RH
+- [Joy-it MQ6 datasheet (Conrad)](https://asset.conrad.com/media10/add/160267/c1/-/en/003802255DS01/podatkovna-tablica-3802255-joy-it-mq6v2-plinski-senzor-1-st.pdf) — นิยาม Ro = Rs ใน LPG 1,000 ppm
+- [MQ-2 library (mbed)](https://os.mbed.com/users/azazeal88/code/MQ2//file/8b7ba76a7a76/MQ2.cpp) — Ro = Rs ในอากาศสะอาด ÷ 9.83
+- [CircuitDigest — PPM จาก MQ sensor](https://circuitdigest.com/microcontroller-projects/arduino-mq137-ammonia-sensor) — สูตร Rs และการหา slope / intercept จากกราฟ log-log
+- [CircuitDigest — PPM ด้วย PIC + MQ](https://circuitdigest.com/microcontroller-projects/gas-detection-and-ppm-measurement-using-pic-microcontroller-and-mq-gas-sensor)
+- [Espressif — Arduino ESP32 ADC](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/adc.html)
+  - `analogReadMilliVolts()` คืนค่าเป็น mV ที่คาลิเบรตแล้ว
+  - ที่ attenuation 11 dB วัดได้แม่นในช่วงประมาณ 150–3,100 mV
+
+### อ้างอิงเรื่องเกณฑ์เตือน (ต้องตรวจกับมาตรฐานตัวจริงก่อนใส่ในเล่ม)
 
 - [Honeywell — LEL ที่ 10% / 20% (ไฟล์ PDF)](https://gasproducts.co.uk/media/productattach/custom/upload/File-1436788200.pdf)
 - [GDS Corp — คำถามที่พบบ่อยเรื่อง LEL](https://www.gdscorp.com/blog/lel-detector/most-frequently-asked-lel-gas-questions/)
