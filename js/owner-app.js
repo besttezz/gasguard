@@ -823,6 +823,7 @@
     else if (action === 'test-alarm') { if (!alarm.wantsSound()) await alarm.enable(); alarm.test(); S.alarmTest = true; render(); }
     else if (action === 'demo-off') { stopDemo(); render(); if (S.tab === 'mine') renderMine(); }
     else if (action === 'notify') { await alarm.enable(); renderMine(); }
+    else if (action === 'go-login') { evt.preventDefault(); $('#login-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#login-email').focus({ preventScroll: true }); }
     else if (action === 'sign-out') signOut();
     else if (action === 'summary') loadSummary(Boolean(S.summary && !S.summary.error));
     else if (action === 'report') printReport();

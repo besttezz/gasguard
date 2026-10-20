@@ -301,3 +301,9 @@ button, input, select { font: inherit; color: inherit; }
   .report .chart { max-height: 70mm; }
   .report-note { margin-top: 14px; font-size: 9pt; color: #333; }
 }
+
+/* On phones the sign-in form comes first; the product copy follows below it. */
+@media (max-width: 859px) {
+  .landing-side { order: -1; }
+  .landing-head { padding-bottom: 18px; }
+}
