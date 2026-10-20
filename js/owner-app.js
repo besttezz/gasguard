@@ -43,13 +43,14 @@
     install: { label: 'ติดตั้ง', icon: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>' },
     overview: { label: 'ภาพรวม', icon: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
     users: { label: 'ผู้ใช้', icon: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/>' },
-    work: { label: 'งานช่าง', icon: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>' }
+    work: { label: 'งานช่าง', icon: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>' },
+    tools: { label: 'เครื่องมือ', icon: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>' }
   };
   const ROLE_TABS = {
     general: ['home', 'plan', 'history', 'mine'],
-    developer: ['home', 'plan', 'history', 'mine'],
+    developer: ['home', 'plan', 'history', 'tools', 'mine'],
     technician: ['jobs', 'install', 'plan', 'mine'],
-    admin: ['overview', 'users', 'work', 'home', 'plan', 'history', 'mine']
+    admin: ['overview', 'users', 'work', 'home', 'plan', 'history', 'tools', 'mine']
   };
 
   const S = {
@@ -59,6 +60,12 @@
     hourly: null, hourlyKey: '', hourlyLoading: false, planCtl: null, alarmTest: false, pollTimer: null, alarmWasHidden: true,
     invite: null, inviteToken: null, inviteForm: null, views: {}
   };
+
+  // Who sees what: home users get levels and plain words; board codes, sensor models, raw ADC, thresholds and the
+  // simulator are for the crew (technician, admin, developer). A house member is someone in a home who is not an owner.
+  const seesTech = () => S.role === 'technician' || S.role === 'admin' || S.role === 'developer';
+  const isHouseMember = () => (S.role === 'general' || S.role === 'developer') && !S.canEdit;
+  const mineLabel = () => (S.role === 'technician' ? 'บัญชี' : S.site && isHouseMember() ? 'ตั้งค่าของฉัน' : TAB_DEFS.mine.label);
 
   const $ = sel => document.querySelector(sel);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -176,6 +183,8 @@
     S.canEdit = edit.error ? S.role === 'admin' : edit.data === true;
     S.membership = membership.data || null;
     S.settings = settings.data || null;
+    const mineTab = document.querySelector('.tab[data-tab="mine"] span');
+    if (mineTab) mineTab.textContent = mineLabel();
     mountPlan();
     loadMembers();
     poll();
@@ -280,18 +289,26 @@
     return labels;
   }
 
+  function sensorTitle(id) {
+    if (seesTech()) return sensorName(id);
+    const pin = pinLabels()[id];
+    return pin ? `จุด ${pin}` : 'เซ็นเซอร์';
+  }
+
   function sensorRows(a) {
     if (!a.sensors.length) return '<p class="empty">ยังไม่มีข้อมูลจากเซ็นเซอร์</p>';
     const labels = pinLabels();
-    return a.sensors.map(s => `<div class="row">
-        <span class="badge" style="background:${s.level.color}">${esc(labels[s.id] || sensorName(s.id).slice(-1))}</span>
-        <div class="row-main"><strong>${esc(sensorName(s.id))}${labels[s.id] ? ` · จุด ${esc(labels[s.id])}` : ''}</strong><small class="${s.health.ok ? '' : 'is-bad'}">${esc(s.health.label)}</small></div>
+    const tech = seesTech();
+    return a.sensors.map((s, i) => `<div class="row">
+        <span class="badge" style="background:${s.level.color}">${esc(labels[s.id] || (tech ? sensorName(s.id).slice(-1) : String.fromCharCode(65 + i)))}</span>
+        <div class="row-main"><strong>${tech ? `${esc(sensorName(s.id))}${labels[s.id] ? ` · จุด ${esc(labels[s.id])}` : ''}` : esc(labels[s.id] ? `จุด ${labels[s.id]}` : `เซ็นเซอร์ ${String.fromCharCode(65 + i)}`)}</strong><small class="${s.health.ok ? '' : 'is-bad'}">${esc(tech || s.health.ok ? s.health.label : 'ผิดปกติ ให้ช่างหรือผู้ดูแลระบบตรวจ')}</small></div>
         <div class="row-side"><strong>${s.ppm == null ? '—' : `${fmtPpm(s.ppm)} ppm`}</strong><small>${esc(s.level.rank >= 0 ? s.level.label : 'ไม่มีข้อมูล')} · ${esc(s.trend.label)}</small></div>
       </div>`).join('');
   }
 
-  function legendHtml() {
+  function legendHtml(numbers = seesTech()) {
     const T = L.THRESHOLDS, V = L.LEVELS;
+    if (!numbers) return [V.safe, V.watch, V.warning, V.danger].map(lv => `<span><i style="background:${lv.color}"></i><b>${esc(lv.label)}</b></span>`).join('');
     return [[V.safe, `ต่ำกว่า ${T.watch.toLocaleString()}`], [V.watch, `${T.watch.toLocaleString()}–${(T.warning - 1).toLocaleString()}`],
       [V.warning, `${T.warning.toLocaleString()}–${(T.danger - 1).toLocaleString()}`], [V.danger, `ตั้งแต่ ${T.danger.toLocaleString()}`]]
       .map(([lv, range]) => `<span><i style="background:${lv.color}"></i><b>${esc(lv.label)}</b> ${range} ppm</span>`).join('');
@@ -327,12 +344,13 @@
     if (S.tab === 'history' && S.range === '1h') renderHistory();
     // Keep device status fresh on "my home", but never while the user is filling in a field there.
     if (S.tab === 'mine' && !$('#view-mine').contains(document.activeElement)) renderMine();
+    if (S.tab === 'tools') renderToolsLive();
     const view = S.views[S.tab];
     if (view && view.live) view.render();
   }
 
   function renderTopbar(st) {
-    $('#page-title').textContent = TAB_DEFS[S.tab] ? (S.tab === 'mine' && S.role === 'technician' ? 'บัญชีของฉัน' : TAB_DEFS[S.tab].label) : '';
+    $('#page-title').textContent = TAB_DEFS[S.tab] ? (S.tab === 'mine' ? (S.role === 'technician' ? 'บัญชีของฉัน' : mineLabel()) : TAB_DEFS[S.tab].label) : '';
     const pill = $('#conn-pill');
     const siteTab = ['home', 'plan', 'history', 'mine', 'install'].includes(S.tab);
     pill.hidden = !siteTab;
@@ -354,9 +372,9 @@
       ? `<button class="btn btn-small" type="button" data-action="sound-on">${ICON.bell} เปิดเสียงเตือน</button>`
       : !alarm.soundOn() ? '<button class="btn btn-small" type="button" data-action="sound-on">แตะเพื่อเปิดเสียงเตือน</button>'
       : '<span class="tag is-ok">เสียงเตือนเปิดอยู่</span>';
-    const ack = alarm.alarming() ? '<button class="btn btn-small" type="button" data-action="ack">รับทราบ / ปิดเสียง</button>' : '';
+    const ack = alarm.alarming() ? `<button class="btn btn-small" type="button" data-action="ack">${ackLabel()}</button>` : '';
     const stats = known && w ? `<div class="stats">
-        <div class="stat"><span>สูงสุด</span><strong>${fmtPpm(w.ppm)}</strong><small>ppm · ${esc(sensorName(w.id))}</small></div>
+        <div class="stat"><span>สูงสุด</span><strong>${fmtPpm(w.ppm)}</strong><small>ppm · ${esc(sensorTitle(w.id))}</small></div>
         <div class="stat"><span>ของจุดติดไฟ</span><strong>${fmtLel(w.lel)}</strong><small>LEL</small></div>
         <div class="stat"><span>แนวโน้ม</span><strong style="font-size:14px">${esc(w.trend.label)}</strong><small>${w.escalated ? 'เตือนล่วงหน้า' : '&nbsp;'}</small></div>
       </div>` : `<p class="muted">${esc(unknownReason(st))}</p>`;
@@ -395,6 +413,8 @@
     if (updated) updated.textContent = ago(st.lastTelemetry);
   }
 
+  function ackLabel() { return S.role === 'admin' ? 'ปิดเสียงบนเครื่องนี้' : 'รับทราบ / ปิดเสียง'; }
+
   function renderAlarm(a) {
     const el = $('#alarm');
     const live = alarm.alarming() && (a.level.key === 'danger' || a.level.key === 'warning');
@@ -407,7 +427,7 @@
       ? `<p class="alarm-acks">รับทราบแล้ว: ${S.episode.alert_acks.map(x => esc(memberName(x.user_id))).join(', ')}</p>` : '';
     el.className = `alarm${lv.key === 'warning' ? ' is-warning' : ''}`;
     setHtml(el, `<div class="alarm-inner" role="alertdialog" aria-modal="true" aria-labelledby="alarm-title">
-      <div class="alarm-meta"><span>${esc(S.site ? S.site.name : 'บ้านของฉัน')}${w && !S.alarmTest ? ` · ${esc(sensorName(w.id))}` : ''}</span><span>${S.sim ? 'โหมดสาธิต' : 'ตอนนี้'}</span></div>
+      <div class="alarm-meta"><span>${esc(S.site ? S.site.name : 'บ้านของฉัน')}${w && !S.alarmTest ? ` · ${esc(sensorTitle(w.id))}` : ''}</span><span>${S.sim ? 'โหมดสาธิต' : 'ตอนนี้'}</span></div>
       ${S.alarmTest ? '<span class="alarm-test">ทดสอบ</span>' : ''}
       <span class="alarm-icon" aria-hidden="true">${ICON.alert}</span>
       <h2 id="alarm-title">${esc(lv.label)}</h2>
@@ -415,7 +435,7 @@
       <p class="alarm-sub">${esc(sub)}</p>
       <ol class="steps">${lv.actions.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
       ${acks}
-      <div class="alarm-buttons"><a class="alarm-call" href="tel:199">โทรดับเพลิง 199</a><button class="alarm-ack" type="button" data-action="ack">รับทราบ / ปิดเสียง</button></div>
+      <div class="alarm-buttons"><a class="alarm-call" href="tel:199">โทรดับเพลิง 199</a><button class="alarm-ack" type="button" data-action="ack">${ackLabel()}</button></div>
     </div>`);
     el.hidden = false;
     if (S.alarmWasHidden) { S.alarmWasHidden = false; const b = el.querySelector('[data-action="ack"]'); if (b) b.focus(); }
@@ -480,7 +500,7 @@
     const now = Date.now();
     const buckets = hourlyBuckets(S.hourly || []);
     const ids = [...new Set((S.hourly || []).map(r => r.sensor_uid))];
-    const series = ids.map(id => ({ name: `${sensorName(id)} (สูงสุดรายชั่วโมง)`, color: SERIES[id] || '#475569',
+    const series = ids.map(id => ({ name: `${sensorTitle(id)} (สูงสุดรายชั่วโมง)`, color: SERIES[id] || '#475569',
       points: buckets.filter(b => b.bySensor[id] != null).map(b => ({ t: b.t + 1800e3, v: b.bySensor[id] })) }));
     const max = buckets.length ? Math.max(...buckets.map(b => b.max || 0)) : null;
     const hot = buckets.filter(b => b.max != null && b.max >= L.THRESHOLDS.watch);
@@ -506,7 +526,7 @@
     if (S.range === '1h') {
       const hist = (st.history || []).filter(r => r.gasPpm != null && now - Date.parse(r.receivedAt) <= 3600e3);
       const ids = [...new Set(hist.map(r => r.sensorId))];
-      const series = ids.map(id => ({ name: sensorName(id), color: SERIES[id] || '#475569', points: hist.filter(r => r.sensorId === id).map(r => ({ t: Date.parse(r.receivedAt), v: Number(r.gasPpm) })) }));
+      const series = ids.map(id => ({ name: sensorTitle(id), color: SERIES[id] || '#475569', points: hist.filter(r => r.sensorId === id).map(r => ({ t: Date.parse(r.receivedAt), v: Number(r.gasPpm) })) }));
       chart = chartSvg(series, now - 3600e3, now, 60e3);
       const max = hist.length ? Math.max(...hist.map(r => Number(r.gasPpm))) : null;
       const above = new Set(hist.filter(r => Number(r.gasPpm) >= L.THRESHOLDS.watch).map(r => Math.floor(Date.parse(r.receivedAt) / 10e3))).size;
@@ -614,14 +634,28 @@
       : notif === 'denied' ? '<span class="tag is-no">ถูกปิดในเบราว์เซอร์</span>'
       : notif === 'unsupported' ? '<span class="tag is-off">เครื่องนี้ไม่รองรับ</span>'
       : '<button class="btn btn-small" type="button" data-action="notify">อนุญาต</button>';
-    const scenarios = Object.entries(L.SCENARIOS).map(([k, v]) => `<option value="${k}"${k === S.scenario ? ' selected' : ''}>${esc(v)}</option>`).join('');
     const sensors = Object.keys(st.sensorLatest || {}).map(sensorName).join(' + ') || 'ยังไม่มีข้อมูล';
     const s = S.settings || {};
-    const device = S.device ? `<section class="card">
+    const member = isHouseMember();
+    const a = L.assess(st, Date.now());
+    const allOk = a.sensors.length > 0 && a.sensors.every(x => x.health.ok);
+    const deviceRow = seesTech()
+      ? `<div class="row"><div class="row-main"><strong>${esc(S.device ? S.device.uid : '')}</strong><small>ESP32 · ${esc(sensors)} · ส่งข้อมูลทุก 10 วินาที</small></div><div class="row-side"><small>ล่าสุด ${esc(ago(st.lastTelemetry))}</small></div></div>`
+      : `<div class="row"><div class="row-main"><strong>เครื่องตรวจแก๊ส GasGuard</strong><small>เซ็นเซอร์ ${a.sensors.length} จุด · ${a.sensors.length ? (allOk ? 'ทุกจุดทำงานปกติ' : 'มีจุดที่ผิดปกติ ติดต่อช่างหรือผู้ดูแลระบบ') : 'ยังไม่มีข้อมูล'}</small></div><div class="row-side"><small>ล่าสุด ${esc(ago(st.lastTelemetry))}</small></div></div>`;
+    const device = S.device && !member ? `<section class="card">
         <div class="card-head"><h2>อุปกรณ์</h2><span class="tag ${st.connection === 'ONLINE' ? 'is-ok' : 'is-off'}">${S.sim ? 'โหมดสาธิต' : st.connection === 'ONLINE' ? 'ออนไลน์' : st.connection === 'OFFLINE' ? 'ออฟไลน์' : 'รอข้อมูล'}</span></div>
-        <div class="row"><div class="row-main"><strong>${esc(S.device.uid)}</strong><small>ESP32 · ${esc(sensors)} · ส่งข้อมูลทุก 10 วินาที</small></div><div class="row-side"><small>ล่าสุด ${esc(ago(st.lastTelemetry))}</small></div></div>
+        ${deviceRow}
       </section>` : '';
-    const care = S.site && !tech ? `<section class="card">
+    const owners = (S.members || []).filter(m => m.membership_type === 'owner').map(m => m.display_name || m.email || 'เจ้าของบ้าน');
+    const me = (S.members || []).find(m => m.is_me);
+    const dateText = d => (d ? fullDate(Date.parse(d)) : 'ยังไม่ได้บันทึก');
+    const thisHome = S.site && member ? `<section class="card list">
+        <div class="card-head" style="margin:10px 0 0"><h2>บ้านนี้</h2></div>
+        <div class="row"><div class="row-main"><strong>${esc(S.site.name)}</strong><small>เจ้าของบ้าน: ${esc(owners.join(', ') || '—')}</small></div></div>
+        <div class="row"><div class="row-main"><strong>ดูแลอุปกรณ์แก๊ส</strong><small>เปลี่ยนสายแก๊ส ${esc(dateText(s.hose_installed_on))} · ตรวจเซ็นเซอร์ ${esc(dateText(s.sensor_checked_on))}</small></div></div>
+        ${me ? memberRow(me) : ''}
+      </section>` : '';
+    const care = S.site && !tech && !member ? `<section class="card">
         <div class="card-head"><h2>ดูแลอุปกรณ์แก๊ส</h2></div>
         <form class="form-grid" data-form="settings">
           <label class="field"><span>วันที่เปลี่ยนสายแก๊สล่าสุด</span><input type="date" name="hose" value="${esc(s.hose_installed_on || '')}"${S.canEdit ? '' : ' disabled'}></label>
@@ -630,12 +664,12 @@
         </form>
         <p class="muted small">ระบบจะเตือนเมื่อสายแก๊สใช้ครบ 2 ปี และเมื่อเซ็นเซอร์ไม่ได้ตรวจเกิน 6 เดือน</p>
       </section>` : '';
-    const members = S.site && !tech ? `<section class="card list">
+    const members = S.site && !tech && !member ? `<section class="card list">
         <div class="card-head" style="margin:10px 0 0"><h2>คนในบ้าน</h2></div>
         ${S.members ? (S.members.map(memberRow).join('') || '<p class="empty">ยังไม่มีสมาชิก</p>') : '<p class="empty">กำลังโหลดรายชื่อ…</p>'}
         <div style="padding:12px 0">${inviteBlock()}</div>
       </section>` : '';
-    setHtml($('#view-mine'), `${device}${members}
+    setHtml($('#view-mine'), `${device}${members}${thisHome}
       <section class="card">
         <div class="card-head"><h2>การแจ้งเตือน</h2></div>
         <label class="switch-row"><span class="row-main"><strong>เสียงเตือนบนเครื่องนี้</strong><small>เหลือง: เสียงเบา · ส้ม: บี๊บซ้ำ · แดง: ไซเรนจนกว่าจะกดรับทราบ</small></span><input type="checkbox" data-action="sound-toggle"${alarm.wantsSound() ? ' checked' : ''}></label>
@@ -645,21 +679,60 @@
         <div style="margin-top:12px"><button class="btn" type="button" data-action="test-alarm">${ICON.bell} ทดสอบเสียงเตือน</button></div>
       </section>
       ${care}
-      ${tech ? '' : `<section class="card">
-        <div class="card-head"><h2>โหมดสาธิต</h2></div>
-        <label class="switch-row"><span class="row-main"><strong>ใช้ค่าจำลองแทนบอร์ดจริง</strong><small>ค่าเปลี่ยนทุก 10 วินาที ไว้นำเสนอการเปลี่ยนสีและการแจ้งเตือน</small></span><input type="checkbox" data-action="demo-toggle"${S.sim ? ' checked' : ''}></label>
-        <label class="field" style="margin-top:10px"><span>สถานการณ์</span><select data-action="scenario">${scenarios}</select></label>
-      </section>`}
-      <section class="card">
-        <div class="card-head"><h2>เกณฑ์ระดับแก๊ส</h2></div>
-        <div class="legend">${legendHtml()}</div>
-        <p class="muted small">5 / 10 / 20% ของจุดติดไฟต่ำสุด (LEL) ของ LPG ที่ 18,000 ppm · ใช้ค่าเดียวกันทั้งแอป บอร์ด และแจ้งเตือน LINE</p>
-      </section>
       <section class="card">
         <div class="card-head"><h2>บัญชี</h2></div>
         <form class="form-grid" data-form="profile"><label class="field"><span>ชื่อที่แสดง</span><input name="name" maxlength="60" value="${esc(S.profileName || '')}" placeholder="เช่น แม่, พี่บี"></label><button class="btn" type="submit">บันทึกชื่อ</button></form>
-        <div class="row"><div class="row-main"><strong>${esc(S.user.email || '')}</strong><small>${esc(ROLE_LABEL[S.role] || 'ผู้ใช้')}${S.canEdit && !tech ? ' · แก้ไขแปลนได้' : ''}</small></div><button class="btn btn-small" type="button" data-action="sign-out">ออกจากระบบ</button></div>
+        <div class="row"><div class="row-main"><strong>${esc(S.user.email || '')}</strong><small>${esc(ROLE_LABEL[S.role] || 'ผู้ใช้')}${S.site && !tech ? (member ? ' · สมาชิกในบ้าน' : ' · เจ้าของบ้าน') : ''}</small></div><button class="btn btn-small" type="button" data-action="sign-out">ออกจากระบบ</button></div>
       </section>`);
+  }
+
+  // ---- Tools (developer, admin) -------------------------------------------------------------------
+  function renderTools() {
+    const view = $('#view-tools');
+    if (!view) return;
+    const scenarios = Object.entries(L.SCENARIOS).map(([k, v]) => `<option value="${k}"${k === S.scenario ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    const cfg = S.config || {};
+    const ready = (ok, yes, no) => `<span class="tag ${ok ? 'is-ok' : 'is-off'}">${ok ? yes : no}</span>`;
+    const st = shown();
+    setHtml(view, `<section class="card">
+        <div class="card-head"><h2>โหมดจำลอง</h2>${S.sim ? '<span class="tag is-info">กำลังใช้</span>' : ''}</div>
+        <label class="switch-row"><span class="row-main"><strong>ใช้ค่าจำลองแทนบอร์ดจริง</strong><small>ค่าเปลี่ยนทุก 10 วินาที อยู่ในเครื่องนี้เท่านั้น ไม่บันทึกลงฐานข้อมูลและไม่ส่ง LINE</small></span><input type="checkbox" data-action="demo-toggle"${S.sim ? ' checked' : ''}></label>
+        <label class="field" style="margin-top:10px"><span>สถานการณ์</span><select data-action="scenario">${scenarios}</select></label>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>ค่าดิบจากบอร์ด</h2><span class="muted small">${S.device ? esc(S.device.uid) : 'ยังไม่มีบอร์ด'}</span></div>
+        <div data-tools-live></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>เกณฑ์และตรรกะ</h2></div>
+        <div class="legend">${legendHtml(true)}</div>
+        <div class="row"><div class="row-main"><strong>พุ่งเร็ว</strong><small>ค่าขึ้นตั้งแต่ 900 ppm ภายใน 15 วินาที → เลื่อนขึ้น 1 ระดับ</small></div></div>
+        <div class="row"><div class="row-main"><strong>ค่อย ๆ สะสม</strong><small>เพิ่มตั้งแต่ 90 ppm/นาที ใน 5 นาที และส่วนใหญ่เป็นขาขึ้น → อย่างน้อยเฝ้าระวัง</small></div></div>
+        <div class="row"><div class="row-main"><strong>สุขภาพเซ็นเซอร์</strong><small>ไม่ส่งค่าเกิน 30 วินาที · ADC ต่ำกว่า 40 หรือเกิน 4085 · ค่าเดิม 12 ครั้งติด</small></div></div>
+        <p class="muted small">5 / 10 / 20% LEL ของ LPG (18,000 ppm) · ค่าอยู่ในโค้ด js/safety-logic.js และ level_for_ppm ในฐานข้อมูล แก้แล้วต้องรันเทสต์</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>สถานะระบบ</h2></div>
+        <div class="switch-row"><span class="row-main"><strong>API รับข้อมูลบอร์ด</strong><small>/api/v1/device/status</small></span>${ready(!S.offlineApi, 'ติดต่อได้', 'ติดต่อไม่ได้')}</div>
+        <div class="switch-row"><span class="row-main"><strong>LINE Official Account</strong><small>ส่งแจ้งเตือนเมื่อระดับสูงขึ้น</small></span>${ready(cfg.line && cfg.line.configured, 'พร้อม', 'ยังไม่ตั้งค่า')}</div>
+        <div class="switch-row"><span class="row-main"><strong>AI สรุปสัปดาห์</strong><small>ไม่ตั้งค่าจะใช้ข้อความแม่แบบแทน</small></span>${ready(cfg.ai && cfg.ai.configured, 'พร้อม', 'ใช้แม่แบบ')}</div>
+        <div class="switch-row"><span class="row-main"><strong>บอร์ดของบ้านนี้</strong><small>ส่งค่าล่าสุด ${esc(ago(st.lastTelemetry))}</small></span>${ready(st.connection === 'ONLINE', 'ออนไลน์', 'ไม่ออนไลน์')}</div>
+      </section>
+      ${S.role === 'developer' ? '<p class="muted small">นักพัฒนาเห็นเฉพาะบ้านที่ถูกเพิ่มเป็นสมาชิก ให้ใช้บ้านทดสอบ ไม่ใช่บ้านลูกค้าจริง</p>' : ''}`);
+    renderToolsLive();
+  }
+
+  function renderToolsLive() {
+    const box = document.querySelector('#view-tools [data-tools-live]');
+    if (!box) return;
+    const st = shown();
+    const a = L.assess(st, Date.now());
+    if (!a.sensors.length) { setHtml(box, '<p class="empty">ยังไม่มีข้อมูลจากบอร์ด</p>'); return; }
+    const rows = a.sensors.map(x => {
+      const r = (st.sensorLatest || {})[x.id] || {};
+      return `<tr><td>${esc(sensorName(x.id))}<small>${esc(x.id)}</small></td><td>${r.rawAdc == null ? '—' : esc(r.rawAdc)}</td><td>${fmtPpm(x.ppm)}</td><td>${esc(r.calibrationStatus || '—')}</td><td>${esc(x.health.label)}<small>${esc(x.trend.label)}</small></td></tr>`;
+    }).join('');
+    setHtml(box, `<div class="table-wrap"><table class="table"><thead><tr><th>เซ็นเซอร์</th><th>ADC</th><th>ppm</th><th>คาลิเบรต</th><th>สุขภาพ / แนวโน้ม</th></tr></thead><tbody>${rows}</tbody></table></div>`);
   }
 
   // ---- Floor plan --------------------------------------------------------------------------------
@@ -685,6 +758,7 @@
       storageKey: planKey(),
       store: planStore(),
       readOnly: !S.canEdit,
+      lockSensors: !seesTech(),
       sensorOptions: () => Object.keys(SENSOR_NAMES).map(id => ({ id, name: `${SENSOR_NAMES[id]} (${id})` })),
       onChange: () => { if (S.tab === 'home') render(); }
     });
@@ -702,7 +776,7 @@
   function renderTabbar() {
     const tabs = roleTabs();
     $('#tabbar').innerHTML = `<div class="brand tabbar-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/></svg></span>GasGuard</div>`
-      + tabs.map(t => `<a class="tab" href="#${t}" data-tab="${t}"><svg viewBox="0 0 24 24" aria-hidden="true">${TAB_DEFS[t].icon}</svg><span>${esc(t === 'mine' && S.role === 'technician' ? 'บัญชี' : TAB_DEFS[t].label)}</span></a>`).join('')
+      + tabs.map(t => `<a class="tab" href="#${t}" data-tab="${t}"><svg viewBox="0 0 24 24" aria-hidden="true">${TAB_DEFS[t].icon}</svg><span>${esc(t === 'mine' ? mineLabel() : TAB_DEFS[t].label)}</span></a>`).join('')
       + `<div class="tabbar-account"><strong>${esc(S.user.email || '')}</strong><small>${esc(ROLE_LABEL[S.role] || 'ผู้ใช้')}</small><button class="btn btn-small" type="button" data-action="sign-out">ออกจากระบบ</button></div>`;
     $('#tabbar').style.setProperty('--tabs', tabs.length);
   }
@@ -719,6 +793,7 @@
     document.querySelectorAll('.view[data-view]').forEach(v => { v.hidden = v.dataset.view !== S.tab; });
     if (S.tab === 'history') { renderHistory(); if (!S.summary && S.site && !S.sim) loadSummary(false); }
     if (S.tab === 'mine') renderMine();
+    if (S.tab === 'tools') renderTools();
     if (S.views[S.tab]) S.views[S.tab].render();
     render();
     window.scrollTo(0, 0);
@@ -783,7 +858,7 @@
     Object.values(window.GasGuardViews || {}).forEach(factory => Object.assign(S.views, factory(ctx)));
     await claimInviteIfAny();
     setTab((location.hash || '').slice(1));
-    loadConfig().then(() => { if (S.tab === 'mine') renderMine(); });
+    loadConfig().then(() => { if (S.tab === 'mine') renderMine(); if (S.tab === 'tools') renderTools(); });
     q(db().from('profiles').select('display_name').eq('id', S.user.id).maybeSingle()).then(({ data }) => { if (data && data.display_name) S.profileName = data.display_name; });
     if (S.role !== 'technician') await loadSites();
     clearInterval(S.pollTimer);
@@ -817,12 +892,12 @@
       if (S.alarmTest) S.alarmTest = false;
       else {
         alarm.acknowledge();
-        if (S.episode && !S.sim) { await q(db().rpc('ack_alert', { p_episode_id: S.episode.id })); poll(); }
+        if (S.episode && !S.sim && S.role !== 'admin') { await q(db().rpc('ack_alert', { p_episode_id: S.episode.id })); poll(); }
       }
       render();
     }
     else if (action === 'test-alarm') { if (!alarm.wantsSound()) await alarm.enable(); alarm.test(); S.alarmTest = true; render(); }
-    else if (action === 'demo-off') { stopDemo(); render(); if (S.tab === 'mine') renderMine(); }
+    else if (action === 'demo-off') { stopDemo(); render(); if (S.tab === 'tools') renderTools(); }
     else if (action === 'notify') { await alarm.enable(); renderMine(); }
     else if (action === 'go-login') { evt.preventDefault(); $('#login-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#login-email').focus({ preventScroll: true }); }
     else if (action === 'sign-out') signOut();
@@ -863,7 +938,7 @@
     const el = evt.target;
     const action = el.dataset && el.dataset.action;
     if (action === 'sound-toggle') { if (el.checked) alarm.enable(); else alarm.disable(); setTimeout(render, 150); }
-    else if (action === 'demo-toggle') { if (el.checked) startDemo(); else stopDemo(); render(); if (S.tab === 'history') renderHistory(); }
+    else if (action === 'demo-toggle') { if (el.checked) startDemo(); else stopDemo(); render(); if (S.tab === 'history') renderHistory(); if (S.tab === 'tools') renderTools(); }
     else if (action === 'scenario') { S.scenario = el.value; if (S.sim) startDemo(el.value); }
     else if (action === 'member-level') {
       const { error } = await q(db().rpc('set_member_alert_level', { p_site_id: S.site.id, p_user_id: el.dataset.user, p_level: el.value }));

@@ -692,6 +692,12 @@
     const stage = $('[data-fp-stage]'), svgHost = $('[data-fp-svg]'), overlay = $('[data-fp-overlay]');
     const select = $('[data-fp-template]'), file = $('[data-fp-file]'), hint = $('[data-fp-hint]'), inspector = $('[data-fp-inspector]');
 
+    // options.lockSensors: rooms, stove and tank can be moved, sensor points stay where the technician put them
+    // (they drive the heat map). Template changes and reset keep the existing sensor points.
+    const lockSensors = Boolean(options.lockSensors);
+    const isLockedPin = id => lockSensors && plan.pins.some(p => p.id === id && p.type === 'sensor');
+    const keepSensors = next => (lockSensors ? { ...next, pins: next.pins.filter(p => p.type !== 'sensor').concat(plan.pins.filter(p => p.type === 'sensor')) } : next);
+
     // Local copy first (instant, works offline); options.store, when given, keeps the shared copy in the database.
     let saveTimer = null;
     function persist() {
@@ -744,7 +750,7 @@
       if (evt.target === select) {
         if (select.value === '__upload') { file.click(); select.value = plan.image ? '__upload' : plan.template; return; }
         const keepPins = plan.image != null;
-        plan = keepPins ? { ...plan, template: select.value, image: null } : defaultPlan(select.value);
+        plan = keepPins ? { ...plan, template: select.value, image: null } : keepSensors(defaultPlan(select.value));
         ui.selected = null;
         persist(); drawAll();
       } else if (evt.target === file && file.files && file.files[0]) {
@@ -768,7 +774,7 @@
         ui.view = target.dataset.fpView; ui.editing = false; ui.tool = null; ui.selected = null;
         container.querySelectorAll('[data-fp-view]').forEach(b => b.classList.toggle('is-active', b === target));
         const edit = $('[data-fp-edit]');
-        edit.hidden = ui.view === '3d'; edit.textContent = 'แก้ไขตำแหน่ง'; edit.classList.remove('is-active');
+        edit.hidden = ui.view === '3d' || Boolean(options.readOnly); edit.textContent = 'แก้ไขตำแหน่ง'; edit.classList.remove('is-active');
         $('[data-fp-editbar]').hidden = true; setHint('');
         stage.classList.toggle('is-3d', ui.view === '3d');
         drawAll();
@@ -777,14 +783,15 @@
         target.textContent = ui.editing ? 'เสร็จสิ้น' : 'แก้ไขตำแหน่ง';
         target.classList.toggle('is-active', ui.editing);
         $('[data-fp-editbar]').hidden = !ui.editing;
-        setHint(ui.editing ? 'ลากหมุดเพื่อย้าย หรือเลือก "เพิ่มหมุด" แล้วแตะบนแปลน แตะเซ็นเซอร์เพื่อเลือกว่ารับค่าจากตัวไหน' : '');
+        setHint(!ui.editing ? '' : lockSensors ? 'ลากหมุดเตาหรือถังแก๊สเพื่อย้าย หรือเลือก "เพิ่มหมุด" แล้วแตะบนแปลน · ตำแหน่งเซ็นเซอร์ช่างเป็นคนวาง'
+          : 'ลากหมุดเพื่อย้าย หรือเลือก "เพิ่มหมุด" แล้วแตะบนแปลน แตะเซ็นเซอร์เพื่อเลือกว่ารับค่าจากตัวไหน');
         drawOverlay();
       } else if (target.matches('[data-fp-tool]')) {
         ui.tool = ui.tool === target.dataset.fpTool ? null : target.dataset.fpTool;
         setHint(ui.tool ? `แตะบนแปลนตรงจุดที่ต้องการวาง${PIN_TYPES[ui.tool]}` : '');
         drawOverlay();
       } else if (target.matches('[data-fp-reset]')) {
-        plan = { ...defaultPlan(plan.template), image: plan.image };
+        plan = keepSensors({ ...defaultPlan(plan.template), image: plan.image });
         ui.selected = null; persist(); drawAll();
       } else if (target.matches('[data-fp-delete]')) {
         plan.pins = plan.pins.filter(p => p.id !== ui.selected);
@@ -795,6 +802,7 @@
     stage.addEventListener('pointerdown', evt => {
       if (!ui.editing) return;
       const pinEl = evt.target.closest('[data-pin]');
+      if (pinEl && isLockedPin(pinEl.dataset.pin)) { setHint('ตำแหน่งเซ็นเซอร์ช่างเป็นคนวาง เพราะมีผลกับ heat map ถ้าต้องย้ายให้ติดต่อช่าง'); return; }
       if (pinEl) {
         ui.selected = pinEl.dataset.pin;
         ui.dragging = { id: pinEl.dataset.pin, el: pinEl, moved: false };
@@ -830,7 +838,8 @@
     stage.addEventListener('pointercancel', endDrag);
 
     drawAll();
-    if (options.readOnly) $('[data-fp-edit]').hidden = true;
+    if (options.readOnly) { $('[data-fp-edit]').hidden = true; select.closest('.fp-field').hidden = true; }
+    if (lockSensors) $('[data-fp-tool="sensor"]').hidden = true;
     if (options.store) {
       Promise.resolve(options.store.load()).then(remote => {
         if (!remote || ui.dragging || ui.editing) return;

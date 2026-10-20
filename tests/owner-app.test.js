@@ -13,9 +13,9 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 // [1] The page loads only the new app; every role's views exist; old UI is gone.
 const html = read('index.html');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
-assert.deepStrictEqual(scripts.filter(s => s.startsWith('js/')), ['js/auth-config.js', 'js/auth.js', 'js/safety-logic.js', 'js/floor-plan.js', 'js/alarm.js', 'js/tech-views.js', 'js/admin-views.js', 'js/owner-app.js']);
+assert.deepStrictEqual(scripts.filter(s => s.startsWith('js/')), ['js/auth-config.js', 'js/auth.js', 'js/trial.js', 'js/safety-logic.js', 'js/floor-plan.js', 'js/alarm.js', 'js/tech-views.js', 'js/admin-views.js', 'js/owner-app.js']);
 assert.match(html, /<link rel="stylesheet" href="css\/owner\.css">/);
-for (const view of ['home', 'plan', 'history', 'mine', 'jobs', 'install', 'overview', 'users', 'work']) assert.match(html, new RegExp(`data-view="${view}"`), `view ${view}`);
+for (const view of ['home', 'plan', 'history', 'mine', 'jobs', 'install', 'overview', 'users', 'work', 'tools']) assert.match(html, new RegExp(`data-view="${view}"`), `view ${view}`);
 for (const id of ['login-form', 'invite-panel', 'alarm', 'report', 'tabbar', 'site-switch']) assert.match(html, new RegExp(`id="${id}"`), id);
 for (const gone of ['js/app.js', 'js/device-dashboard.js', 'js/safety-console.js', 'js/navigation.js', 'css/app.css', 'css/public-landing.css']) {
   assert.ok(!fs.existsSync(path.join(root, gone)), `${gone} removed`);
@@ -74,4 +74,47 @@ assert.match(sql, /for insert to authenticated\s+with check \(public\.can_edit_s
 assert.match(sql, /revoke all on table public\.floor_plans from anon/);
 console.log('  [4] floor_plans RLS: members read, owners/admins write: PASS');
 
-console.log('\nALL OWNER-1 APP TESTS PASSED!');
+// [5] Who sees what: technical detail and the simulator are for the crew; home users get plain words.
+assert.match(app, /developer: \['home', 'plan', 'history', 'tools', 'mine'\]/, 'developer has its own tools tab');
+assert.match(app, /admin: \['overview', 'users', 'work', 'home', 'plan', 'history', 'tools', 'mine'\]/);
+assert.ok(!/general: \[[^\]]*'tools'/.test(app), 'home users have no tools tab');
+assert.match(app, /const seesTech = \(\) => S\.role === 'technician' \|\| S\.role === 'admin' \|\| S\.role === 'developer';/);
+assert.match(app, /lockSensors: !seesTech\(\)/, 'home owners arrange rooms; sensor points stay where the technician put them');
+const mine = app.slice(app.indexOf('function renderMine()'), app.indexOf('// ---- Tools (developer, admin)'));
+assert.ok(mine.length > 0 && !mine.includes('demo-toggle') && !mine.includes('legendHtml('), 'my-home tab has no simulator and no ppm thresholds');
+assert.match(app, /S\.episode && !S\.sim && S\.role !== 'admin'/, 'an admin viewing a home does not acknowledge for the household');
+const fpSrc = read('js/floor-plan.js');
+assert.match(fpSrc, /if \(lockSensors\) \$\('\[data-fp-tool="sensor"\]'\)\.hidden = true;/);
+assert.match(fpSrc, /edit\.hidden = ui\.view === '3d' \|\| Boolean\(options\.readOnly\)/, 'switching back to 2D does not show the edit button to read-only users');
+console.log('  [5] Role scope: tools tab for crew only, plain sensor words and locked sensor points for home users: PASS');
+
+// [6] Trial mode: off unless ?trial=, never touches Supabase, answers the API itself.
+const vm = require('node:vm');
+const trialSrc = read('js/trial.js');
+assert.ok(!/supabase|createClient/i.test(trialSrc.replace(/\/\/.*$/gm, '')), 'trial mode never creates a Supabase client');
+function runTrial(search) {
+  const realAuth = { real: true };
+  const body = { prepend() {}, classList: { add() {} } };
+  const win = { GasGuardAuth: realAuth, fetch: async () => { throw new Error('network used in trial mode'); } };
+  const ctx = { window: win, location: { search, href: `https://gasguard.test/${search}`, origin: 'https://gasguard.test' }, URLSearchParams, URL, Response, Promise,
+    document: { readyState: 'complete', body, createElement: () => ({ setAttribute() {}, addEventListener() {}, set innerHTML(v) {} }) } };
+  vm.runInNewContext(trialSrc, ctx);
+  return win;
+}
+(async () => {
+  const off = runTrial('');
+  assert.deepStrictEqual(off.GasGuardAuth, { real: true }, 'without ?trial= nothing changes');
+  const member = runTrial('?trial=member');
+  const session = await member.GasGuardAuth.initialize();
+  assert.strictEqual(member.GasGuardAuth.roleFromUser(session.user), 'general');
+  const edit = await member.GasGuardAuth.getClient().rpc('can_edit_site');
+  assert.strictEqual(edit.data, false, 'a trial house member cannot edit');
+  const status = await (await member.fetch('/api/v1/device/status?device=x')).json();
+  assert.strictEqual(status.connection, 'ONLINE');
+  assert.ok(Object.keys(status.sensorLatest).length === 2);
+  const tech = runTrial('?trial=technician');
+  assert.strictEqual(tech.GasGuardAuth.roleFromUser((await tech.GasGuardAuth.initialize()).user), 'technician');
+  assert.ok(runTrial('?trial=root').GasGuardAuth.real, 'unknown trial roles are ignored');
+  console.log('  [6] Trial mode: inactive by default, fake data only, per-role sessions: PASS');
+  console.log('\nALL OWNER-1 APP TESTS PASSED!');
+})().catch(err => { console.error(err); process.exit(1); });
