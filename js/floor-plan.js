@@ -272,22 +272,118 @@
     return `<g transform="translate(958 46)" class="fp-compass"><circle r="20" fill="#fff" stroke="#d5d9e0"/><path d="M0 -14 L6 4 L0 0 L-6 4Z" fill="#2b3340"/><text y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#2b3340">N</text></g>`;
   }
 
+  // ---- IDW heat map ------------------------------------------------------------------------------
+  // Like a Wi-Fi heat map, but the "signal" is gas ppm. Every cell gets an Inverse Distance Weighted
+  // estimate from all sensors: v = Σ(w·ppm) / Σw with w = 1/d². A clean-air background term (0 ppm at
+  // IDW_BACKGROUND_D) makes values fade away from sensors instead of spreading the average everywhere,
+  // and a sensor in another room counts less (IDW_OTHER_ROOM) because walls slow gas down.
+  // This is an estimate for display, not a gas-dispersion simulation.
+  const IDW_CELL = 12.5;
+  const IDW_POWER = 2;
+  const IDW_BACKGROUND_D = 150;
+  const IDW_OTHER_ROOM = 0.3;
+  const IDW_SMOOTH2 = 100; // avoids division by zero right at a sensor
+  const FALLBACK_LEVELS = [
+    { min: 3600, color: '#d32f2f' }, { min: 1800, color: '#ef6c00' }, { min: 900, color: '#e0a400' }, { min: 0, color: '#1f9d55' }
+  ];
+
+  function levelBands() {
+    const logic = (typeof globalThis !== 'undefined' && globalThis.GasGuardSafetyLogic) || null;
+    if (!logic) return FALLBACK_LEVELS;
+    const T = logic.THRESHOLDS, L = logic.LEVELS;
+    return [{ min: T.danger, color: L.danger.color }, { min: T.warning, color: L.warning.color }, { min: T.watch, color: L.watch.color }, { min: 0, color: L.safe.color }];
+  }
+
+  const roomIndex = (rooms, x, y) => rooms.findIndex(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+
+  function knownSensors(plan, readings) {
+    return plan.pins.filter(p => p.type === 'sensor' && p.sensorId && readings[p.sensorId] && Number.isFinite(readings[p.sensorId].ppm)
+      && readings[p.sensorId].level && readings[p.sensorId].level.rank >= 0).map(p => ({ x: p.x, y: p.y, v: Math.max(0, readings[p.sensorId].ppm) }));
+  }
+
+  function idwValue(x, y, points, rooms) {
+    const cellRoom = rooms ? roomIndex(rooms, x, y) : -1;
+    let num = 0, den = 1 / Math.pow(IDW_BACKGROUND_D, IDW_POWER);
+    for (const p of points) {
+      let w = 1 / Math.pow((x - p.x) ** 2 + (y - p.y) ** 2 + IDW_SMOOTH2, IDW_POWER / 2);
+      if (rooms && cellRoom !== p.room) w *= IDW_OTHER_ROOM;
+      num += w * p.v; den += w;
+    }
+    return num / den;
+  }
+
+  function idwGrid(plan, readings) {
+    const rooms = plan.image ? null : templateById(plan.template).rooms;
+    const points = knownSensors(plan, readings || {}).map(p => ({ ...p, room: rooms ? roomIndex(rooms, p.x, p.y) : -1 }));
+    const cols = Math.ceil(W / IDW_CELL), rows = Math.ceil(H / IDW_CELL);
+    const values = new Float32Array(cols * rows).fill(NaN);
+    if (!points.length) return { cols, rows, cell: IDW_CELL, values, points, scope: plan.image ? 'image' : plan.template };
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const x = (i + 0.5) * IDW_CELL, y = (j + 0.5) * IDW_CELL;
+      if (rooms && roomIndex(rooms, x, y) < 0) continue;
+      values[j * cols + i] = idwValue(x, y, points, rooms);
+    }
+    return { cols, rows, cell: IDW_CELL, values, points, scope: plan.image ? 'image' : plan.template };
+  }
+
+  // Colour by level band; transparency grows with concentration so clean air stays a light tint.
+  function heatColor(v, bands = levelBands()) {
+    const band = bands.find(b => v >= b.min) || bands[bands.length - 1];
+    const n = parseInt(band.color.slice(1), 16);
+    // Clean air stays a faint tint so the plan shows through; each band above it gets clearly stronger.
+    const i = bands.indexOf(band), top = bands.length - 1;
+    const alpha = i === top ? 0.04 + 0.18 * Math.min(1, v / bands[top - 1].min) : [0.6, 0.48, 0.36][i] || 0.36;
+    return [n >> 16, (n >> 8) & 255, n & 255, alpha, band.color];
+  }
+
+  let heatCache = { key: '', href: '' };
+  function heatImage(grid) {
+    const key = `${grid.scope}:${grid.points.map(p => `${p.x},${p.y},${Math.round(p.v)}`).join(';')}`;
+    if (heatCache.key === key) return heatCache.href;
+    const canvas = document.createElement('canvas');
+    canvas.width = grid.cols; canvas.height = grid.rows;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(grid.cols, grid.rows), bands = levelBands();
+    for (let k = 0; k < grid.values.length; k++) {
+      const v = grid.values[k];
+      if (Number.isNaN(v)) continue;
+      const [r, g, b, a] = heatColor(v, bands);
+      img.data.set([r, g, b, Math.round(a * 255)], k * 4);
+    }
+    ctx.putImageData(img, 0, 0);
+    heatCache = { key, href: canvas.toDataURL('image/png') };
+    return heatCache.href;
+  }
+
   // Heat layer only (redrawn on every reading). readings: { [sensorId]: { ppm, level: {key,color} } }
   function heatSvg(plan, readings) {
-    const sensors = plan.pins.filter(p => p.type === 'sensor');
-    const grads = [], blobs = [], rings = [];
-    sensors.forEach((p, i) => {
+    readings = readings || {};
+    const grid = idwGrid(plan, readings);
+    let field = '';
+    if (grid.points.length) {
+      if (typeof document !== 'undefined' && document.createElement) {
+        // A low-resolution bitmap stretched over the plan; the browser's smoothing blends the cells.
+        field = `<image class="fp-idw" href="${heatImage(grid)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>`;
+      } else {
+        const bands = levelBands(), cells = [];
+        for (let k = 0; k < grid.values.length; k++) {
+          const v = grid.values[k];
+          if (Number.isNaN(v)) continue;
+          const [, , , a, color] = heatColor(v, bands);
+          cells.push(`<rect x="${(k % grid.cols) * grid.cell}" y="${Math.floor(k / grid.cols) * grid.cell}" width="${grid.cell}" height="${grid.cell}" fill="${color}" fill-opacity="${a.toFixed(2)}"/>`);
+        }
+        field = cells.join('');
+      }
+    }
+    const rings = plan.pins.filter(p => p.type === 'sensor').map(p => {
       const r = p.sensorId ? readings[p.sensorId] : null;
       if (!r || !Number.isFinite(r.ppm) || !r.level || r.level.rank < 0) {
-        rings.push(`<circle cx="${p.x}" cy="${p.y}" r="34" fill="none" stroke="#9aa3b2" stroke-width="2" stroke-dasharray="5 6" opacity=".7"/>`);
-        return;
+        return `<circle cx="${p.x}" cy="${p.y}" r="34" fill="none" stroke="#9aa3b2" stroke-width="2" stroke-dasharray="5 6" opacity=".7"/>`;
       }
-      const rad = heatRadius(r.ppm), c = r.level.color;
-      grads.push(`<radialGradient id="fp-heat-${i}"><stop offset="0" stop-color="${c}" stop-opacity=".62"/><stop offset=".45" stop-color="${c}" stop-opacity=".32"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`);
-      blobs.push(`<circle class="fp-heat-blob" cx="${p.x}" cy="${p.y}" r="${rad}" fill="url(#fp-heat-${i})"/>`);
-      if (r.level.key === 'danger' || r.level.key === 'warning') rings.push(`<circle class="fp-pulse${r.level.key === 'danger' ? ' is-danger' : ''}" cx="${p.x}" cy="${p.y}" r="${Math.round(rad * 0.55)}" fill="none" stroke="${c}" stroke-width="3"/>`);
-    });
-    return `<defs>${grads.join('')}</defs><g class="fp-heat">${blobs.join('')}</g><g>${rings.join('')}</g>`;
+      if (r.level.key !== 'danger' && r.level.key !== 'warning') return '';
+      return `<circle class="fp-pulse${r.level.key === 'danger' ? ' is-danger' : ''}" cx="${p.x}" cy="${p.y}" r="${Math.round(heatRadius(r.ppm) * 0.55)}" fill="none" stroke="${r.level.color}" stroke-width="3"/>`;
+    }).join('');
+    return `<g class="fp-heat" data-sensors="${grid.points.length}">${field}</g><g>${rings}</g>`;
   }
 
   function stageSvg(plan, readings) {
@@ -737,5 +833,5 @@
     };
   }
 
-  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, nextSensorLabel, heatRadius, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
+  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, nextSensorLabel, heatRadius, idwGrid, idwValue, heatColor, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
 });

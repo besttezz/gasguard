@@ -33,28 +33,46 @@ assert.strictEqual(plan.normalizePlan(null).template, plan.TEMPLATES[0].id);
 assert.strictEqual(plan.nextSensorLabel([{ type: 'sensor', label: 'A' }, { type: 'sensor', label: 'B' }]), 'C');
 console.log('  [2] Stored plans are sanitised and new sensors get the next free letter: PASS');
 
-// [3] Heat map: radius grows with ppm; colour follows the level; red pulses; unbound sensors show a dashed ring
+// [3] IDW heat map: equals the sensor at the sensor, lies between two sensors, fades with distance,
+//     counts a sensor in another room less, coloured by level band. Red pulses; unbound sensors are dashed.
 assert.strictEqual(plan.heatRadius(0), 0);
-assert.ok(plan.heatRadius(100) < plan.heatRadius(1000) && plan.heatRadius(1000) < plan.heatRadius(6000));
 const p = plan.defaultPlan('kitchen');
-const heat = plan.heatSvg(p, { 'MQ6-01': { ppm: 4200, level: logic.classify(4200) }, 'MQ2-01': { ppm: 200, level: logic.classify(200) } });
-assert.match(heat, new RegExp(`stop-color="${logic.LEVELS.danger.color}"`));
-assert.match(heat, new RegExp(`stop-color="${logic.LEVELS.safe.color}"`));
+const two = { 'MQ6-01': { ppm: 4200, level: logic.classify(4200) }, 'MQ2-01': { ppm: 200, level: logic.classify(200) } };
+const grid = plan.idwGrid(p, two);
+assert.strictEqual(grid.points.length, 2);
+const [sa, sb] = grid.points;
+const atA = plan.idwValue(sa.x, sa.y, grid.points, null), atB = plan.idwValue(sb.x, sb.y, grid.points, null);
+assert.ok(atA > 3800 && atA <= 4200, 'value at sensor A is close to its reading');
+assert.ok(atB < 900, 'value at sensor B stays low');
+const mid = plan.idwValue((sa.x + sb.x) / 2, (sa.y + sb.y) / 2, grid.points, null);
+assert.ok(mid > atB && mid < atA, 'midpoint lies between the two sensors');
+assert.ok(plan.idwValue(sa.x + 400, sa.y, [sa], null) < plan.idwValue(sa.x + 60, sa.y, [sa], null), 'value fades with distance');
+const rooms = [{ x: 0, y: 0, w: 100, h: 100 }, { x: 100, y: 0, w: 100, h: 100 }];
+const lone = [{ x: 90, y: 50, v: 3000, room: 0 }];
+assert.ok(plan.idwValue(110, 50, lone, rooms) < plan.idwValue(110, 50, lone, null), 'a wall between cell and sensor lowers the estimate');
+assert.ok(Number.isNaN(grid.values[0]), 'cells outside the building stay empty');
+assert.strictEqual(plan.heatColor(4000)[4], logic.LEVELS.danger.color);
+assert.strictEqual(plan.heatColor(1000)[4], logic.LEVELS.watch.color);
+assert.ok(plan.heatColor(5)[3] < plan.heatColor(3000)[3], 'clean air is a lighter tint');
+const heat = plan.heatSvg(p, two);
+assert.match(heat, new RegExp(`fill="${logic.LEVELS.danger.color}"`));
+assert.match(heat, new RegExp(`fill="${logic.LEVELS.safe.color}"`));
 assert.match(heat, /fp-pulse is-danger/);
 assert.match(heat, /stroke-dasharray="5 6"/, 'sensor C is not bound to a device yet');
+assert.match(plan.heatSvg(p, {}), /data-sensors="0"/, 'no data, no invented heat');
 const overlay = plan.overlayHtml(p, { 'MQ6-01': { ppm: 4200, level: logic.classify(4200) } }, {});
 assert.match(overlay, /4,200 ppm · อันตราย/);
 assert.match(overlay, /ทางเข้า-ออก/);
 assert.match(overlay, /ยังไม่ผูก/);
 assert.ok(!plan.overlayHtml({ ...p, pins: [{ id: 'x', type: 'sensor', label: '<b>', sensorId: '', x: 1, y: 1 }] }, {}, {}).includes('<b>'), 'labels are escaped');
-console.log('  [3] Heat colours follow the level, red pulses, labels escaped: PASS');
+console.log('  [3] IDW heat map interpolates between sensors, fades with distance, respects walls: PASS');
 
 // [3b] 3D view: built from the same template, gas colours on the floor, clearly labelled as a simulation
 for (const t of plan.TEMPLATES) {
   const iso = plan.isoSvg(plan.defaultPlan(t.id), { 'MQ6-01': { ppm: 2400, level: logic.classify(2400) } });
   assert.match(iso, /^<svg class="fp-svg fp-iso"[\s\S]*<\/svg>$/);
   assert.ok(!/NaN|undefined/.test(iso), `${t.id} 3D has no broken coordinates`);
-  assert.match(iso, new RegExp(`stop-color="${logic.LEVELS.warning.color}"`), `${t.id} 3D shows the gas level colour`);
+  assert.match(iso, new RegExp(`fill="${logic.LEVELS.warning.color}"`), `${t.id} 3D shows the gas level colour`);
   assert.match(iso, />LPG</, `${t.id} 3D shows the LPG tank`);
   assert.match(iso, /ไม่ใช่ภาพถ่ายจริง/, 'the 3D view says it is not a photo');
 }

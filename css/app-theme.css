@@ -690,7 +690,7 @@ body.has-device-dashboard .navigation .nav-subitem { padding-left: 22px; font-si
 .fp-stage.is-placing { cursor: crosshair; }
 .fp-svg-host, .fp-svg-host svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .fp-svg-note { font-size: 13px; fill: #8a93a3; font-family: inherit; }
-.fp-heat-blob { mix-blend-mode: multiply; transition: r .8s ease; }
+.fp-idw { mix-blend-mode: multiply; image-rendering: auto; }
 .fp-pulse { transform-box: fill-box; transform-origin: center; animation: fp-ring 2.2s ease-out infinite; }
 .fp-pulse.is-danger { animation-duration: 1.1s; }
 .fp-overlay { position: absolute; inset: 0; pointer-events: none; }

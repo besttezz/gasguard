@@ -166,7 +166,7 @@
         <span class="sg-modenote" data-sg-modenote>แสดงค่าจริงที่บอร์ดส่งเข้ามา</span>
       </div>
       <div data-sg-region="hero"></div>
-      <section class="device-panel sg-plan" id="sg-plan"><div class="device-panel-head"><h3>แปลนบ้านและแผนที่ความเข้มข้นแก๊ส</h3><span class="device-muted">วงสีคือปริมาณแก๊สรอบเซ็นเซอร์แต่ละจุด</span></div><div data-sg-region="plan"></div>${scaleHtml()}</section>
+      <section class="device-panel sg-plan" id="sg-plan"><div class="device-panel-head"><h3>แปลนบ้านและแผนที่ความเข้มข้นแก๊ส</h3><span class="device-muted">สีบนแปลนคือค่าแก๊สโดยประมาณ คำนวณแบบ IDW จากเซ็นเซอร์ทุกจุด</span></div><div data-sg-region="plan"></div>${scaleHtml()}</section>
       <div class="sg-grid" data-sg-region="grid"></div>
       <div class="device-dashboard-readings" id="sg-readings" data-sg-region="readings"></div>
       <div class="sg-alarm" data-sg-alarm hidden></div>`;
