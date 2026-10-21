@@ -95,11 +95,49 @@
   }
 
   // Live views refresh every few seconds; only touch the DOM when the markup changed so a tap in progress is not lost.
+  // Patches the existing elements instead of replacing them (a small DOM morph), so running animations, focus and
+  // scroll survive the 5-second refresh. Elements with data-num="<value>" data-fmt="ppm|lel" count to the new value.
   function setHtml(el, html) {
     if (!el || el.__html === html) return false;
+    const first = el.__html == null;
     el.__html = html;
-    el.innerHTML = html;
+    if (first) { el.innerHTML = html; return true; }
+    const next = document.createElement('template');
+    next.innerHTML = html;
+    morph(el, next.content);
     return true;
+  }
+
+  function morph(from, to) {
+    const a = [...from.childNodes], b = [...to.childNodes];
+    b.forEach((nb, i) => {
+      const na = a[i];
+      if (!na) { from.appendChild(nb); return; }
+      if (na.nodeType !== nb.nodeType || na.nodeName !== nb.nodeName) { from.replaceChild(nb, na); return; }
+      if (na.nodeType !== 1) { if (na.nodeValue !== nb.nodeValue) na.nodeValue = nb.nodeValue; return; }
+      const before = na.getAttribute('data-num');
+      for (const at of [...na.attributes]) if (!nb.hasAttribute(at.name)) na.removeAttribute(at.name);
+      for (const at of [...nb.attributes]) if (na.getAttribute(at.name) !== at.value) na.setAttribute(at.name, at.value);
+      morph(na, nb);
+      const after = na.getAttribute('data-num');
+      if (before != null && after != null && before !== after) countTo(na, Number(before), Number(after));
+    });
+    for (let i = a.length - 1; i >= b.length; i--) from.removeChild(a[i]);
+  }
+
+  const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function countTo(node, from, to) {
+    if (!Number.isFinite(from) || !Number.isFinite(to) || reducedMotion()) return;
+    const fmt = node.dataset.fmt === 'lel' ? fmtLel : fmtPpm;
+    const start = performance.now(), ms = 700;
+    node.__count = start;
+    const step = now => {
+      if (node.__count !== start) return; // a newer value took over
+      const t = Math.min(1, (now - start) / ms), e = 1 - Math.pow(1 - t, 3);
+      node.textContent = fmt(from + (to - from) * e);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   let toastTimer = null;
@@ -302,7 +340,7 @@
     return a.sensors.map((s, i) => `<div class="row">
         <span class="badge" style="background:${s.level.color}">${esc(labels[s.id] || (tech ? sensorName(s.id).slice(-1) : String.fromCharCode(65 + i)))}</span>
         <div class="row-main"><strong>${tech ? `${esc(sensorName(s.id))}${labels[s.id] ? ` · จุด ${esc(labels[s.id])}` : ''}` : esc(labels[s.id] ? `จุด ${labels[s.id]}` : `เซ็นเซอร์ ${String.fromCharCode(65 + i)}`)}</strong><small class="${s.health.ok ? '' : 'is-bad'}">${esc(tech || s.health.ok ? s.health.label : 'ผิดปกติ ให้ช่างหรือผู้ดูแลระบบตรวจ')}</small></div>
-        <div class="row-side"><strong>${s.ppm == null ? '—' : `${fmtPpm(s.ppm)} ppm`}</strong><small>${esc(s.level.rank >= 0 ? s.level.label : 'ไม่มีข้อมูล')} · ${esc(s.trend.label)}</small></div>
+        <div class="row-side"><strong>${s.ppm == null ? '—' : `<span data-num="${Math.round(s.ppm)}" data-fmt="ppm">${fmtPpm(s.ppm)}</span> ppm`}</strong><small>${esc(s.level.rank >= 0 ? s.level.label : 'ไม่มีข้อมูล')} · ${esc(s.trend.label)}</small></div>
       </div>`).join('');
   }
 
@@ -374,10 +412,10 @@
       : '<span class="tag is-ok">เสียงเตือนเปิดอยู่</span>';
     const ack = alarm.alarming() ? `<button class="btn btn-small" type="button" data-action="ack">${ackLabel()}</button>` : '';
     const stats = known && w ? `<div class="stats">
-        <div class="stat"><span>สูงสุด</span><strong>${fmtPpm(w.ppm)}</strong><small>ppm · ${esc(sensorTitle(w.id))}</small></div>
-        <div class="stat"><span>ของจุดติดไฟ</span><strong>${fmtLel(w.lel)}</strong><small>LEL</small></div>
+        <div class="stat"><span>สูงสุด</span><strong data-num="${Math.round(w.ppm)}" data-fmt="ppm">${fmtPpm(w.ppm)}</strong><small>ppm · ${esc(sensorTitle(w.id))}</small></div>
+        <div class="stat"><span>ของจุดติดไฟ</span><strong data-num="${w.lel.toFixed(2)}" data-fmt="lel">${fmtLel(w.lel)}</strong><small>LEL</small></div>
         <div class="stat"><span>แนวโน้ม</span><strong style="font-size:14px">${esc(w.trend.label)}</strong><small>${w.escalated ? 'เตือนล่วงหน้า' : '&nbsp;'}</small></div>
-      </div>` : `<p class="muted">${esc(unknownReason(st))}</p>`;
+      </div>${scopeSvg(st)}` : `<p class="muted">${esc(unknownReason(st))}</p>`;
     const plan = S.planCtl ? S.planCtl.plan() : FP.loadPlan(planKey());
     const thumb = FP.stageSvg(plan, readingsMap(a));
     const sensorsCount = Object.keys(st.sensorLatest || {}).length;
@@ -411,6 +449,35 @@
     </div>`);
     const updated = $('#view-home [data-updated]');
     if (updated) updated.textContent = ago(st.lastTelemetry);
+    // A change of level flashes the status card in the new colour.
+    if (S.shownLevel && S.shownLevel !== lv.key) {
+      const hero = $('#view-home .hero');
+      if (hero) { hero.classList.remove('is-shift'); void hero.offsetWidth; hero.classList.add('is-shift'); }
+    }
+    S.shownLevel = lv.key;
+  }
+
+  // The last 10 minutes of the highest reading, drawn like an oscilloscope trace under the LCD numbers.
+  function scopeSvg(st) {
+    const now = Date.now(), byT = new Map();
+    for (const r of st.history || []) {
+      const t = Date.parse(r.receivedAt);
+      if (r.gasPpm == null || !(now - t <= 600e3)) continue;
+      byT.set(t, Math.max(byT.get(t) ?? 0, Number(r.gasPpm)));
+    }
+    const pts = [...byT].sort((p, q) => p[0] - q[0]);
+    if (pts.length < 2) return '';
+    // Zoomed to the readings so small changes show; the watch line appears once the trace gets near it.
+    const vals = pts.map(p => p[1]), hi = Math.max(...vals), lo = Math.min(...vals);
+    const top = Math.max(hi + (hi - lo) * 0.6, hi + 40), bottom = Math.max(0, lo - (hi - lo) * 0.6 - 40);
+    const x = t => (((t - (now - 600e3)) / 600e3) * 300).toFixed(1), y = v => (42 - ((v - bottom) / (top - bottom)) * 38).toFixed(1);
+    const [lt, lv] = pts[pts.length - 1];
+    const watch = L.THRESHOLDS.watch;
+    const limit = watch < top ? `<line class="scope-limit" x1="0" x2="300" y1="${y(watch)}" y2="${y(watch)}"/>` : '';
+    return `<div class="scope" aria-hidden="true"><svg viewBox="0 0 300 44" preserveAspectRatio="none">${limit}
+      <polyline class="scope-line" points="${pts.map(([t, v]) => `${x(t)},${y(v)}`).join(' ')}"/>
+      <line class="scope-dot" x1="${x(lt)}" x2="${x(lt)}" y1="${y(lv)}" y2="${y(lv)}"/></svg>
+      <span class="scope-sweep"></span><span class="scope-label">10 นาทีล่าสุด${limit ? ' · เส้นประ = เริ่มเฝ้าระวัง' : ''}</span></div>`;
   }
 
   function ackLabel() { return S.role === 'admin' ? 'ปิดเสียงบนเครื่องนี้' : 'รับทราบ / ปิดเสียง'; }
@@ -791,7 +858,14 @@
       a.classList.toggle('is-active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    document.querySelectorAll('.view[data-view]').forEach(v => { v.hidden = v.dataset.view !== S.tab; });
+    document.querySelectorAll('.view[data-view]').forEach(v => {
+      const on = v.dataset.view === S.tab;
+      if (on && v.hidden) { // entrance animation for the tab being opened (css .is-entering)
+        v.classList.remove('is-entering'); void v.offsetWidth; v.classList.add('is-entering');
+        clearTimeout(v.__enter); v.__enter = setTimeout(() => v.classList.remove('is-entering'), 900);
+      }
+      v.hidden = !on;
+    });
     if (S.tab === 'history') { renderHistory(); if (!S.summary && S.site && !S.sim) loadSummary(false); }
     if (S.tab === 'mine') renderMine();
     if (S.tab === 'tools') renderTools();
@@ -846,6 +920,15 @@
     $('#boot').hidden = true; $('#app').hidden = true; $('#landing').hidden = false; $('#alarm').hidden = true;
     $('#login-error').textContent = message || '';
     renderInvitePanel();
+    // The sample LCD on the landing page ticks like a live reading.
+    clearInterval(S.landingTimer);
+    S.landingTimer = setInterval(() => {
+      const n = document.querySelector('.landing-device [data-num]');
+      if (!n || $('#landing').hidden) return;
+      const v = 140 + Math.round(Math.random() * 20);
+      countTo(n, Number(n.dataset.num), v);
+      n.dataset.num = v;
+    }, 2500);
   }
 
   async function enterApp(session) {

@@ -99,7 +99,7 @@
     el.setAttribute('role', 'status');
     const draw = () => {
       el.innerHTML = `<span><strong>ทดลองตรวจแก๊ส</strong> · ข้อมูลจำลอง ไม่บันทึกจริง</span>
-        <span class="trial-bar-actions"><button type="button" data-trial="leak">${trial.leakAt ? 'หยุดแก๊สรั่ว' : 'จำลองแก๊สรั่ว'}</button><a href="/">ออก</a></span>`;
+        <span class="trial-bar-actions"><button type="button" data-trial="leak"${trial.leakAt ? ' class="is-on"' : ''}>${trial.leakAt ? 'หยุดแก๊สรั่ว' : 'จำลองแก๊สรั่ว'}</button><a href="/">ออก</a></span>`;
     };
     draw();
     el.addEventListener('click', evt => {

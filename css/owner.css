@@ -258,8 +258,77 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
   .fp-pin-chip { font-size: 10.5px; padding: 2px 6px; }
   .hero h2 { font-size: 28px; }
 }
+/* ---- Motion: alive but calm. The device "breathes"; changes are announced, not decorated. ---- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes sonar { from { transform: scale(1); opacity: .65; } to { transform: scale(1.75); opacity: 0; } }
+@keyframes shift { 0% { background: var(--lv-bg); box-shadow: 0 0 0 0 var(--lv); } 35% { box-shadow: 0 0 0 8px var(--lv-line); } 100% { background: var(--surface); box-shadow: 0 0 0 0 transparent; } }
+@keyframes sweep { from { left: -60px; } to { left: 100%; } }
+@keyframes blink { 50% { opacity: .2; } }
+@keyframes heartbeat { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.6); } 24% { transform: scale(1); } }
+@keyframes pop { from { transform: scale(0); } }
+@keyframes tab-pop { 40% { transform: scale(1.25) translateY(-2px); } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 14px); } }
+
+/* Opening a tab: its blocks rise in one after another. */
+.view.is-entering > *, .view.is-entering .home-grid > .view > * { animation: rise .5s cubic-bezier(.2, .8, .2, 1) both; }
+.view.is-entering > *:nth-child(2), .view.is-entering .home-grid > .view > *:nth-child(2) { animation-delay: .07s; }
+.view.is-entering > *:nth-child(3), .view.is-entering .home-grid > .view > *:nth-child(3) { animation-delay: .14s; }
+.view.is-entering > *:nth-child(4), .view.is-entering .home-grid > .view > *:nth-child(4) { animation-delay: .21s; }
+.view.is-entering > *:nth-child(n+5), .view.is-entering .home-grid > .view > *:nth-child(n+5) { animation-delay: .28s; }
+.view.is-entering .home-grid > .view:nth-child(2) > * { animation-delay: .12s; }
+.view.is-entering .checks li > span { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+.view.is-entering .checks li:nth-child(2) > span { animation-delay: .1s; }
+.view.is-entering .checks li:nth-child(3) > span { animation-delay: .2s; }
+.view.is-entering .checks li:nth-child(4) > span { animation-delay: .3s; }
+
+/* Status LED sends out sonar rings: slow when safe, faster as the level rises. */
+.hero-badge { position: relative; }
+.hero-top > div { position: relative; } /* the status words paint above the LED rings */
+.hero-badge::before, .hero-badge::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--lv); opacity: 0; pointer-events: none; animation: sonar 3s ease-out infinite; }
+.hero-badge::after { animation-delay: 1.5s; }
+.hero.is-watch .hero-badge::before, .hero.is-watch .hero-badge::after { animation-duration: 2s; }
+.hero.is-watch .hero-badge::after { animation-delay: 1s; }
+.hero.is-warning .hero-badge::before, .hero.is-warning .hero-badge::after { animation-duration: 1.2s; }
+.hero.is-warning .hero-badge::after { animation-delay: .6s; }
+.hero.is-danger .hero-badge::before, .hero.is-danger .hero-badge::after { animation-duration: .8s; }
+.hero.is-danger .hero-badge::after { animation-delay: .4s; }
+.hero.is-unknown .hero-badge::before, .hero.is-unknown .hero-badge::after { animation: none; }
+.hero, .hero h2, .hero-kicker { transition: border-color .5s, color .5s; }
+.hero.is-shift { animation: shift 1.4s ease-out; }
+
+/* LCD: faint scanlines, and a live trace with a sweeping beam. */
+.stats, .scope { position: relative; overflow: hidden; }
+.stats::after, .scope::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(30, 42, 23, .07) 0 1px, transparent 1px 3px); }
+.scope { height: 66px; border-radius: 10px; background: var(--lcd); border: 3px solid var(--bezel); }
+.scope svg { position: absolute; left: 8px; top: 6px; width: calc(100% - 16px); height: calc(100% - 22px); overflow: visible; }
+.scope-line { fill: none; stroke: var(--lcd-ink); stroke-width: 1.8; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.scope-limit { stroke: var(--lcd-muted); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.scope-dot { stroke: var(--lcd-ink); stroke-width: 7; stroke-linecap: round; vector-effect: non-scaling-stroke; animation: blink 1s steps(2, jump-none) infinite; }
+.scope-sweep { position: absolute; top: 0; bottom: 0; left: 0; width: 60px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .38)); animation: sweep 3.6s linear infinite; pointer-events: none; }
+.scope-label { position: absolute; left: 8px; bottom: 2px; font-family: var(--mono); font-size: 10px; color: var(--lcd-muted); }
+
+/* Small signs of life. */
+.pill.is-online i, .landing-leds i.is-safe { animation: heartbeat 2.2s ease-in-out infinite; }
+.landing-leds i:last-child { animation: blink 1.7s steps(2, jump-none) infinite; }
+.btn, .button, .tab, .fp-tool, .segment button, .sg-segment button { transition: background-color .18s, border-color .18s, color .18s, transform .12s; }
+.btn:active, .button:active, .fp-tool:active, .segment button:active { transform: scale(.96); }
+.card { transition: border-color .2s, transform .2s; }
+a.card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+.plan-thumb svg { transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
+.plan-card:hover .plan-thumb svg { transform: scale(1.08); }
+.tab.is-active svg { animation: tab-pop .38s cubic-bezier(.3, 1.6, .5, 1); }
+.toast:not([hidden]) { animation: toast-in .3s cubic-bezier(.2, .8, .2, 1); }
+.trial-bar button.is-on { animation: blink 1s steps(2, jump-none) infinite; }
+.boot { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.boot::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--safe); box-shadow: 0 0 10px var(--safe); animation: blink .8s steps(2, jump-none) infinite; }
+.landing-copy > *, .landing-side > * { animation: rise .7s cubic-bezier(.2, .8, .2, 1) both; }
+.landing-copy > *:nth-child(2) { animation-delay: .08s; }
+.landing-copy > *:nth-child(3) { animation-delay: .16s; }
+.landing-copy > *:nth-child(4) { animation-delay: .26s; }
+.landing-side > * { animation-delay: .2s; }
+
 @media (prefers-reduced-motion: reduce) {
-  .hero-badge, .fp-pulse, .fp-pin-dot::after, .alarm, .fp-led-blink { animation: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
 /* ---- Shared additions: site switcher, forms, tables, wizard, invitations ---- */
