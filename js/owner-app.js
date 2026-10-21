@@ -20,7 +20,7 @@
   const POLL_MS = 5000;
   const TICK_MS = 10000;
   const SENSOR_NAMES = { 'MQ6-01': 'MQ-6', 'MQ2-01': 'MQ-2', 'MQ3-01': 'MQ-3' };
-  const SERIES = { 'MQ6-01': '#1F5EFF', 'MQ2-01': '#0F766E', 'MQ3-01': '#7C3AED' };
+  const SERIES = { 'MQ6-01': '#4FA3D9', 'MQ2-01': '#2BB39A', 'MQ3-01': '#A57BE0' }; // readable on the dark app and the white printout
   const ROLE_LABEL = { admin: 'ผู้ดูแลระบบ', technician: 'ช่างติดตั้ง', developer: 'นักพัฒนา', general: 'ผู้ใช้' };
   const LEVEL_OPTIONS = [['watch', 'ตั้งแต่เฝ้าระวัง (เหลือง)'], ['warning', 'ตั้งแต่เตือน (ส้ม)'], ['danger', 'เฉพาะอันตราย (แดง)']];
   const SVG = (d, size = 22) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -32,7 +32,7 @@
     bell: SVG('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>', 18),
     chevron: SVG('<path d="M9 6l6 6-6 6"/>', 20),
     print: SVG('<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>', 18),
-    spark: SVG('<path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/>', 18)
+    spark: SVG('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.5h6V4M8.5 10h7M8.5 14h7M8.5 18h4"/>', 18)
   };
   const TAB_DEFS = {
     home: { label: 'หน้าหลัก', icon: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>' },
@@ -480,7 +480,7 @@
     const x = t => Lm + ((t - from) / (to - from)) * (W - Lm - R);
     const y = v => T + (1 - Math.min(v, top) / top) * (H - T - B);
     const Th = L.THRESHOLDS, V = L.LEVELS;
-    const bands = [[0, Th.watch, '#E8F6EE'], [Th.watch, Th.warning, '#FFF6DB'], [Th.warning, Th.danger, '#FFEDDF'], [Th.danger, Infinity, '#FDE8E8']]
+    const bands = [[0, Th.watch, 'rgba(89,210,107,.10)'], [Th.watch, Th.warning, 'rgba(232,178,58,.15)'], [Th.warning, Th.danger, 'rgba(240,123,45,.17)'], [Th.danger, Infinity, 'rgba(240,72,62,.19)']]
       .filter(([lo]) => lo < top).map(([lo, hi, c]) => `<rect x="${Lm}" y="${y(Math.min(hi, top)).toFixed(1)}" width="${W - Lm - R}" height="${(y(lo) - y(Math.min(hi, top))).toFixed(1)}" fill="${c}"/>`).join('');
     const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => { const v = top * f; return `<text x="${Lm - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${fmtPpm(v)}</text>`; }).join('');
     const span = to - from;
@@ -550,7 +550,7 @@
       events = w.events.filter(e => e.at >= now - hours * 3600e3);
       stats = [['ค่าสูงสุด', max == null ? '—' : `${fmtPpm(max)} ppm`], ['ชั่วโมงที่เกินระดับปกติ', `${hot.length} ชั่วโมง`], ['ชั่วโมงที่มีข้อมูล', `${buckets.length} / ${hours}`]];
     }
-    const statsHtml = stats ? `<div class="stats">${stats.map(([k, v]) => `<div class="stat" style="background:var(--surface-soft)"><span>${k}</span><strong style="font-size:16px">${v}</strong></div>`).join('')}</div>` : '';
+    const statsHtml = stats ? `<div class="stats">${stats.map(([k, v]) => `<div class="stat"><span>${k}</span><strong style="font-size:16px">${v}</strong></div>`).join('')}</div>` : '';
     const list = events.length ? events.slice(0, 20).map(e => `<div class="row"><span class="dot" style="background:${e.color}"></span><div class="row-main"><strong>${esc(e.title)}</strong><small>${esc(e.detail)}</small></div><div class="row-side"><small>${esc(S.range === '1h' ? clock(e.at) : dayClock(e.at))}</small></div></div>`).join('')
       : '<p class="empty">ไม่มีเหตุการณ์ผิดปกติในช่วงนี้</p>';
     setHtml(view, `${S.site && !S.sim ? summaryCard() : ''}

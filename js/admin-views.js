@@ -66,7 +66,7 @@
         const st = statusOf(d);
         if (d.lifecycle_status !== 'retired' && (!st || !online(d))) { const s = D.sites.find(x => x.id === d.site_id); items.push({ color: '#8A94A6', title: `${d.device_uid} ออฟไลน์`, detail: `${s ? s.name : ''} · ล่าสุด ${st ? ago(st.last_seen_at) : 'ไม่เคยส่งข้อมูล'} · มอบหมายช่างไปตรวจไฟและ Wi-Fi` }); }
         const cal = D.calibrations.find(c => c.device_id === d.id);
-        if (d.lifecycle_status !== 'retired' && (!cal || Date.now() - Date.parse(cal.measured_at) > 182 * 86400e3)) items.push({ color: '#1F5EFF', title: `${d.device_uid} ถึงรอบตรวจเทียบเซ็นเซอร์`, detail: cal ? `ตรวจล่าสุด ${fullDate(Date.parse(cal.measured_at))}` : 'ยังไม่มีบันทึกค่า Ro · นัดช่างคาลิเบรต' });
+        if (d.lifecycle_status !== 'retired' && (!cal || Date.now() - Date.parse(cal.measured_at) > 182 * 86400e3)) items.push({ color: '#4FA3D9', title: `${d.device_uid} ถึงรอบตรวจเทียบเซ็นเซอร์`, detail: cal ? `ตรวจล่าสุด ${fullDate(Date.parse(cal.measured_at))}` : 'ยังไม่มีบันทึกค่า Ro · นัดช่างคาลิเบรต' });
       }
       return items.length ? items.slice(0, 12).map(i => `<div class="row"><span class="dot" style="background:${i.color}"></span><div class="row-main"><strong>${esc(i.title)}</strong><small>${esc(i.detail)}</small></div></div>`).join('') : '<p class="empty">ไม่มีเรื่องที่ต้องจัดการตอนนี้</p>';
     }
