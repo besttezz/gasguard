@@ -555,46 +555,72 @@
       const burners = `<rect x="${b.x}" y="${b.y}" width="52" height="36" rx="4" fill="#2b3340"/><circle cx="${p.x - 12}" cy="${p.y}" r="9" fill="none" stroke="#ff7a2f" stroke-width="3"/><circle cx="${p.x + 12}" cy="${p.y}" r="9" fill="none" stroke="#ff7a2f" stroke-width="3"/>`;
       return boxSvg(b, { top: '#2b3340', front: '#1f252f', side: '#181d25' }, burners);
     }
-    const r = p.sensorId ? readings[p.sensorId] : null;
-    const known = r && Number.isFinite(r.ppm) && r.level && r.level.rank >= 0;
-    const color = known ? r.level.color : '#8a94a6';
+    // The sensor's name and reading are an HTML chip (isoOverlayHtml) so they stay readable at any size;
+    // the SVG draws the device, its LED and a dashed stem up to where the chip sits.
+    const { color, known, r } = sensorState(p, readings);
     const z = sensorZ(t, p) + 22;
     const body = boxSvg({ x: p.x - 9, y: p.y - 9, w: 18, h: 18, z0: z, z1: z + 14 }, { top: '#ffffff', front: '#e7eaef', side: '#d5dae2' });
-    const [lx, ly] = P(p.x, p.y, z + 14), [cx, cy] = P(p.x, p.y, z + 120);
-    const text = `${p.label} · ${!p.sensorId ? 'ยังไม่ผูก' : known ? `${fmtPpm(r.ppm)} ppm` : 'ไม่มีข้อมูล'}`;
-    const w = Math.round(text.length * 10.5 + 34);
+    const [lx, ly] = P(p.x, p.y, z + 14), [cx, cy] = P(p.x, p.y, z + CHIP_Z);
     return `${body}<circle cx="${lx.toFixed(1)}" cy="${(ly - 2).toFixed(1)}" r="6" fill="${color}"${known && r.level.key === 'danger' ? ' class="fp-led-blink"' : ''}/>`
-      + `<line x1="${lx.toFixed(1)}" y1="${(ly - 8).toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(cy + 15).toFixed(1)}" stroke="${color}" stroke-width="2" stroke-dasharray="3 4"/>`
-      + `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)})"><rect x="${-w / 2}" y="-15" width="${w}" height="30" rx="15" fill="#fff" stroke="${color}" stroke-width="2"/><circle cx="${-w / 2 + 15}" cy="0" r="6" fill="${color}"/><text x="${-w / 2 + 27}" y="5.5" font-size="15" font-weight="700" fill="#24303f">${esc(text)}</text></g>`;
+      + `<line x1="${lx.toFixed(1)}" y1="${(ly - 8).toFixed(1)}" x2="${cx.toFixed(1)}" y2="${cy.toFixed(1)}" stroke="${color}" stroke-width="2.5" stroke-dasharray="3 4"/>`;
+  }
+
+  const CHIP_Z = 90;
+  function sensorState(p, readings) {
+    const r = p.sensorId ? readings[p.sensorId] : null;
+    const known = Boolean(r && Number.isFinite(r.ppm) && r.level && r.level.rank >= 0);
+    return { r, known, color: known ? r.level.color : '#8a94a6', text: !p.sensorId ? 'ยังไม่ผูก' : known ? `${fmtPpm(r.ppm)} ppm · ${r.level.label}` : 'ไม่มีข้อมูล' };
+  }
+
+  // The 3D picture's frame, widened to the stage's 10:7 so HTML labels can be placed in percent.
+  function isoFrame(plan) {
+    const t = templateById(plan.template);
+    const bounds = plan.image ? { x1: 0, y1: 0, x2: W, y2: H }
+      : t.rooms.reduce((b, r) => ({ x1: Math.min(b.x1, r.x), y1: Math.min(b.y1, r.y), x2: Math.max(b.x2, r.x + r.w), y2: Math.max(b.y2, r.y + r.h) }), { x1: W, y1: H, x2: 0, y2: 0 });
+    const corners = [[bounds.x1, bounds.y1], [bounds.x2, bounds.y1], [bounds.x1, bounds.y2], [bounds.x2, bounds.y2]];
+    const xs = corners.map(([x, y]) => P(x, y)[0]), ys = corners.map(([x, y]) => P(x, y)[1]);
+    let minX = Math.min(...xs) - 50, maxX = Math.max(...xs) + 50, minY = Math.min(...ys) - 112 - 70, maxY = Math.max(...ys) + 40;
+    const want = W / H, w = maxX - minX, h = maxY - minY;
+    if (w / h < want) { const add = (h * want - w) / 2; minX -= add; maxX += add; } else { const add = (w / want - h) / 2; minY -= add; maxY += add; }
+    return { bounds, minX, minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function isoOverlayHtml(plan, readings) {
+    readings = readings || {};
+    const t = templateById(plan.template), f = isoFrame(plan);
+    const at = (x, y, z) => { const [px, py] = P(x, y, z); return `left:${r1(((px - f.minX) / f.w) * 100)}%;top:${r1(((py - f.minY) / f.h) * 100)}%`; };
+    const rooms = plan.image ? '' : t.rooms.map(r => `<span class="fp-room" style="${at(r.lx ?? r.x + r.w / 2, r.ly ?? r.y + r.h / 2, 0)}">${esc(r.label)}</span>`).join('');
+    const chips = plan.pins.filter(p => p.type === 'sensor').map(p => {
+      const s = sensorState(p, readings);
+      const short = s.known ? `${fmtPpm(s.r.ppm)} ppm` : s.text; // the dot's colour already says the level
+      return `<span class="fp-iso-chip${s.known && s.r.level.key === 'danger' ? ' is-danger' : ''}" style="${at(p.x, p.y, sensorZ(t, p) + 22 + CHIP_Z)};--pin:${s.color}" title="${esc(s.text)}"><i></i><b>${esc(p.label)}</b>${esc(short)}</span>`;
+    }).join('');
+    return rooms + chips;
   }
 
   function isoSvg(plan, readings) {
     const t = templateById(plan.template);
     const pins = plan.pins;
-    let floor, items = [], labels = '', bounds;
+    const frame = isoFrame(plan), bounds = frame.bounds;
+    let floor, items = [];
     if (plan.image) {
       floor = `<image href="${esc(plan.image)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"/>`;
-      bounds = { x1: 0, y1: 0, x2: W, y2: H };
     } else {
-      bounds = t.rooms.reduce((b, r) => ({ x1: Math.min(b.x1, r.x), y1: Math.min(b.y1, r.y), x2: Math.max(b.x2, r.x + r.w), y2: Math.max(b.y2, r.y + r.h) }), { x1: W, y1: H, x2: 0, y2: 0 });
       const clip = `<clipPath id="fp-clip3d">${t.rooms.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`).join('')}</clipPath>`;
-      floor = `${clip}<rect x="${bounds.x1 - 40}" y="${bounds.y1 - 40}" width="${bounds.x2 - bounds.x1 + 80}" height="${bounds.y2 - bounds.y1 + 80}" rx="24" fill="#efece5"/>`
+      floor = `${clip}<rect x="${bounds.x1 - 40}" y="${bounds.y1 - 40}" width="${bounds.x2 - bounds.x1 + 80}" height="${bounds.y2 - bounds.y1 + 80}" rx="24" fill="#3a4149"/>`
         + t.rooms.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${FLOOR[r.floor] || FLOOR.plain}"/>`).join('')
         + t.furniture.filter(f => f.t === 'shower' || f.t === 'car').map(furniture).join('')
         + t.doors.map(door).join('') + t.doors.filter(d => d.main).map(entryMarker).join('');
       items = [...wallBoxes(t).map(wb => ({ box: wb.box, svg: wb.kind === 'glass' ? boxSvg(wb.box, { top: '#cfe6f5', front: '#bcdcf0', side: '#a9cde6', opacity: 0.6 }) : boxSvg(wb.box, WALL) })), ...furnitureItems(t)];
-      labels = t.rooms.map(r => { const [x, y] = P(r.lx ?? r.x + r.w / 2, r.ly ?? r.y + r.h / 2, 0); return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" class="fp-iso-label">${esc(r.label)}</text>`; }).join('');
     }
     const heat = heatSvg(plan, readings || {});
     const ordered = depthSort(items).map(i => i.svg).join('');
-    const corners = [[bounds.x1, bounds.y1], [bounds.x2, bounds.y1], [bounds.x1, bounds.y2], [bounds.x2, bounds.y2]];
-    const xs = corners.map(([x, y]) => P(x, y)[0]), ys = corners.map(([x, y]) => P(x, y)[1]);
-    const pad = 60, minX = Math.min(...xs) - pad - 40, maxX = Math.max(...xs) + pad + 40, minY = Math.min(...ys) - 112 - 150, maxY = Math.max(...ys) + pad;
+    const { minX, minY, w, h } = frame;
     const pinSvg = pins.filter(p => p.type !== 'sensor').map(p => pin3d(t, p, readings || {})).join('') + pins.filter(p => p.type === 'sensor').map(p => pin3d(t, p, readings || {})).join('');
-    return `<svg class="fp-svg fp-iso" viewBox="${minX.toFixed(0)} ${minY.toFixed(0)} ${(maxX - minX).toFixed(0)} ${(maxY - minY).toFixed(0)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ภาพจำลอง 3 มิติของ ${esc(plan.image ? 'แปลนที่อัปโหลด' : t.name)} พร้อมค่าแก๊ส">${defs()}
+    return `<svg class="fp-svg fp-iso" viewBox="${r1(minX)} ${r1(minY)} ${r1(w)} ${r1(h)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ภาพจำลอง 3 มิติของ ${esc(plan.image ? 'แปลนที่อัปโหลด' : t.name)} พร้อมค่าแก๊ส">${defs()}
       <g transform="${ISO}">${floor}<g${plan.image ? '' : ' clip-path="url(#fp-clip3d)"'}>${heat}</g></g>
-      ${ordered}${labels}${pinSvg}
-      <text x="${(minX + 18).toFixed(0)}" y="${(maxY - 18).toFixed(0)}" class="fp-iso-note">ภาพจำลอง 3 มิติจากแปลน (ไม่ใช่ภาพถ่ายจริง)</text></svg>`;
+      ${ordered}${pinSvg}
+      <text x="${r1(minX + 18)}" y="${r1(minY + h - 16)}" class="fp-iso-note">ภาพจำลอง 3 มิติจากแปลน (ไม่ใช่ภาพถ่ายจริง)</text></svg>`;
   }
 
   // ---- HTML overlay (room labels, entry label, pins) ----------------------------------------------
@@ -624,7 +650,7 @@
       const known = r && Number.isFinite(r.ppm) && r.level && r.level.rank >= 0;
       const color = known ? r.level.color : '#8a94a6';
       const chip = !p.sensorId ? 'ยังไม่ผูก' : known ? `${fmtPpm(r.ppm)} ppm · ${esc(r.level.label)}` : 'ไม่มีข้อมูล';
-      return `<button type="button" class="fp-pin fp-pin-sensor${sel}${p.x > 640 ? ' chip-left' : ''}${known && r.level.key === 'danger' ? ' is-danger' : ''}" data-pin="${esc(p.id)}" style="${style};--pin:${color}" aria-label="เซ็นเซอร์ ${esc(p.label)} ${esc(chip)}"><span class="fp-pin-dot">${esc(p.label)}</span><span class="fp-pin-chip">${chip}</span></button>`;
+      return `<button type="button" class="fp-pin fp-pin-sensor${sel}${p.x > 640 ? ' chip-left' : ''}${known && r.level.key === 'danger' ? ' is-danger' : ''}" data-pin="${esc(p.id)}" style="${style};--pin:${color};--t:-${Date.now() % 2400}ms" aria-label="เซ็นเซอร์ ${esc(p.label)} ${esc(chip)}"><span class="fp-pin-dot">${esc(p.label)}</span><span class="fp-pin-chip">${chip}</span></button>`;
     }).join('');
     return labels + pins;
   }
@@ -685,11 +711,15 @@
         <button type="button" class="fp-link" data-fp-reset>คืนค่าเริ่มต้น</button>
       </div>
       <p class="fp-hint" data-fp-hint hidden></p>
-      <div class="fp-stage" data-fp-stage><div class="fp-svg-host" data-fp-svg></div><div class="fp-overlay" data-fp-overlay></div></div>
+      <div class="fp-stage" data-fp-stage>
+        <div class="fp-zoom" data-fp-zoom><div class="fp-svg-host" data-fp-svg></div><div class="fp-overlay" data-fp-overlay></div></div>
+        <div class="fp-zoom-ctl"><button type="button" data-fp-zoom-in aria-label="ซูมเข้า">+</button><button type="button" data-fp-zoom-out aria-label="ซูมออก">−</button><button type="button" data-fp-zoom-reset aria-label="ดูทั้งแปลน" hidden>⤢</button></div>
+      </div>
+      <p class="fp-zoom-hint">ใช้สองนิ้วถ่างเพื่อซูม · แตะสองครั้งเพื่อซูมตรงนั้น</p>
       <div class="fp-inspector" data-fp-inspector hidden></div>`;
 
     const $ = sel => container.querySelector(sel);
-    const stage = $('[data-fp-stage]'), svgHost = $('[data-fp-svg]'), overlay = $('[data-fp-overlay]');
+    const stage = $('[data-fp-stage]'), zoomEl = $('[data-fp-zoom]'), svgHost = $('[data-fp-svg]'), overlay = $('[data-fp-overlay]');
     const select = $('[data-fp-template]'), file = $('[data-fp-file]'), hint = $('[data-fp-hint]'), inspector = $('[data-fp-inspector]');
 
     // options.lockSensors: rooms, stove and tank can be moved, sensor points stay where the technician put them
@@ -713,7 +743,7 @@
     function setHint(text) { hint.textContent = text || ''; hint.hidden = !text; }
 
     function drawAll() {
-      if (ui.view === '3d') { svgHost.innerHTML = isoSvg(plan, readings); overlay.innerHTML = ''; inspector.hidden = true; select.value = plan.image ? '__upload' : plan.template; return; }
+      if (ui.view === '3d') { svgHost.innerHTML = isoSvg(plan, readings); overlay.innerHTML = isoOverlayHtml(plan, readings); inspector.hidden = true; select.value = plan.image ? '__upload' : plan.template; return; }
       svgHost.innerHTML = stageSvg(plan, readings);
       drawOverlay();
       select.value = plan.image ? '__upload' : plan.template;
@@ -741,8 +771,75 @@
         <button type="button" class="fp-link is-danger" data-fp-delete>ลบหมุดนี้</button>`;
     }
 
+    // ---- Zoom and pan: two-finger pinch, double tap, ctrl+wheel / trackpad pinch, or the +/− buttons.
+    // Labels and pins keep their size while the plan grows (css: scale by --inv).
+    const zoom = { s: 1, x: 0, y: 0 };
+    const MAX_ZOOM = 4;
+    function applyZoom() {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      zoom.s = clamp(zoom.s, 1, MAX_ZOOM);
+      zoom.x = clamp(zoom.x, w - w * zoom.s, 0);
+      zoom.y = clamp(zoom.y, h - h * zoom.s, 0);
+      zoomEl.style.transform = zoom.s === 1 ? '' : `translate(${r1(zoom.x)}px, ${r1(zoom.y)}px) scale(${zoom.s.toFixed(3)})`;
+      zoomEl.style.setProperty('--inv', (1 / zoom.s).toFixed(3));
+      stage.classList.toggle('is-zoomed', zoom.s > 1.01);
+      $('[data-fp-zoom-reset]').hidden = zoom.s <= 1.01;
+    }
+    function zoomAt(cx, cy, factor) { // cx, cy in stage pixels
+      const s = clamp(zoom.s * factor, 1, MAX_ZOOM), k = s / zoom.s;
+      zoom.x = cx - (cx - zoom.x) * k; zoom.y = cy - (cy - zoom.y) * k; zoom.s = s;
+      applyZoom();
+    }
+    const stagePoint = evt => { const r = stage.getBoundingClientRect(); return [evt.clientX - r.left, evt.clientY - r.top]; };
+    const touches = new Map();
+    let pinch = null, pan = null, lastTap = 0;
+    stage.addEventListener('pointerdown', evt => {
+      if (ui.dragging || (ui.editing && (ui.tool || evt.target.closest('[data-pin]'))) || evt.target.closest('.fp-zoom-ctl')) return;
+      touches.set(evt.pointerId, stagePoint(evt));
+      if (touches.size === 2) {
+        const [a, b] = [...touches.values()];
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: zoom.s }; pan = null;
+      } else if (touches.size === 1) {
+        const now = Date.now();
+        if (evt.pointerType !== 'mouse' && now - lastTap < 300) { const [x, y] = stagePoint(evt); zoomAt(x, y, zoom.s > 1.5 ? 1 / zoom.s : 2.2); lastTap = 0; return; }
+        lastTap = now;
+        if (zoom.s > 1.01) { pan = { start: stagePoint(evt), x: zoom.x, y: zoom.y }; stage.setPointerCapture(evt.pointerId); }
+      }
+    });
+    stage.addEventListener('pointermove', evt => {
+      if (!touches.has(evt.pointerId)) return;
+      touches.set(evt.pointerId, stagePoint(evt));
+      if (pinch && touches.size >= 2) {
+        const [a, b] = [...touches.values()];
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (pinch.s * d / pinch.d) / zoom.s);
+      } else if (pan) {
+        const [x, y] = stagePoint(evt);
+        zoom.x = pan.x + x - pan.start[0]; zoom.y = pan.y + y - pan.start[1];
+        applyZoom();
+      }
+    });
+    const endTouch = evt => { touches.delete(evt.pointerId); if (touches.size < 2) pinch = null; if (!touches.size) pan = null; };
+    stage.addEventListener('pointerup', endTouch);
+    stage.addEventListener('pointercancel', endTouch);
+    stage.addEventListener('dblclick', evt => { if (ui.editing) return; const [x, y] = stagePoint(evt); zoomAt(x, y, zoom.s > 1.5 ? 1 / zoom.s : 2.2); });
+    stage.addEventListener('wheel', evt => {
+      if (!evt.ctrlKey) return; // plain scrolling keeps scrolling the page
+      evt.preventDefault();
+      const [x, y] = stagePoint(evt);
+      zoomAt(x, y, Math.exp(-evt.deltaY / 200));
+    }, { passive: false });
+    container.querySelector('.fp-zoom-ctl').addEventListener('click', evt => {
+      const b = evt.target.closest('button');
+      if (!b) return;
+      const w = stage.clientWidth / 2, h = stage.clientHeight / 2;
+      if (b.matches('[data-fp-zoom-in]')) zoomAt(w, h, 1.6);
+      else if (b.matches('[data-fp-zoom-out]')) zoomAt(w, h, 1 / 1.6);
+      else { zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); }
+    });
+
     function toPlan(evt) {
-      const rect = stage.getBoundingClientRect();
+      const rect = zoomEl.getBoundingClientRect(); // the zoomed plan, so pins land under the finger
       return { x: clamp(((evt.clientX - rect.left) / rect.width) * W, 0, W), y: clamp(((evt.clientY - rect.top) / rect.height) * H, 0, H) };
     }
 
@@ -777,6 +874,7 @@
         edit.hidden = ui.view === '3d' || Boolean(options.readOnly); edit.textContent = 'แก้ไขตำแหน่ง'; edit.classList.remove('is-active');
         $('[data-fp-editbar]').hidden = true; setHint('');
         stage.classList.toggle('is-3d', ui.view === '3d');
+        zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom();
         drawAll();
       } else if (target.matches('[data-fp-edit]')) {
         ui.editing = !ui.editing; ui.tool = null; ui.selected = null;
@@ -855,11 +953,11 @@
         readings = next || {};
         if (ui.dragging) return;
         drawHeat();
-        if (ui.view === '2d') drawOverlay(false);
+        if (ui.view === '2d') drawOverlay(false); else overlay.innerHTML = isoOverlayHtml(plan, readings);
       },
       plan: () => plan
     };
   }
 
-  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, loadPlan, nextSensorLabel, heatRadius, idwGrid, idwValue, heatColor, stageSvg, heatSvg, isoSvg, overlayHtml, mount });
+  return Object.freeze({ W, H, TEMPLATES, PIN_TYPES, defaultPlan, normalizePlan, loadPlan, nextSensorLabel, heatRadius, idwGrid, idwValue, heatColor, stageSvg, heatSvg, isoSvg, isoFrame, isoOverlayHtml, overlayHtml, mount });
 });

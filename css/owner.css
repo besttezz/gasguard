@@ -219,7 +219,42 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
 .fp-stage { position: relative; aspect-ratio: 1000 / 700; overflow: hidden; border: 4px solid var(--bezel); border-radius: 12px; background: #FBFAF7; touch-action: manipulation; user-select: none; }
 .fp-stage.is-editing { outline: 2px dashed #8FAEFF; outline-offset: 3px; }
 .fp-stage.is-placing { cursor: crosshair; }
-.fp-stage.is-3d { background: radial-gradient(ellipse at 50% 35%, #FFFFFF, #EEF0F4 75%); }
+.fp-stage.is-3d { background: radial-gradient(ellipse at 50% 42%, #2C333B, #14171B 78%); }
+.fp-stage.is-3d .fp-iso-note { fill: #6F7A86; }
+
+/* Zoom and pan (js/floor-plan.js): the plan grows, pins and labels keep their size. */
+.fp-zoom { position: absolute; inset: 0; transform-origin: 0 0; }
+.fp-zoom .fp-pin, .fp-zoom .fp-room, .fp-zoom .fp-door-tag { scale: var(--inv, 1); }
+.fp-stage { touch-action: pan-y; }
+.fp-stage.is-zoomed { touch-action: none; cursor: grab; }
+.fp-zoom-ctl { position: absolute; right: 8px; bottom: 8px; z-index: 3; display: grid; gap: 6px; }
+.fp-zoom-ctl button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(20, 23, 27, .78); color: #fff; font-size: 18px; font-weight: 600; line-height: 1; cursor: pointer; }
+.fp-zoom-ctl button:active { transform: scale(.92); }
+.fp-zoom-hint { display: none; margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+
+/* 3D labels are HTML chips anchored to the top of each sensor's dashed stem. */
+.fp-iso-chip { position: absolute; transform: translate(-50%, -100%); transform-origin: 50% 100%; scale: var(--inv, 1); display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 999px; border: 2px solid var(--pin); background: #fff; color: #1F2937; font-size: 12.5px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); font-variant-numeric: tabular-nums; pointer-events: none; }
+.fp-iso-chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--pin); box-shadow: 0 0 6px var(--pin); }
+.fp-iso-chip b { font-weight: 700; }
+.fp-iso-chip.is-danger { animation: blink .8s steps(2, jump-none) infinite; }
+.fp-stage.is-3d .fp-room { background: rgba(20, 23, 27, .72); color: #E6E8E3; }
+
+/* Sensors breathe on the plan (delay synced to the clock so refreshes don't restart it). */
+.fp-pin-sensor .fp-pin-dot { animation: sensor-breathe 2.4s ease-in-out var(--t, 0s) infinite; }
+@keyframes sensor-breathe { 50% { box-shadow: 0 3px 8px rgba(20, 32, 51, .3), 0 0 0 7px color-mix(in srgb, var(--pin) 28%, transparent); } }
+
+@media (max-width: 600px) {
+  #view-plan > .card:first-child { padding: 12px 10px; }
+  .fp-toolbar { gap: 8px; }
+  .fp-toolbar .fp-field { flex: 1 1 100%; }
+  .fp-toolbar .fp-field > span { display: none; }
+  .fp-toolbar .fp-field select { flex: 1 1 auto; width: 100%; }
+  .fp-toolbar .fp-view { flex: 1 1 auto; }
+  .fp-edit-toggle { min-height: 36px; padding: 0 12px; font-size: 13px; }
+  .fp-stage { border-width: 3px; border-radius: 10px; }
+  .fp-zoom-hint { display: block; }
+  .fp-iso-chip { font-size: 11px; padding: 3px 8px 3px 6px; }
+}
 .fp-svg-host, .fp-svg-host svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .fp-svg-note { font-size: 13px; fill: #8A93A3; font-family: inherit; }
 .fp-idw { mix-blend-mode: multiply; }
@@ -241,7 +276,7 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
 .fp-pin-stove svg, .fp-pin-tank svg { width: 20px; height: 20px; }
 .fp-pin-dot { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; background: var(--pin); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 3px 8px rgba(20, 32, 51, .3); }
 .fp-pin-sensor.is-danger .fp-pin-dot::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 3px solid var(--pin); animation: fp-ping 1s ease-out infinite; }
-.fp-pin-chip { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); padding: 3px 9px; border-radius: 999px; border: 1px solid #E1E5EC; background: rgba(255, 255, 255, .95); color: var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 6px rgba(20, 32, 51, .12); font-variant-numeric: tabular-nums; }
+.fp-pin-chip { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); padding: 3px 9px; border-radius: 999px; border: 1px solid #E1E5EC; background: rgba(255, 255, 255, .95); color: #1F2937; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 6px rgba(20, 32, 51, .12); font-variant-numeric: tabular-nums; }
 .fp-pin.chip-left .fp-pin-chip { left: auto; right: calc(100% + 6px); }
 .fp-pin.is-selected .fp-pin-dot, .fp-pin.is-selected.fp-pin-stove, .fp-pin.is-selected.fp-pin-tank { outline: 3px solid var(--brand); outline-offset: 2px; }
 .fp-inspector { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft); font-size: 13.5px; }
