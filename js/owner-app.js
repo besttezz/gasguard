@@ -594,7 +594,7 @@
       : `<span class="tag is-off">${esc((LEVEL_OPTIONS.find(o => o[0] === m.alert_min_level) || ['', ''])[1])}</span>`;
     const remove = S.canEdit && !m.is_me && S.role !== 'technician' ? `<button class="btn btn-small btn-danger" type="button" data-action="member-remove" data-user="${esc(m.user_id)}">ลบ</button>` : '';
     return `<div class="row" style="flex-wrap:wrap"><span class="avatar" aria-hidden="true">${esc(name.trim().charAt(0).toUpperCase())}</span>
-      <div class="row-main"><strong>${esc(name)}${m.is_me ? ' (คุณ)' : ''}</strong><small>${m.membership_type === 'owner' ? 'เจ้าของ · จัดการแปลนและสมาชิก' : 'สมาชิก · ดูสถานะและรับแจ้งเตือน'}${m.line_linked ? ' · เชื่อม LINE แล้ว' : ''}</small></div>
+      <div class="row-main"><strong>${esc(name)}${m.is_me ? ' (คุณ)' : ''}</strong><small>คนในบ้าน · ดูและจัดการบ้านนี้ได้${m.line_linked ? ' · เชื่อม LINE แล้ว' : ''}</small></div>
       <div style="display:flex;gap:8px;align-items:flex-end">${level}${remove}</div></div>`;
   }
 
@@ -607,7 +607,7 @@
     }
     if (f) {
       return `<form class="invite-form" data-form="invite"><div class="form-grid">
-          <label class="field"><span>สิทธิ์</span><select name="type"><option value="member">สมาชิก (ดูและรับแจ้งเตือน)</option><option value="owner">เจ้าของร่วม (แก้แปลนและสมาชิกได้)</option></select></label>
+          <input type="hidden" name="type" value="owner">
           <label class="field"><span>รับแจ้งเตือน LINE</span><select name="level">${LEVEL_OPTIONS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
         </div><div style="display:flex;gap:8px"><button class="btn btn-primary" type="submit">สร้างลิงก์เชิญ</button><button class="btn" type="button" data-action="invite-done">ยกเลิก</button></div></form>`;
     }
@@ -819,7 +819,7 @@
       return;
     }
     panel.innerHTML = `<p class="eyebrow">คำเชิญ</p><h2>เข้าร่วม "${esc(inv.site_name)}"</h2>
-      <p class="muted">ในฐานะ${inv.membership_type === 'owner' ? 'เจ้าของร่วม' : 'สมาชิก'} · สร้างบัญชีใหม่ หรือเข้าสู่ระบบด้วยบัญชีเดิมด้านล่าง</p>
+      <p class="muted">สร้างบัญชีใหม่ หรือเข้าสู่ระบบด้วยบัญชีเดิมด้านล่าง</p>
       <form class="login" id="signup-form" novalidate style="padding:0">
         <label class="field"><span>ชื่อที่แสดง</span><input name="name" maxlength="60" autocomplete="nickname" placeholder="เช่น แม่, พี่บี"></label>
         <label class="field"><span>อีเมล</span><input name="email" type="email" autocomplete="email" required></label>

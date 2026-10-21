@@ -86,7 +86,12 @@ assert.match(app, /S\.episode && !S\.sim && S\.role !== 'admin'/, 'an admin view
 const fpSrc = read('js/floor-plan.js');
 assert.match(fpSrc, /if \(lockSensors\) \$\('\[data-fp-tool="sensor"\]'\)\.hidden = true;/);
 assert.match(fpSrc, /edit\.hidden = ui\.view === '3d' \|\| Boolean\(options\.readOnly\)/, 'switching back to 2D does not show the edit button to read-only users');
-console.log('  [5] Role scope: tools tab for crew only, plain sensor words and locked sensor points for home users: PASS');
+const allOwners = read('supabase/migrations/20261022000000_everyone_in_a_home_is_an_owner.sql');
+assert.match(allOwners, /update public\.site_memberships set membership_type = 'owner'/);
+assert.match(allOwners, /before insert or update of membership_type on public\.site_memberships/, 'new memberships are owners too, whatever the client sends');
+assert.match(allOwners, /before insert or update of membership_type on private\.site_invitations/);
+assert.ok(!app.includes('<option value="member">'), 'no member/owner choice in the invite form');
+console.log('  [5] Role scope: tools tab for crew only, plain sensor words and locked sensor points for home users; everyone in a home is an owner: PASS');
 
 // [6] Trial mode: off unless ?trial=, never touches Supabase, answers the API itself.
 const vm = require('node:vm');

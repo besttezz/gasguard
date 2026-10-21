@@ -87,9 +87,9 @@
           <label class="switch-row" style="border:0"><input type="checkbox" name="mq6" checked> MQ-6</label><label class="switch-row" style="border:0"><input type="checkbox" name="mq2" checked> MQ-2</label>
           <button class="btn btn-primary" type="submit">เพิ่มบอร์ดและออก key</button></form>
         <h3 style="font-size:15px;margin:18px 0 6px">สมาชิก</h3>
-        ${mem.map(m => `<div class="row"><span class="avatar" aria-hidden="true">${esc(userLabel(m.user_id).charAt(0).toUpperCase())}</span><div class="row-main"><strong>${esc(userLabel(m.user_id))}</strong><small>${m.membership_type === 'owner' ? 'เจ้าของ' : 'สมาชิก'}</small></div><button class="btn btn-small btn-danger" type="button" data-admin="remove-member" data-site="${esc(s.id)}" data-user="${esc(m.user_id)}">ลบ</button></div>`).join('') || '<p class="empty">ยังไม่มีสมาชิก</p>'}
+        ${mem.map(m => `<div class="row"><span class="avatar" aria-hidden="true">${esc(userLabel(m.user_id).charAt(0).toUpperCase())}</span><div class="row-main"><strong>${esc(userLabel(m.user_id))}</strong><small>คนในบ้าน</small></div><button class="btn btn-small btn-danger" type="button" data-admin="remove-member" data-site="${esc(s.id)}" data-user="${esc(m.user_id)}">ลบ</button></div>`).join('') || '<p class="empty">ยังไม่มีสมาชิก</p>'}
         ${userOptions ? `<form class="form-grid" data-form="admin-member" style="margin-top:10px"><label class="field"><span>เพิ่มผู้ใช้เข้าบ้านนี้</span><select name="user">${userOptions}</select></label>
-          <label class="field"><span>สิทธิ์</span><select name="type"><option value="owner">เจ้าของ</option><option value="member">สมาชิก</option></select></label><button class="btn" type="submit">เพิ่ม</button></form>` : '<p class="muted small">สร้างบัญชีผู้ใช้ได้ที่แท็บ "ผู้ใช้"</p>'}
+          <input type="hidden" name="type" value="owner"><button class="btn" type="submit">เพิ่ม</button></form>` : '<p class="muted small">สร้างบัญชีผู้ใช้ได้ที่แท็บ "ผู้ใช้"</p>'}
       </section>`;
     }
 
@@ -123,7 +123,7 @@
     function renderUsers() {
       const users = D.users;
       const rows = !users ? '<tr><td colspan="4" class="empty">กำลังโหลด…</td></tr>' : users.map(u => {
-        const sites = D.memberships.filter(m => m.user_id === u.id).map(m => { const s = D.sites.find(x => x.id === m.site_id); return s ? `${s.name}${m.membership_type === 'owner' ? ' (เจ้าของ)' : ''}` : null; }).filter(Boolean);
+        const sites = D.memberships.filter(m => m.user_id === u.id).map(m => { const s = D.sites.find(x => x.id === m.site_id); return s ? s.name : null; }).filter(Boolean);
         return `<tr><td><strong>${esc(u.displayName || u.email)}</strong><small>${esc(u.email)}</small></td>
           <td><select data-admin="role" data-user="${esc(u.id)}"${u.id === S.user.id ? ' disabled' : ''}>${Object.entries(ROLE_LABEL).map(([k, v]) => `<option value="${k}"${u.role === k ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
           <td>${esc(sites.join(', ') || '—')}</td><td><small>${u.lastSignInAt ? esc(ago(u.lastSignInAt)) : 'ยังไม่เคยเข้า'}</small></td></tr>`;
@@ -136,7 +136,7 @@
             <label class="field"><span>รหัสผ่านชั่วคราว (≥ 8 ตัว)</span><input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
             <label class="field"><span>บทบาท</span><select name="role">${Object.entries(ROLE_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
             <label class="field"><span>เพิ่มเข้าสถานที่ (ไม่บังคับ)</span><select name="site"><option value="">—</option>${D.sites.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label>
-            <label class="field"><span>สิทธิ์ในสถานที่</span><select name="type"><option value="owner">เจ้าของ</option><option value="member">สมาชิก</option></select></label>
+            <input type="hidden" name="type" value="owner">
             <button class="btn btn-primary" type="submit">สร้างบัญชี</button></form>` : ''}
           <div class="table-wrap"><table class="table"><thead><tr><th>ผู้ใช้</th><th>บทบาท</th><th>สถานที่</th><th>เข้าใช้ล่าสุด</th></tr></thead><tbody>${rows}</tbody></table></div>
         </section>
