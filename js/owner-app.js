@@ -824,8 +824,7 @@
     return FP.mount(el, {
       storageKey: planKey(),
       store: planStore(),
-      readOnly: !S.canEdit,
-      lockSensors: !seesTech(),
+      readOnly: !S.canEdit, // anyone who can edit the home may also move sensors, for now (floor-plan.js can lock them later)
       sensorOptions: () => Object.keys(SENSOR_NAMES).map(id => ({ id, name: `${SENSOR_NAMES[id]} (${id})` })),
       onChange: () => { if (S.tab === 'home') render(); }
     });

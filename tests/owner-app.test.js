@@ -79,7 +79,7 @@ assert.match(app, /developer: \['home', 'plan', 'history', 'tools', 'mine'\]/, '
 assert.match(app, /admin: \['overview', 'users', 'work', 'home', 'plan', 'history', 'tools', 'mine'\]/);
 assert.ok(!/general: \[[^\]]*'tools'/.test(app), 'home users have no tools tab');
 assert.match(app, /const seesTech = \(\) => S\.role === 'technician' \|\| S\.role === 'admin' \|\| S\.role === 'developer';/);
-assert.match(app, /lockSensors: !seesTech\(\)/, 'home owners arrange rooms; sensor points stay where the technician put them');
+assert.ok(!/lockSensors/.test(app), 'for now everyone who can edit a home may also move its sensors');
 const mine = app.slice(app.indexOf('function renderMine()'), app.indexOf('// ---- Tools (developer, admin)'));
 assert.ok(mine.length > 0 && !mine.includes('demo-toggle') && !mine.includes('legendHtml('), 'my-home tab has no simulator and no ppm thresholds');
 assert.match(app, /S\.episode && !S\.sim && S\.role !== 'admin'/, 'an admin viewing a home does not acknowledge for the household');

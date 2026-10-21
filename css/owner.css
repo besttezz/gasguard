@@ -227,6 +227,7 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
 .fp-zoom .fp-pin, .fp-zoom .fp-room, .fp-zoom .fp-door-tag { scale: var(--inv, 1); }
 .fp-stage { touch-action: pan-y; }
 .fp-stage.is-zoomed { touch-action: none; cursor: grab; }
+.fp-stage.is-editing, .fp-stage.is-editing .fp-pin { touch-action: none; } /* a finger on a pin drags it instead of scrolling the page */
 .fp-zoom-ctl { position: absolute; right: 8px; bottom: 8px; z-index: 3; display: grid; gap: 6px; }
 .fp-zoom-ctl button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(20, 23, 27, .78); color: #fff; font-size: 18px; font-weight: 600; line-height: 1; cursor: pointer; }
 .fp-zoom-ctl button:active { transform: scale(.92); }
