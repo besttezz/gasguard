@@ -29,7 +29,7 @@
   };
   const singles = {
     site_memberships: { membership_type: 'owner', alert_min_level: 'watch' },
-    site_settings: { hose_installed_on: '2024-05-01', sensor_checked_on: iso(now0 - 30 * 86400e3).slice(0, 10) }
+    sites: { hose_installed_on: '2024-05-01', sensor_checked_on: iso(now0 - 30 * 86400e3).slice(0, 10), floor_plan: null }
   };
   const rpcData = {
     can_edit_site: true,

@@ -173,7 +173,7 @@
       if (r.ok) { S.real = r.body; S.offlineApi = false; } else S.offlineApi = true;
     }
     if (S.site) {
-      const { data } = await q(db().from('alert_episodes').select('id, level, peak_level, peak_ppm, started_at, alert_acks(user_id, acked_at)').eq('site_id', S.site.id).is('ended_at', null).maybeSingle());
+      const { data } = await q(db().from('alert_episodes').select('id, level, peak_level, peak_ppm, started_at, acks').eq('site_id', S.site.id).is('ended_at', null).maybeSingle());
       S.episode = data || null;
     }
     render();
@@ -182,7 +182,7 @@
   async function loadSites() {
     let sites = [];
     if (S.role === 'admin') {
-      const { data } = await q(db().from('sites').select('id, name, address_text, lifecycle_status, customer_id').order('name'));
+      const { data } = await q(db().from('sites').select('id, name, address_text, lifecycle_status').order('name'));
       sites = (data || []).map(s => ({ id: s.id, name: s.name, address: s.address_text }));
     } else if (S.role === 'technician') {
       sites = S.sites; // set by the job list
@@ -212,7 +212,7 @@
       q(db().from('devices').select('id, device_uid, lifecycle_status, created_at').eq('site_id', site.id).order('created_at')),
       q(db().rpc('can_edit_site', { p_site_id: site.id })),
       q(db().from('site_memberships').select('membership_type, alert_min_level').eq('site_id', site.id).eq('user_id', S.user.id).maybeSingle()),
-      q(db().from('site_settings').select('hose_installed_on, sensor_checked_on, updated_at').eq('site_id', site.id).maybeSingle())
+      q(db().from('sites').select('hose_installed_on, sensor_checked_on').eq('id', site.id).maybeSingle())
     ]);
     if (S.site !== site) return; // another site was picked meanwhile
     S.devices = devices.data || [];
@@ -357,7 +357,7 @@
     return m ? (m.display_name || m.email || 'สมาชิก') : 'สมาชิก';
   }
 
-  // Gas hose and sensor checks that are due, from site_settings.
+  // Gas hose and sensor checks that are due, from the site's care dates.
   function reminders() {
     const out = [];
     const s = S.settings || {};
@@ -490,8 +490,8 @@
     const w = a.worst;
     const sub = S.alarmTest ? 'นี่คือการทดสอบเสียงและหน้าจอเตือน ไม่ได้มีแก๊สรั่วจริง'
       : w ? `วัดได้ ${fmtPpm(w.ppm)} ppm (${fmtLel(w.lel)} ของจุดติดไฟ) · ${w.trend.label}` : '';
-    const acks = !S.alarmTest && S.episode && S.episode.alert_acks && S.episode.alert_acks.length
-      ? `<p class="alarm-acks">รับทราบแล้ว: ${S.episode.alert_acks.map(x => esc(memberName(x.user_id))).join(', ')}</p>` : '';
+    const acks = !S.alarmTest && S.episode && Array.isArray(S.episode.acks) && S.episode.acks.length
+      ? `<p class="alarm-acks">รับทราบแล้ว: ${S.episode.acks.map(x => esc(memberName(x.user_id))).join(', ')}</p>` : '';
     el.className = `alarm${lv.key === 'warning' ? ' is-warning' : ''}`;
     setHtml(el, `<div class="alarm-inner" role="alertdialog" aria-modal="true" aria-labelledby="alarm-title">
       <div class="alarm-meta"><span>${esc(S.site ? S.site.name : 'บ้านของฉัน')}${w && !S.alarmTest ? ` · ${esc(sensorTitle(w.id))}` : ''}</span><span>${S.sim ? 'โหมดสาธิต' : 'ตอนนี้'}</span></div>
@@ -808,13 +808,13 @@
     const siteId = S.site.id;
     return {
       load: async () => {
-        const { data, error } = await q(db().from('floor_plans').select('plan').eq('site_id', siteId).maybeSingle());
+        const { data, error } = await q(db().from('sites').select('floor_plan').eq('id', siteId).maybeSingle());
         if (error) throw error;
-        return data ? data.plan : null;
+        return data ? data.floor_plan : null;
       },
       save: async plan => {
         if (!S.canEdit) return false;
-        const { error } = await q(db().from('floor_plans').upsert({ site_id: siteId, plan, updated_by: S.user.id }));
+        const { error } = await q(db().rpc('save_floor_plan', { p_site_id: siteId, p_plan: plan }));
         return !error;
       }
     };
@@ -1003,16 +1003,17 @@
       clearInterval(lineTimer);
       const started = Date.now();
       lineTimer = setInterval(async () => {
-        const { data: link } = await q(db().from('user_line_links').select('user_id').eq('user_id', S.user.id).maybeSingle());
+        const { data: me } = await q(db().from('profiles').select('line_user_id').eq('id', S.user.id).maybeSingle());
+        const link = Boolean(me && me.line_user_id);
         if (link || Date.now() - started > 15 * 60e3) {
-          clearInterval(lineTimer); S.lineCode = null; S.lineLinked = Boolean(link);
+          clearInterval(lineTimer); S.lineCode = null; S.lineLinked = link;
           if (link) toast('เชื่อม LINE สำเร็จ');
           loadMembers(); if (S.tab === 'mine') renderMine();
         }
       }, 4000);
     }
     else if (action === 'line-unlink') {
-      await q(db().from('user_line_links').delete().eq('user_id', S.user.id));
+      await q(db().rpc('unlink_line'));
       S.lineLinked = false; toast('ยกเลิกการเชื่อม LINE แล้ว'); loadMembers(); renderMine();
     }
   });
@@ -1045,8 +1046,8 @@
       S.inviteForm = { link: `${location.origin}/?invite=${token}` };
       renderMine();
     } else if (kind === 'settings') {
-      const row = { site_id: S.site.id, hose_installed_on: data.hose || null, sensor_checked_on: data.sensor || null, updated_by: S.user.id };
-      const { error } = await q(db().from('site_settings').upsert(row));
+      const row = { hose_installed_on: data.hose || null, sensor_checked_on: data.sensor || null };
+      const { error } = await q(db().rpc('save_site_care', { p_site_id: S.site.id, p_hose: row.hose_installed_on, p_sensor: row.sensor_checked_on }));
       if (!error) S.settings = row;
       toast(error ? 'บันทึกไม่สำเร็จ' : 'บันทึกแล้ว');
       $('#view-home').__html = null;

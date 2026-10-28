@@ -254,15 +254,19 @@ export async function handleSummary(request, env, fetchImpl = fetch, now = Date.
   if (!rows.length) return json(403, { ok: false, code: 'NOT_ALLOWED' });
 
   try {
-    const cached = await service(env, fetchImpl, `/rest/v1/ai_summaries?site_id=eq.${siteId}&select=summary,source,model,created_at`);
-    if (cached[0] && now() - Date.parse(cached[0].created_at) < SUMMARY_TTL_MS && !body?.refresh) return json(200, { ok: true, ...cached[0], cached: true });
+    // The last summary is kept on the site row (sites.ai_summary) for SUMMARY_TTL_MS.
+    const site = await service(env, fetchImpl, `/rest/v1/sites?id=eq.${siteId}&select=ai_summary`);
+    const last = site[0] && site[0].ai_summary;
+    if (last && now() - Date.parse(last.created_at) < SUMMARY_TTL_MS && !body?.refresh) {
+      return json(200, { ok: true, summary: last.summary, source: last.source, model: last.model, created_at: last.created_at, cached: true });
+    }
     const since = new Date(now() - 7 * 86400e3).toISOString();
     const hourly = await service(env, fetchImpl, `/rest/v1/telemetry_hourly?site_id=eq.${siteId}&data_classification=neq.SYNTHETIC_HANDSHAKE&hour=gte.${encodeURIComponent(since)}&select=hour,max_gas_ppm,reading_count`);
     const episodes = await service(env, fetchImpl, `/rest/v1/alert_episodes?site_id=eq.${siteId}&started_at=gte.${encodeURIComponent(since)}&select=peak_level,peak_ppm,started_at,ended_at&order=started_at.asc`);
     const facts = summaryFacts(hourly, episodes, now());
     const ai = clean(env.GEMINI_API_KEY) && facts.hours_with_data ? await geminiSummary(env, fetchImpl, facts).catch(() => null) : null;
-    const row = { site_id: siteId, summary: ai ? ai.text : templateSummary(facts), source: ai ? 'gemini' : 'template', model: ai ? ai.model : null, facts, created_at: new Date(now()).toISOString() };
-    await service(env, fetchImpl, '/rest/v1/ai_summaries', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) }).catch(() => null);
+    const row = { summary: ai ? ai.text : templateSummary(facts), source: ai ? 'gemini' : 'template', model: ai ? ai.model : null, facts, created_at: new Date(now()).toISOString() };
+    await service(env, fetchImpl, `/rest/v1/sites?id=eq.${siteId}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ ai_summary: row }) }).catch(() => null);
     return json(200, { ok: true, summary: row.summary, source: row.source, model: row.model, created_at: row.created_at, cached: false });
   } catch (error) {
     return json(502, { ok: false, code: 'STORE_UNAVAILABLE' });

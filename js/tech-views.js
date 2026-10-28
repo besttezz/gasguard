@@ -20,11 +20,10 @@
     let wiz = {};
 
     async function loadJobs() {
-      const { data } = await q(db().from('job_assignments')
-        .select('assignment_status, assigned_at, installation_jobs(id, site_id, job_type, status, scheduled_for, notes, sites(id, name, address_text))')
+      const { data } = await q(db().from('installation_jobs')
+        .select('id, site_id, job_type, status, scheduled_for, notes, assigned_at, sites(id, name, address_text)')
         .eq('technician_user_id', S.user.id).order('assigned_at', { ascending: false }));
-      jobs = (data || []).filter(r => r.installation_jobs && r.assignment_status !== 'cancelled')
-        .map(r => ({ ...r.installation_jobs, assignment: r.assignment_status, site: r.installation_jobs.sites }));
+      jobs = (data || []).filter(j => j.status !== 'cancelled').map(j => ({ ...j, site: j.sites }));
       const seen = new Set();
       S.sites = jobs.filter(j => j.site && !seen.has(j.site.id) && seen.add(j.site.id)).map(j => ({ id: j.site.id, name: j.site.name, address: j.site.address_text }));
       ctx.renderSiteSwitch();
@@ -211,10 +210,10 @@
 
     async function handover(data) {
       const rows = Object.entries(data).filter(([k, v]) => k.startsWith('ro:') && v !== '' && Number(v) > 0)
-        .map(([k, v]) => ({ device_id: S.device && S.device.id, sensor_uid: k.slice(3), ro_kohm: Number(v), measured_by: S.user.id }));
+        .map(([k, v]) => ({ p_device_id: S.device && S.device.id, p_sensor_uid: k.slice(3), p_ro_kohm: Number(v), p_notes: null }));
       if (!S.device) { toast('ยังไม่ได้ยืนยันบอร์ด'); return; }
-      if (rows.length) {
-        const { error } = await q(db().from('sensor_calibrations').insert(rows));
+      for (const row of rows) {
+        const { error } = await q(db().rpc('save_sensor_calibration', row));
         if (error) { toast('บันทึกค่า Ro ไม่สำเร็จ'); return; }
       }
       const { error } = await q(db().rpc('set_job_progress', { p_job_id: job.id, p_status: 'completed', p_notes: data.notes || null }));

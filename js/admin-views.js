@@ -11,22 +11,21 @@
 
     const LEVEL = { watch: ['เฝ้าระวัง', '#E0A400'], warning: ['เตือน', '#EF6C00'], danger: ['อันตราย', '#D32F2F'] };
     const JOB_STATUS = { scheduled: 'นัดแล้ว', in_progress: 'กำลังทำ', blocked: 'ติดปัญหา', completed: 'เสร็จแล้ว', cancelled: 'ยกเลิก' };
-    const D = { sites: [], devices: [], episodes: [], recent: [], calibrations: [], memberships: [], users: null, jobs: [], loaded: false };
+    const D = { sites: [], devices: [], episodes: [], recent: [], memberships: [], users: null, jobs: [], loaded: false };
     let openSite = null, newKey = null, showSiteForm = false, showUserForm = false, showJobForm = false;
 
     async function loadAll() {
       const since = new Date(Date.now() - 7 * 86400e3).toISOString();
-      const [sites, devices, open, recent, cals, members, jobs] = await Promise.all([
-        q(db().from('sites').select('id, name, address_text, lifecycle_status, customers(name, customer_type)').order('name')),
-        q(db().from('devices').select('id, site_id, device_uid, lifecycle_status, device_status(last_seen_at, gas_ppm, safety, data_classification), sensors(sensor_uid, sensor_type)').order('created_at')),
+      const [sites, devices, open, recent, members, jobs] = await Promise.all([
+        q(db().from('sites').select('id, name, address_text, lifecycle_status, customer_name, site_type').order('name')),
+        q(db().from('devices').select('id, site_id, device_uid, lifecycle_status, last_seen_at, last_gas_ppm, last_data_classification, sensors(sensor_uid, sensor_type, ro_kohm, calibrated_at)').order('created_at')),
         q(db().from('alert_episodes').select('id, site_id, level, peak_ppm, started_at').is('ended_at', null)),
         q(db().from('alert_episodes').select('site_id').gte('started_at', since)),
-        q(db().from('sensor_calibrations').select('device_id, sensor_uid, measured_at').order('measured_at', { ascending: false })),
         q(db().from('site_memberships').select('site_id, user_id, membership_type, status').eq('status', 'active')),
-        q(db().from('installation_jobs').select('id, site_id, job_type, status, scheduled_for, notes, created_at, job_assignments(technician_user_id, assignment_status)').order('created_at', { ascending: false }).limit(100))
+        q(db().from('installation_jobs').select('id, site_id, job_type, status, scheduled_for, notes, created_at, technician_user_id').order('created_at', { ascending: false }).limit(100))
       ]);
       D.sites = sites.data || []; D.devices = devices.data || []; D.episodes = open.data || []; D.recent = recent.data || [];
-      D.calibrations = cals.data || []; D.memberships = members.data || []; D.jobs = jobs.data || []; D.loaded = true;
+      D.memberships = members.data || []; D.jobs = jobs.data || []; D.loaded = true;
       S.sites = D.sites.map(s => ({ id: s.id, name: s.name, address: s.address_text }));
       ctx.renderSiteSwitch();
       if (S.tab === 'overview') renderOverview();
@@ -43,8 +42,10 @@
     }
 
     const userLabel = id => { const u = (D.users || []).find(x => x.id === id); return u ? (u.displayName || u.email) : 'ผู้ใช้'; };
-    const online = d => { const s = Array.isArray(d.device_status) ? d.device_status[0] : d.device_status; return s && Date.now() - Date.parse(s.last_seen_at) < 30000 && s.data_classification !== 'SYNTHETIC_HANDSHAKE'; };
-    const statusOf = d => (Array.isArray(d.device_status) ? d.device_status[0] : d.device_status) || null;
+    // The board's latest status lives on the device row (last_seen_at, last_gas_ppm, last_data_classification).
+    const online = d => Boolean(d.last_seen_at) && Date.now() - Date.parse(d.last_seen_at) < 30000 && d.last_data_classification !== 'SYNTHETIC_HANDSHAKE';
+    const statusOf = d => (d.last_seen_at ? { last_seen_at: d.last_seen_at, gas_ppm: d.last_gas_ppm } : null);
+    const lastCalibration = d => (d.sensors || []).map(x => x.calibrated_at).filter(Boolean).sort().pop() || null;
 
     function siteRow(s) {
       const devs = D.devices.filter(d => d.site_id === s.id);
@@ -53,7 +54,7 @@
       const max = Math.max(...devs.map(d => { const st = statusOf(d); return st && online(d) && st.gas_ppm != null ? Number(st.gas_ppm) : -1; }), -1);
       const [label, color] = ep ? LEVEL[ep.level] : !devs.length ? ['ยังไม่มีบอร์ด', '#8A94A6'] : on === 0 ? ['ออฟไลน์', '#8A94A6'] : ['ปกติ', '#1F9D55'];
       const events = D.recent.filter(e => e.site_id === s.id).length;
-      return `<tr><td><strong>${esc(s.name)}</strong><small>${esc((s.customers && s.customers.customer_type === 'restaurant') ? 'ร้านอาหาร' : 'บ้าน')}${s.address_text ? ` · ${esc(s.address_text)}` : ''}</small></td>
+      return `<tr><td><strong>${esc(s.name)}</strong><small>${esc(s.site_type === 'restaurant' ? 'ร้านอาหาร' : 'บ้าน')}${s.customer_name ? ` · ${esc(s.customer_name)}` : ''}${s.address_text ? ` · ${esc(s.address_text)}` : ''}</small></td>
         <td><span style="display:inline-flex;align-items:center;gap:6px;font-weight:600"><span class="dot" style="background:${color}"></span>${label}</span></td>
         <td>${max >= 0 ? `${fmtPpm(max)} ppm` : '—'}</td><td>${on} / ${devs.length} ออนไลน์</td><td>${events}</td>
         <td style="white-space:nowrap"><button class="btn btn-small" type="button" data-admin="view-site" data-site="${esc(s.id)}">ดูบ้าน</button> <button class="btn btn-small" type="button" data-admin="manage-site" data-site="${esc(s.id)}">จัดการ</button></td></tr>`;
@@ -65,8 +66,8 @@
       for (const d of D.devices) {
         const st = statusOf(d);
         if (d.lifecycle_status !== 'retired' && (!st || !online(d))) { const s = D.sites.find(x => x.id === d.site_id); items.push({ color: '#8A94A6', title: `${d.device_uid} ออฟไลน์`, detail: `${s ? s.name : ''} · ล่าสุด ${st ? ago(st.last_seen_at) : 'ไม่เคยส่งข้อมูล'} · มอบหมายช่างไปตรวจไฟและ Wi-Fi` }); }
-        const cal = D.calibrations.find(c => c.device_id === d.id);
-        if (d.lifecycle_status !== 'retired' && (!cal || Date.now() - Date.parse(cal.measured_at) > 182 * 86400e3)) items.push({ color: '#4FA3D9', title: `${d.device_uid} ถึงรอบตรวจเทียบเซ็นเซอร์`, detail: cal ? `ตรวจล่าสุด ${fullDate(Date.parse(cal.measured_at))}` : 'ยังไม่มีบันทึกค่า Ro · นัดช่างคาลิเบรต' });
+        const cal = lastCalibration(d);
+        if (d.lifecycle_status !== 'retired' && (!cal || Date.now() - Date.parse(cal) > 182 * 86400e3)) items.push({ color: '#4FA3D9', title: `${d.device_uid} ถึงรอบตรวจเทียบเซ็นเซอร์`, detail: cal ? `ตรวจล่าสุด ${fullDate(Date.parse(cal))}` : 'ยังไม่มีบันทึกค่า Ro · นัดช่างคาลิเบรต' });
       }
       return items.length ? items.slice(0, 12).map(i => `<div class="row"><span class="dot" style="background:${i.color}"></span><div class="row-main"><strong>${esc(i.title)}</strong><small>${esc(i.detail)}</small></div></div>`).join('') : '<p class="empty">ไม่มีเรื่องที่ต้องจัดการตอนนี้</p>';
     }
@@ -155,7 +156,7 @@
             <label class="field" style="grid-column:1/-1"><span>รายละเอียด</span><textarea name="notes" maxlength="1000"></textarea></label>
             <button class="btn btn-primary" type="submit">มอบหมายงาน</button></form>` : '<p class="muted" style="padding:12px 16px">ยังไม่มีบัญชีช่าง สร้างบัญชีที่มีบทบาท "ช่างติดตั้ง" ในแท็บผู้ใช้ก่อน</p>') : ''}
           <div class="table-wrap"><table class="table"><thead><tr><th>สถานที่</th><th>งาน</th><th>วันนัด</th><th>ช่าง</th><th>สถานะ</th><th></th></tr></thead><tbody>
-          ${D.jobs.map(j => { const s = D.sites.find(x => x.id === j.site_id); const a = (j.job_assignments || [])[0]; return `<tr><td><strong>${esc(s ? s.name : '—')}</strong>${j.notes ? `<small style="white-space:pre-line">${esc(j.notes.slice(0, 140))}</small>` : ''}</td><td>${j.job_type === 'service' ? 'ซ่อม / ตรวจเช็ค' : 'ติดตั้งใหม่'}</td><td>${j.scheduled_for ? esc(fullDate(Date.parse(j.scheduled_for))) : '—'}</td><td>${a ? esc(userLabel(a.technician_user_id)) : '—'}</td><td><span class="tag ${j.status === 'completed' ? 'is-ok' : j.status === 'blocked' ? 'is-no' : j.status === 'cancelled' ? 'is-off' : 'is-info'}">${JOB_STATUS[j.status] || j.status}</span></td><td>${['completed', 'cancelled'].includes(j.status) ? '' : `<button class="btn btn-small" type="button" data-admin="cancel-job" data-job="${esc(j.id)}">ยกเลิก</button>`}</td></tr>`; }).join('') || '<tr><td colspan="6" class="empty">ยังไม่มีงาน</td></tr>'}
+          ${D.jobs.map(j => { const s = D.sites.find(x => x.id === j.site_id); return `<tr><td><strong>${esc(s ? s.name : '—')}</strong>${j.notes ? `<small style="white-space:pre-line">${esc(j.notes.slice(0, 140))}</small>` : ''}</td><td>${j.job_type === 'service' ? 'ซ่อม / ตรวจเช็ค' : 'ติดตั้งใหม่'}</td><td>${j.scheduled_for ? esc(fullDate(Date.parse(j.scheduled_for))) : '—'}</td><td>${j.technician_user_id ? esc(userLabel(j.technician_user_id)) : '—'}</td><td><span class="tag ${j.status === 'completed' ? 'is-ok' : j.status === 'blocked' ? 'is-no' : j.status === 'cancelled' ? 'is-off' : 'is-info'}">${JOB_STATUS[j.status] || j.status}</span></td><td>${['completed', 'cancelled'].includes(j.status) ? '' : `<button class="btn btn-small" type="button" data-admin="cancel-job" data-job="${esc(j.id)}">ยกเลิก</button>`}</td></tr>`; }).join('') || '<tr><td colspan="6" class="empty">ยังไม่มีงาน</td></tr>'}
           </tbody></table></div></section>`);
     }
 
@@ -189,7 +190,6 @@
       else if (act === 'cancel-job') {
         if (!confirm('ยกเลิกงานนี้?')) return;
         const { error } = await q(db().from('installation_jobs').update({ status: 'cancelled' }).eq('id', el.dataset.job));
-        if (!error) await q(db().from('job_assignments').update({ assignment_status: 'cancelled' }).eq('job_id', el.dataset.job));
         toast(error ? 'ยกเลิกไม่สำเร็จ' : 'ยกเลิกงานแล้ว'); loadAll();
       }
     });
@@ -204,9 +204,7 @@
 
     async function onSubmit(kind, form, data) {
       if (kind === 'admin-site') {
-        const customer = await q(db().from('customers').insert({ name: data.customer || data.name, customer_type: data.type }).select('id').single());
-        if (customer.error) { toast('บันทึกไม่สำเร็จ'); return; }
-        const site = await q(db().from('sites').insert({ customer_id: customer.data.id, name: data.name, address_text: data.address || null, lifecycle_status: 'commissioning' }).select('id').single());
+        const site = await q(db().from('sites').insert({ name: data.name, customer_name: data.customer || null, site_type: data.type, address_text: data.address || null, lifecycle_status: 'commissioning' }).select('id').single());
         if (site.error) { toast('บันทึกไม่สำเร็จ'); return; }
         showSiteForm = false; openSite = site.data.id; toast('เพิ่มสถานที่แล้ว ต่อไปเพิ่มบอร์ดและเจ้าของบ้าน');
         await loadAll();
@@ -228,10 +226,10 @@
         showUserForm = false; toast('สร้างบัญชีแล้ว ส่งอีเมลและรหัสผ่านชั่วคราวให้ผู้ใช้ทางช่องทางส่วนตัว');
         await Promise.all([loadUsers(), loadAll()]);
       } else if (kind === 'admin-job') {
-        const job = await q(db().from('installation_jobs').insert({ site_id: data.site, job_type: data.type, scheduled_for: data.date ? new Date(`${data.date}T09:00:00`).toISOString() : null, notes: data.notes || null, status: 'scheduled' }).select('id').single());
+        const job = await q(db().from('installation_jobs').insert({ site_id: data.site, job_type: data.type, scheduled_for: data.date ? new Date(`${data.date}T09:00:00`).toISOString() : null,
+          notes: data.notes || null, status: 'scheduled', technician_user_id: data.tech, assigned_at: new Date().toISOString() }));
         if (job.error) { toast('สร้างงานไม่สำเร็จ'); return; }
-        const assign = await q(db().from('job_assignments').insert({ job_id: job.data.id, technician_user_id: data.tech }));
-        toast(assign.error ? 'สร้างงานแล้ว แต่มอบหมายช่างไม่สำเร็จ' : 'มอบหมายงานแล้ว');
+        toast('มอบหมายงานแล้ว');
         showJobForm = false; loadAll();
       }
     }

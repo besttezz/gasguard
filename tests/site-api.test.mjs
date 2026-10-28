@@ -102,11 +102,13 @@ assert.match(api.templateSummary({ hours_with_data: 0 }), /ยังไม่ม
 const SITE = '22222222-2222-2222-2222-222222222222';
 let stored = null;
 const summaryRoutes = gemini => fakeFetch([
-  ['/rest/v1/sites?', () => jsonRes(200, [{ id: SITE }])],
-  ['/rest/v1/ai_summaries?', () => jsonRes(200, [])],
+  // One route serves the visibility check, the cached-summary read and the PATCH that stores sites.ai_summary.
+  ['/rest/v1/sites?', (u, init) => {
+    if (init && init.method === 'PATCH') { stored = JSON.parse(init.body).ai_summary; return jsonRes(204, null); }
+    return jsonRes(200, [{ id: SITE, ai_summary: null }]);
+  }],
   ['/rest/v1/telemetry_hourly', () => jsonRes(200, hourly)],
   ['/rest/v1/alert_episodes', () => jsonRes(200, [])],
-  ['/rest/v1/ai_summaries', (u, init) => { stored = JSON.parse(init.body); return jsonRes(201, null); }],
   ['generativelanguage.googleapis.com', () => (gemini ? jsonRes(200, { candidates: [{ content: { parts: [{ text: 'สัปดาห์นี้ปลอดภัยดี' }] } }] }) : jsonRes(500, {}))]
 ]);
 r = await api.handleSummary(req('/s', { method: 'POST', body: JSON.stringify({ siteId: SITE }), headers: { authorization: 'Bearer user' } }), env, summaryRoutes(true));

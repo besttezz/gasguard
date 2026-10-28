@@ -207,10 +207,12 @@ export async function handleStatus(request, env, fetchImpl = fetch, now = Date.n
   };
 
   try {
-    const devices = await get(`devices?select=id,device_uid,device_status(*)&device_uid=eq.${encodeURIComponent(deviceUid)}`);
+    const devices = await get(`devices?select=id,device_uid,last_seen_at,last_gas_ppm,last_data_classification,last_calibration_status&device_uid=eq.${encodeURIComponent(deviceUid)}`);
     const device = devices[0];
-    const state = Array.isArray(device?.device_status) ? device.device_status[0] : device?.device_status;
-    if (!device || !state) return json(200, waiting(workspaceId, deviceUid));
+    if (!device || !device.last_seen_at) return json(200, waiting(workspaceId, deviceUid));
+    // The board's latest status is kept on its device row.
+    const state = { last_seen_at: device.last_seen_at, gas_ppm: device.last_gas_ppm, data_classification: device.last_data_classification,
+      calibration_status: device.last_calibration_status, safety: null };
 
     const since = new Date(now() - HISTORY_MS).toISOString();
     const readings = await get(`telemetry_readings?select=sensor_uid,sensor_type,raw_adc,sensor_voltage,input_adjusted_voltage,calibration_status,gas_ppm,received_at&device_id=eq.${device.id}&received_at=gte.${encodeURIComponent(since)}&order=received_at.desc&limit=${HISTORY_LIMIT}`);

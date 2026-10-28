@@ -100,7 +100,7 @@ const post = (body, headers = { 'x-device-key': KEY }) => new Request('https://g
   const statusFetch = (lastSeen, rows) => async (url, init) => {
     assert.strictEqual(init.headers.authorization, 'Bearer user-token', 'status queries run as the signed-in user');
     assert.strictEqual(init.headers.apikey, env.SUPABASE_ANON_KEY, 'status never uses the service key');
-    if (url.includes('/rest/v1/devices?')) return new Response(JSON.stringify(lastSeen ? [{ id: 'dev-1', device_uid: 'ESP32-KITCHEN-01', device_status: { last_seen_at: lastSeen, data_classification: 'DEVICE_DATA', calibration_status: 'CALIBRATION_REQUIRED', safety: null, gas_ppm: null } }] : []), { status: 200 });
+    if (url.includes('/rest/v1/devices?')) return new Response(JSON.stringify(lastSeen ? [{ id: 'dev-1', device_uid: 'ESP32-KITCHEN-01', last_seen_at: lastSeen, last_data_classification: 'DEVICE_DATA', last_calibration_status: 'CALIBRATION_REQUIRED', last_gas_ppm: null }] : []), { status: 200 });
     if (url.includes('/rest/v1/telemetry_readings?')) return new Response(JSON.stringify(rows), { status: 200 });
     throw new Error('unexpected ' + url);
   };

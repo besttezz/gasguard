@@ -45,3 +45,6 @@ supabase/.temp/
 
 # Local-only secrets (device keys issued by tools/new-device-key.js)
 .secrets/
+
+# Local database backups (contain user data)
+.backups/

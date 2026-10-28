@@ -29,8 +29,8 @@ assert.match(app, /authorization: `Bearer \$\{token\}`/);
 assert.match(app, /general: \['home', 'plan', 'history', 'mine'\]/);
 assert.match(app, /technician: \['jobs', 'install', 'plan', 'mine'\]/);
 assert.match(app, /admin: \['overview', 'users', 'work'/);
-for (const call of ["from('floor_plans')", "from('telemetry_hourly')", "from('alert_episodes')", "from('site_settings')", "rpc('site_members'", "rpc('can_edit_site'",
-  "rpc('create_site_invitation'", "rpc('claim_site_invitation'", "rpc('ack_alert'", "rpc('create_line_link_code')", "rpc('set_member_alert_level'", '/api/v1/site/summary', '/api/v1/invite/signup']) {
+for (const call of ["select('floor_plan')", "rpc('save_floor_plan'", "from('telemetry_hourly')", "from('alert_episodes')", "rpc('save_site_care'", "rpc('site_members'", "rpc('can_edit_site'",
+  "rpc('create_site_invitation'", "rpc('claim_site_invitation'", "rpc('ack_alert'", "rpc('create_line_link_code')", "rpc('unlink_line')", "rpc('set_member_alert_level'", '/api/v1/site/summary', '/api/v1/invite/signup']) {
   assert.ok(app.includes(call), `app uses ${call}`);
 }
 assert.match(app, /neq\('data_classification', 'SYNTHETIC_HANDSHAKE'\)/, 'handshake test packets never show up in history');
@@ -41,9 +41,9 @@ for (const f of ['js/owner-app.js', 'js/tech-views.js', 'js/admin-views.js']) {
   assert.ok(!/db\(\)[^;\n]*\)\.catch\(/.test(read(f)), `${f}: Supabase builders go through q(), never .catch()`);
 }
 const tech = read('js/tech-views.js');
-assert.match(tech, /from\('job_assignments'\)/);
+assert.match(tech, /from\('installation_jobs'\)[\s\S]*eq\('technician_user_id', S\.user\.id\)/, 'a technician lists the jobs that name them');
 assert.match(tech, /rpc\('set_job_progress'/);
-assert.match(tech, /from\('sensor_calibrations'\)\.insert/);
+assert.match(tech, /rpc\('save_sensor_calibration'/);
 const admin = read('js/admin-views.js');
 assert.match(admin, /rpc\('admin_issue_device_credential', \{ p_device_id: deviceId, p_credential_hash: await sha256Hex\(key\) \}\)/, 'device keys are generated in the browser; only the hash is stored');
 assert.match(admin, /\/api\/v1\/admin\/users/);
@@ -73,6 +73,21 @@ assert.match(sql, /for select to authenticated\s+using \(public\.can_view_site\(
 assert.match(sql, /for insert to authenticated\s+with check \(public\.can_edit_site\(site_id\) and updated_by = auth\.uid\(\)\)/);
 assert.match(sql, /revoke all on table public\.floor_plans from anon/);
 console.log('  [4] floor_plans RLS: members read, owners/admins write: PASS');
+
+// [4b] Lean schema: 10 tables. Side tables became columns; the code no longer touches the dropped ones.
+const lean = read('supabase/migrations/20261028000000_lean_schema.sql');
+const dropped = ['customers', 'zones', 'safety_events', 'device_status', 'alert_acks', 'user_line_links', 'site_settings', 'ai_summaries',
+  'sensor_calibrations', 'floor_plans', 'job_assignments'];
+for (const t of dropped) assert.match(lean, new RegExp(`drop table public\\.${t};`), `${t} dropped`);
+for (const t of ['owner_invitations', 'device_enrollment_tokens', 'line_link_codes']) assert.match(lean, new RegExp(`drop table private\\.${t};`), `private.${t} dropped`);
+const allCode = ['js/owner-app.js', 'js/admin-views.js', 'js/tech-views.js', 'cloud/site-api.mjs', 'cloud/device-api.mjs'].map(read).join('\n');
+for (const t of dropped) assert.ok(!new RegExp(`(from\\('|/rest/v1/)${t}\\b|${t}\\(`).test(allCode), `no code reads ${t}`);
+assert.match(lean, /grant update \(display_name, theme\) on public\.profiles to authenticated/, 'users cannot set their own LINE id');
+for (const fn of ['save_floor_plan', 'save_site_care', 'save_sensor_calibration']) {
+  assert.match(lean, new RegExp(`function public\\.${fn}\\([\\s\\S]*?if (v_site is null or )?not public\\.can_edit_site`), `${fn} checks edit rights`);
+}
+assert.match(lean, /update public\.devices set last_seen_at = v_now/, 'ingest keeps the latest status on the device row');
+console.log('  [4b] Lean schema: 10 tables, data copied, dropped tables unused by the code: PASS');
 
 // [5] Who sees what: technical detail and the simulator are for the crew; home users get plain words.
 assert.match(app, /developer: \['home', 'plan', 'history', 'tools', 'mine'\]/, 'developer has its own tools tab');
