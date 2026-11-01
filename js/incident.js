@@ -103,5 +103,112 @@
   // Changes only when the story changes (level, pattern or the zone), so the AI is not asked every tick.
   const storyKey = f => (f ? `${f.level}|${f.pattern}|${f.zone}|${f.sensors_above_watch > 1 ? 'many' : 'one'}` : '');
 
-  return Object.freeze({ facts, explain, storyKey, placeOf });
+  // ---- After the event: a short report -------------------------------------------------------------
+  // While the level is watch or above the app keeps a running record (track); when the level is back to green it
+  // closes it (finish). The report covers what this screen saw; the AI may only reword it.
+  const RANK = { watch: 1, warning: 2, danger: 3 };
+  const LEVEL_TH = { watch: 'เฝ้าระวัง', warning: 'เตือน', danger: 'อันตราย' };
+  const minutesBetween = (a, b) => Math.max(0, Math.round((b - a) / 6e3) / 10);
+
+  function track(inc, f, now = Date.now()) {
+    if (!f) return inc || null;
+    const r = inc || {
+      started_at: f.minutes ? now - f.minutes * 60e3 : now, start_ppm: f.start_ppm, peak_ppm: -1, peak_lel: null, peak_at: now,
+      peak_level: f.level, zone: f.zone, room: f.room, near: f.near, patterns: [], zones: [], escalated: false, simulated: f.simulated
+    };
+    if (f.ppm != null && f.ppm > r.peak_ppm) Object.assign(r, { peak_ppm: f.ppm, peak_lel: f.lel_percent, peak_at: now, zone: f.zone, room: f.room, near: f.near });
+    if (RANK[f.level] > RANK[r.peak_level]) r.peak_level = f.level;
+    if ((f.pattern === 'accumulating' || f.pattern === 'spike') && !r.patterns.includes(f.pattern)) r.patterns.push(f.pattern);
+    for (const z of [f.zone, ...f.others.filter(o => RANK[o.level]).map(o => o.zone)]) if (!r.zones.includes(z)) r.zones.push(z);
+    r.escalated = r.escalated || f.escalated;
+    return r;
+  }
+
+  function finish(inc, now = Date.now()) {
+    if (!inc) return null;
+    const clock = new Date(inc.started_at);
+    return {
+      peak_level: inc.peak_level, peak_ppm: inc.peak_ppm < 0 ? null : inc.peak_ppm, peak_lel: inc.peak_lel,
+      zone: inc.zone, room: inc.room, near: inc.near,
+      first_pattern: inc.patterns[0] || 'none', patterns: inc.patterns.slice(),
+      started_clock: `${String(clock.getHours()).padStart(2, '0')}:${String(clock.getMinutes()).padStart(2, '0')}`,
+      started_at: inc.started_at, ended_at: now,
+      minutes_total: minutesBetween(inc.started_at, now), minutes_to_peak: minutesBetween(inc.started_at, inc.peak_at), minutes_to_clear: minutesBetween(inc.peak_at, now),
+      start_ppm: inc.start_ppm, zones_affected: inc.zones.length || 1, escalated: inc.escalated, simulated: inc.simulated
+    };
+  }
+
+  const span = m => (m == null ? '-' : m < 1 ? `${Math.max(1, Math.round(m * 60))} วินาที` : `${Math.round(m * 10) / 10} นาที`);
+  const patternTh = r => (r.patterns.length > 1 ? 'เริ่มจากแก๊สค่อย ๆ สะสม แล้วพุ่งขึ้นเร็ว'
+    : r.first_pattern === 'spike' ? 'ค่าพุ่งขึ้นเร็วแบบรั่วกระชาก' : r.first_pattern === 'accumulating' ? 'แก๊สค่อย ๆ สะสม' : 'ค่าแก๊สสูงขึ้น');
+
+  function reportText(r) {
+    if (!r) return '';
+    const where = [r.room, r.near ? `ใกล้${PLACE_TH[r.near]}` : null].filter(Boolean).join(' ');
+    const out = [`เหตุการณ์เริ่มเวลา ${r.started_clock} น. ที่จุด ${r.zone}${where ? ` (${where})` : ''} ${patternTh(r)}`];
+    out.push(`ขึ้นไปสูงสุด${r.peak_ppm != null ? ` ${fmt(r.peak_ppm)} ppm (${r.peak_lel}% ของจุดติดไฟ)` : ''} ถึงระดับ${LEVEL_TH[r.peak_level]} ภายใน ${span(r.minutes_to_peak)} แล้วกลับเป็นปกติใน ${span(r.minutes_to_clear)} รวม ${span(r.minutes_total)}`);
+    if (r.zones_affected > 1) out.push(`แก๊สกระจายไป ${r.zones_affected} จุด`);
+    out.push(r.patterns.includes('spike')
+      ? 'สาเหตุที่เป็นไปได้คือสายแก๊สหลุดหรือขาด หรือวาล์วและหัวเตาเปิดค้าง'
+      : 'สาเหตุที่เป็นไปได้คือรั่วซึมที่ข้อต่อ เกลียววาล์ว หรือสายแก๊สเสื่อม ในห้องที่อากาศไม่ถ่ายเท');
+    return out.join(' ');
+  }
+
+  function checklist(r) {
+    if (!r) return [];
+    const out = ['ตรวจรอยรั่วด้วยน้ำสบู่ที่ข้อต่อ วาล์ว และสายแก๊ส ห้ามใช้ไฟแช็กหาจุดรั่ว'];
+    if (r.patterns.includes('spike')) out.push('ดูว่าสายแก๊สหลุดหรือขาดไหม และเข็มขัดรัดสายยังแน่นอยู่');
+    else out.push('ขันข้อต่อและหัวเตาให้แน่น และเปิดหน้าต่างระหว่างใช้เตาทุกครั้ง');
+    if (r.peak_level !== 'watch') out.push('ให้ช่างแก๊สตรวจก่อนใช้งานอีกครั้ง');
+    out.push('บอกคนในบ้านให้รู้ และสังเกตว่าเกิดซ้ำหรือไม่');
+    return out;
+  }
+
+  // ---- Ask GasGuard ----------------------------------------------------------------------------------
+  // Ready-made questions answer from the rules at once; the AI may answer in its own words from the same status.
+  const PRESETS = Object.freeze([
+    { key: 'cook', q: 'ตอนนี้จุดเตาได้ไหม' },
+    { key: 'where', q: 'แก๊สมาจากไหน' },
+    { key: 'todo', q: 'ตอนนี้ต้องทำอะไร' },
+    { key: 'switch', q: 'ทำไมห้ามเปิด-ปิดสวิตช์ไฟ' },
+    { key: 'lel', q: '%LEL คืออะไร' }
+  ]);
+  const CHECK_KEYS = ['online', 'sensors_ok', 'all_green', 'no_trend']; // same order as L.assess checks
+
+  function status(a, opts = {}) {
+    return {
+      level: a.level.key,
+      ready_to_cook: Boolean(a.readyToCook),
+      failed_checks: a.checks.map((c, i) => (c.ok ? null : CHECK_KEYS[i])).filter(Boolean),
+      sensors: a.sensors.map((s, i) => {
+        const p = placeOf(opts.plan, s.id);
+        return { zone: p.zone || String.fromCharCode(65 + i), room: p.room, near: p.near, ppm: round(s.ppm), level: s.level.key, pattern: s.trend.key };
+      }),
+      simulated: Boolean(opts.sim)
+    };
+  }
+
+  function answer(key, a, opts = {}) {
+    const T = L.THRESHOLDS, lel = v => Math.round((v / L.LEL_PPM) * 100);
+    if (key === 'cook') {
+      if (a.readyToCook) return 'จุดเตาได้ บอร์ดออนไลน์ เซ็นเซอร์ทุกตัวทำงานปกติ ค่าแก๊สทุกจุดเป็นสีเขียว และไม่มีแนวโน้มแก๊สสะสม ใช้เสร็จแล้วอย่าลืมปิดวาล์วถังแก๊ส';
+      return `ยังไม่ควรจุดเตา เพราะยังไม่ผ่าน: ${a.checks.filter(c => !c.ok).map(c => c.label).join(', ')}`;
+    }
+    if (key === 'where') {
+      const f = facts(a, opts.history, opts);
+      if (f) return explain(f);
+      if (!a.worst) return 'ยังไม่มีข้อมูลจากเซ็นเซอร์ จึงยังบอกไม่ได้';
+      const z = placeOf(opts.plan, a.worst.id).zone || 'A';
+      return `ตอนนี้ไม่พบแก๊สผิดปกติ ค่าสูงสุดอยู่ที่จุด ${z} ${fmt(round(a.worst.ppm))} ppm ซึ่งยังอยู่ในระดับปกติ`;
+    }
+    if (key === 'todo') return `${a.level.headline} ${a.level.actions.join(' ')}`;
+    if (key === 'switch') return 'การเปิด-ปิดสวิตช์ไฟหรือเสียบปลั๊กทำให้เกิดประกายไฟเล็ก ๆ ข้างในสวิตช์ ถ้าในอากาศมีแก๊ส LPG ราว 1.8–9.5% (ช่วงที่ติดไฟได้) ประกายไฟนี้จุดระเบิดได้ทันที จึงต้องระบายอากาศและรอให้ค่ากลับเป็นสีเขียวก่อนแตะสวิตช์ทุกชนิด';
+    if (key === 'lel') {
+      const now = a.worst && a.worst.lel != null ? ` ตอนนี้ค่าสูงสุดคือ ${Math.round(a.worst.lel * 10) / 10}% LEL` : '';
+      return `LEL (Lower Explosive Limit) คือความเข้มข้นต่ำสุดของแก๊สในอากาศที่ติดไฟได้ ของ LPG ประมาณ 1.8% ของอากาศ หรือ ${fmt(L.LEL_PPM)} ppm GasGuard เตือนเป็น % ของค่านี้ คือเฝ้าระวังที่ ${lel(T.watch)}% (${fmt(T.watch)} ppm) เตือนที่ ${lel(T.warning)}% และอันตรายที่ ${lel(T.danger)}% เพื่อให้เตือนก่อนถึงจุดที่ติดไฟได้หลายเท่า${now}`;
+    }
+    return '';
+  }
+
+  return Object.freeze({ facts, explain, storyKey, placeOf, track, finish, reportText, checklist, PRESETS, status, answer, span, LEVEL_TH });
 });

@@ -57,7 +57,7 @@
   const S = {
     user: null, role: 'general', profileName: null, sites: [], site: null, devices: [], device: null, membership: null, canEdit: false,
     real: null, offlineApi: false, members: null, settings: null, episode: null, config: null, lineLinked: null, lineCode: null,
-    summary: null, summaryLoading: false, explain: null, why: null, sim: null, simTimer: null, scenario: 'cycle', tab: null, range: '1h',
+    summary: null, summaryLoading: false, explain: null, why: null, incident: null, report: null, ask: null, sim: null, simTimer: null, scenario: 'cycle', tab: null, range: '1h',
     hourly: null, hourlyKey: '', hourlyLoading: false, planCtl: null, alarmTest: false, pollTimer: null, alarmWasHidden: true,
     invite: null, inviteToken: null, inviteForm: null, views: {}
   };
@@ -289,23 +289,100 @@
     const f = Incident.facts(a, st.history, { plan, sim: Boolean(S.sim || window.GasGuardTrial) });
     if (!f) { S.explain = null; return null; }
     const key = Incident.storyKey(f);
-    if (!S.explain || S.explain.key !== key) { S.explain = { key, ai: null, loading: false }; requestExplain(f, key); }
-    const ai = S.explain.ai;
-    return {
-      f, text: ai ? ai.text : Incident.explain(f), pattern: a.worst.trend.label,
-      by: ai ? `อธิบายโดย AI (${ai.model || 'Gemini'}) เมื่อ ${clock(ai.at)}` : S.explain.loading ? 'กำลังให้ AI อธิบาย…' : 'อธิบายอัตโนมัติจากข้อมูล'
-    };
+    if (!S.explain || S.explain.key !== key) { S.explain = { key, ai: null, loading: false }; requestAi(S.explain, { task: 'explain', facts: f }); }
+    return { f, text: S.explain.ai ? S.explain.ai.text : Incident.explain(f), pattern: a.worst.trend.label, by: aiBy(S.explain, 'อธิบาย') };
   }
 
-  async function requestExplain(f, key) {
-    // The trial does not know whether AI is set up; it just asks and keeps the rule text if the answer is no.
-    if (!window.GasGuardTrial && !(S.config && S.config.ai && S.config.ai.configured)) return;
-    S.explain.loading = true;
-    const r = await api('/api/v1/site/explain', { method: 'POST', body: JSON.stringify({ facts: f }) }).catch(() => ({ ok: false }));
-    if (!S.explain || S.explain.key !== key) return;
-    S.explain.loading = false;
-    if (r.ok && r.body && r.body.text) S.explain.ai = { text: r.body.text, model: r.body.model, at: Date.now() };
+  // The three AI jobs (explain, report, ask) share one endpoint. Each holder shows rule text until the AI answers.
+  // The trial does not know whether AI is set up; it just asks and keeps the rule text if the answer is no.
+  const aiOn = () => Boolean(window.GasGuardTrial || (S.config && S.config.ai && S.config.ai.configured));
+  async function requestAi(holder, payload) {
+    if (!aiOn()) return;
+    holder.loading = true;
+    const r = await api('/api/v1/site/explain', { method: 'POST', body: JSON.stringify(payload) }).catch(() => ({ ok: false }));
+    holder.loading = false;
+    if (r.ok && r.body && r.body.text) holder.ai = { text: r.body.text, model: r.body.model, at: Date.now() };
+    else holder.failed = true;
     render();
+  }
+  const aiBy = (h, verb) => (h.ai ? `${verb}โดย AI (${h.ai.model || 'Gemini'}) เมื่อ ${clock(h.ai.at)}` : h.loading ? `กำลังให้ AI ${verb}…` : `${verb}อัตโนมัติจากข้อมูล`);
+
+  // Keeps a record while the level is watch or above; when it is back to green, the record becomes a report.
+  function followIncident(a) {
+    const now = Date.now();
+    if (S.why) { S.incident = Incident.track(S.incident, S.why.f, now); return; }
+    if (!S.incident || a.level.key !== 'safe') return;
+    const r = Incident.finish(S.incident, now);
+    S.incident = null;
+    S.report = { r, ai: null, loading: false };
+    requestAi(S.report, { task: 'report', facts: r });
+  }
+
+  function reportCard() {
+    const h = S.report;
+    if (!h) return '';
+    const r = h.r, lv = L.LEVELS[r.peak_level];
+    const where = [r.room, r.near ? (r.near === 'tank' ? 'ใกล้ถังแก๊ส' : 'ใกล้เตาแก๊ส') : null].filter(Boolean).join(' · ');
+    const kind = r.patterns.length > 1 ? 'สะสม แล้วพุ่งเร็ว' : r.first_pattern === 'spike' ? 'รั่วกระชาก (พุ่งเร็ว)' : r.first_pattern === 'accumulating' ? 'ค่อย ๆ สะสม' : 'ค่าสูงขึ้น';
+    return `<section class="card why report-card is-${r.peak_level}">
+      <div class="card-head"><h2 style="display:flex;align-items:center;gap:8px">${ICON.spark} รายงานเหตุการณ์ล่าสุด</h2><span class="tag why-tag">สูงสุด: ${esc(lv.label)}</span></div>
+      <dl class="incident-facts">
+        <div><dt>เริ่ม</dt><dd>${esc(r.started_clock)} น.</dd></div><div><dt>นาน</dt><dd>${esc(Incident.span(r.minutes_total))}</dd></div>
+        <div><dt>สูงสุด</dt><dd>${r.peak_ppm == null ? '—' : `${fmtPpm(r.peak_ppm)} ppm`}</dd></div><div><dt>จุด</dt><dd>${esc(r.zone)}${where ? ` <small>${esc(where)}</small>` : ''}</dd></div>
+        <div><dt>ลักษณะ</dt><dd>${esc(kind)}</dd></div><div><dt>ถึงจุดสูงสุดใน</dt><dd>${esc(Incident.span(r.minutes_to_peak))}</dd></div>
+      </dl>
+      <p class="why-text">${esc(h.ai ? h.ai.text : Incident.reportText(r))}</p>
+      <ul class="incident-todo">${Incident.checklist(r).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+      <p class="muted small">${esc(aiBy(h, 'เขียน'))} · จากข้อมูลที่แอปเห็นระหว่างเปิดอยู่${S.sim || window.GasGuardTrial ? ' · ค่าจำลอง' : ''}</p>
+      <div class="actions"><button class="btn btn-small" type="button" data-action="incident-print">${ICON.print} พิมพ์รายงาน</button><button class="btn btn-small" type="button" data-action="incident-close">ปิด</button></div>
+    </section>`;
+  }
+
+  function printIncident() {
+    const h = S.report;
+    if (!h) return;
+    const r = h.r;
+    $('#report').innerHTML = `<header class="report-head"><div><h1>รายงานเหตุการณ์แก๊ส LPG</h1><p>${esc(S.site ? S.site.name : 'บ้านของฉัน')}${S.sim || window.GasGuardTrial ? ' · ข้อมูลจำลอง' : ''}</p></div><div class="report-brand">GasGuard</div></header>
+      <table class="report-meta"><tr><th>เริ่ม</th><td>${esc(r.started_clock)} น. ${fullDate(r.started_at)}</td><th>นาน</th><td>${esc(Incident.span(r.minutes_total))}</td></tr>
+      <tr><th>ระดับสูงสุด</th><td>${esc(L.LEVELS[r.peak_level].label)}</td><th>ค่าสูงสุด</th><td>${r.peak_ppm == null ? '—' : `${fmtPpm(r.peak_ppm)} ppm (${r.peak_lel}% LEL)`}</td></tr>
+      <tr><th>จุด</th><td>${esc(r.zone)}${r.room ? ` · ${esc(r.room)}` : ''}</td><th>ถึงจุดสูงสุดใน / กลับปกติใน</th><td>${esc(Incident.span(r.minutes_to_peak))} / ${esc(Incident.span(r.minutes_to_clear))}</td></tr></table>
+      <h2>เกิดอะไรขึ้น</h2><p>${esc(h.ai ? h.ai.text : Incident.reportText(r))}</p>
+      <h2>สิ่งที่ควรทำต่อ</h2><ul>${Incident.checklist(r).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+      <p class="report-note">${esc(aiBy(h, 'เขียน'))} · ระดับและตัวเลขมาจากเซ็นเซอร์และกฎของระบบ ไม่ใช่ AI · ออกรายงาน ${new Date().toLocaleString('th-TH')}</p>`;
+    $('#report').hidden = false;
+    setTimeout(() => { window.print(); }, 150);
+  }
+
+  // Ask GasGuard: ready-made questions answer from the rules at once, then in the AI's words. Signed-in homes with
+  // AI set up may also type a question (the trial may not, so it cannot be used as a free chatbot).
+  function askNow(preset, typed) {
+    const st = shown(), a = L.assess(st, Date.now());
+    const plan = S.planCtl ? S.planCtl.plan() : FP.loadPlan(planKey());
+    const opts = { plan, sim: Boolean(S.sim || window.GasGuardTrial), history: st.history };
+    const p = Incident.PRESETS.find(x => x.key === preset);
+    S.ask = {
+      q: p ? p.q : typed, level: a.level, ready: a.readyToCook, ai: null, loading: false,
+      rule: p ? Incident.answer(preset, a, opts) : 'AI ยังตอบไม่ได้ตอนนี้ ลองเลือกคำถามสำเร็จรูปด้านบน'
+    };
+    requestAi(S.ask, { task: 'ask', facts: Incident.status(a, opts), ...(p ? { preset } : { question: typed }) });
+    render();
+  }
+
+  function askCard() {
+    const canType = !window.GasGuardTrial && S.config && S.config.ai && S.config.ai.configured;
+    const h = S.ask;
+    const answer = !h ? '' : `<div class="ask-answer">
+        <p class="ask-q">${esc(h.q)}</p>
+        <p class="ask-rule"><span class="dot" style="background:${h.level.color}"></span>ตามกฎตอนที่ถาม: ${esc(h.level.rank >= 0 ? h.level.label : 'ไม่มีข้อมูล')} · ${h.ready ? 'พร้อมจุดเตา' : 'ยังไม่ควรจุดเตา'}</p>
+        <p class="why-text">${esc(h.ai ? h.ai.text : h.rule)}</p>
+        <p class="muted small">${esc(aiBy(h, 'ตอบ'))}</p>
+      </div>`;
+    return `<section class="card ask">
+      <div class="card-head"><h2 style="display:flex;align-items:center;gap:8px">${ICON.spark} ถาม GasGuard</h2><span class="tag is-info">AI</span></div>
+      <div class="chips">${Incident.PRESETS.map(p => `<button class="chip${h && h.q === p.q ? ' is-on' : ''}" type="button" data-action="ask" data-preset="${p.key}">${esc(p.q)}</button>`).join('')}</div>
+      ${canType ? '<form class="ask-form" data-form="ask"><input name="q" maxlength="200" autocomplete="off" placeholder="พิมพ์คำถามเรื่องแก๊สในบ้าน…" aria-label="คำถาม"><button class="btn btn-small btn-primary" type="submit">ถาม</button></form>' : ''}
+      ${answer}
+    </section>`;
   }
 
   function whyCard() {
@@ -414,6 +491,7 @@
     const a = L.assess(st, Date.now());
     alarm.update(a.level);
     S.why = whatHappened(st, a);
+    followIncident(a);
     renderTopbar(st);
     renderAlarm(a);
     if (S.planCtl) S.planCtl.update(readingsMap(a));
@@ -473,10 +551,12 @@
           <div class="hero-foot">${sound}${ack}</div>
         </section>
         ${whyCard()}
+        ${reportCard()}
         <section class="card">
           <div class="card-head"><h2>ตรวจก่อนจุดเตา</h2><span class="tag ${a.readyToCook ? 'is-ok' : 'is-no'}">${a.readyToCook ? 'พร้อมใช้งาน' : 'ยังไม่ควรจุดเตา'}</span></div>
           <ul class="checks">${a.checks.map(c => `<li class="${c.ok ? 'is-ok' : 'is-no'}"><span aria-hidden="true">${c.ok ? '✓' : '✕'}</span>${esc(c.label)}</li>`).join('')}</ul>
         </section>
+        ${askCard()}
       </div>
       <div class="view">
         ${remindHtml}
@@ -1028,6 +1108,9 @@
     else if (action === 'sign-out') signOut();
     else if (action === 'summary') loadSummary(Boolean(S.summary && !S.summary.error));
     else if (action === 'report') printReport();
+    else if (action === 'ask') askNow(el.dataset.preset);
+    else if (action === 'incident-print') printIncident();
+    else if (action === 'incident-close') { S.report = null; render(); }
     else if (action === 'invite-open') { S.inviteForm = {}; renderMine(); }
     else if (action === 'invite-done') { S.inviteForm = null; renderMine(); }
     else if (action === 'invite-copy') { try { await navigator.clipboard.writeText(S.inviteForm.link); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้ กดค้างที่ลิงก์เพื่อคัดลอก'); } }
@@ -1081,6 +1164,11 @@
     if (!kind) return;
     evt.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
+    if (kind === 'ask') {
+      const typed = String(data.q || '').trim().slice(0, 200);
+      if (typed) { askNow(null, typed); form.reset(); }
+      return;
+    }
     if (kind === 'invite') {
       const token = randomHex(32);
       const { error } = await q(db().rpc('create_site_invitation', { p_site_id: S.site.id, p_token_hash: await sha256Hex(token), p_membership_type: data.type, p_alert_min_level: data.level }));

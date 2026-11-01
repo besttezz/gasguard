@@ -14,10 +14,10 @@ const plan = {
     { type: 'sensor', label: 'A', sensorId: 'MQ6-01', x: 110, y: 200 }, { type: 'sensor', label: 'B', sensorId: 'MQ2-01', x: 420, y: 60 }]
 };
 // Builds a status payload: one reading per sensor every 10 s for the given ppm series (oldest first).
-function state(a, b) {
+function state(a, b, at = now) {
   const history = [];
   a.forEach((v, i) => {
-    const t = iso(now - (a.length - 1 - i) * 10e3);
+    const t = iso(at - (a.length - 1 - i) * 10e3);
     history.push({ sensorId: 'MQ6-01', gasPpm: v, receivedAt: t });
     history.push({ sensorId: 'MQ2-01', gasPpm: b[i], receivedAt: t });
   });
@@ -79,5 +79,48 @@ assert.strictEqual(f.zone, 'A');
 assert.strictEqual(f.room, null);
 assert.match(I.explain(f), /^ตรวจพบแก๊สที่จุด A \d/);
 console.log('  [5] Works without a floor plan: PASS');
+
+// [6] After-event report: tracks the peak, the patterns seen and the zones, then closes when back to green
+st = state([150, 160, 150, 2600], [90, 95, 90, 300]);
+let inc = I.track(null, I.facts(L.assess(st, now), st.history, { plan, now }), now);
+st = state([150, 2600, 3000, 4200], [90, 300, 1200, 2000], now + 60e3);
+inc = I.track(inc, I.facts(L.assess(st, now + 60e3), st.history, { plan, now: now + 60e3 }), now + 60e3);
+assert.strictEqual(I.track(inc, null, now + 90e3), inc, 'no facts, nothing changes');
+const rep = I.finish(inc, now + 180e3);
+assert.strictEqual(rep.peak_level, 'danger');
+assert.strictEqual(rep.peak_ppm, 4200);
+assert.strictEqual(rep.first_pattern, 'spike');
+assert.strictEqual(rep.zones_affected, 2);
+assert.deepStrictEqual([rep.minutes_total, rep.minutes_to_peak, rep.minutes_to_clear], [3, 1, 2]);
+assert.match(rep.started_clock, /^\d{2}:\d{2}$/);
+text = I.reportText(rep);
+assert.match(text, /เหตุการณ์เริ่มเวลา \d{2}:\d{2} น\. ที่จุด A \(ห้องครัว ใกล้ถังแก๊ส\) ค่าพุ่งขึ้นเร็ว/);
+assert.match(text, /สูงสุด 4,200 ppm .* ถึงระดับอันตราย ภายใน 1 นาที แล้วกลับเป็นปกติใน 2 นาที รวม 3 นาที/);
+assert.match(text, /กระจายไป 2 จุด/);
+assert.match(text, /สายแก๊สหลุด/);
+const todo = I.checklist(rep);
+assert.ok(todo.some(t => /น้ำสบู่/.test(t)) && todo.some(t => /ช่างแก๊ส/.test(t)), 'danger asks for a technician');
+assert.strictEqual(I.span(0.3), '18 วินาที');
+console.log('  [6] After-event report: peak, pattern, zones, timings, Thai text and checklist: PASS');
+
+// [7] Ask GasGuard: rule answers for every preset; status carries no personal data
+st = state([150, 160, 150, 155], [90, 95, 90, 92]);
+a = L.assess(st, now);
+const opts = { plan, now, history: st.history };
+assert.match(I.answer('cook', a, opts), /^จุดเตาได้/, 'green, online, healthy and no trend');
+assert.match(I.answer('where', a, opts), /ไม่พบแก๊สผิดปกติ ค่าสูงสุดอยู่ที่จุด A/);
+assert.match(I.answer('switch', a, opts), /ประกายไฟ/);
+assert.match(I.answer('lel', a, opts), /เฝ้าระวังที่ 5% \(900 ppm\) เตือนที่ 10% และอันตรายที่ 20%/);
+st = state([150, 160, 150, 2600], [90, 95, 90, 300]);
+a = L.assess(st, now);
+assert.match(I.answer('cook', a, { plan, now, history: st.history }), /^ยังไม่ควรจุดเตา/);
+assert.match(I.answer('todo', a, opts), /รีบอพยพ/);
+assert.match(I.answer('where', a, { plan, now, history: st.history }), /จุด A \(ห้องครัว ใกล้ถังแก๊ส\)/);
+const s = I.status(a, { plan, sim: true });
+assert.deepStrictEqual(Object.keys(s), ['level', 'ready_to_cook', 'failed_checks', 'sensors', 'simulated']);
+assert.deepStrictEqual(s.failed_checks, ['all_green', 'no_trend']);
+assert.deepStrictEqual(s.sensors[0], { zone: 'A', room: 'ห้องครัว', near: 'tank', ppm: 2600, level: 'danger', pattern: 'spike' });
+assert.deepStrictEqual(I.PRESETS.map(p => p.key), ['cook', 'where', 'todo', 'switch', 'lel']);
+console.log('  [7] Ask GasGuard: rule answers for each preset and a clean status: PASS');
 
 console.log('\nALL INCIDENT-1 TESTS PASSED!');
