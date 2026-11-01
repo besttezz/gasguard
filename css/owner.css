@@ -120,6 +120,12 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
 .hero.is-watch { --lv: var(--watch); --lv-ink: var(--watch-ink); --lv-bg: var(--watch-bg); --lv-line: var(--watch-line); }
 .hero.is-warning { --lv: var(--warning); --lv-ink: var(--warning-ink); --lv-bg: var(--warning-bg); --lv-line: var(--warning-line); }
 .hero.is-danger { --lv: var(--danger); --lv-ink: var(--danger-ink); --lv-bg: var(--danger-bg); --lv-line: var(--danger-line); }
+.why.is-watch { --lv-ink: var(--watch-ink); --lv-bg: var(--watch-bg); --lv-line: var(--watch-line); }
+.why.is-warning { --lv-ink: var(--warning-ink); --lv-bg: var(--warning-bg); --lv-line: var(--warning-line); }
+.why.is-danger { --lv-ink: var(--danger-ink); --lv-bg: var(--danger-bg); --lv-line: var(--danger-line); }
+.why { border-color: var(--lv-line); display: grid; gap: 8px; }
+.why-tag { background: var(--lv-bg); color: var(--lv-ink); }
+.why-text { margin: 0; font-size: 15px; line-height: 1.65; }
 .hero-top { display: flex; align-items: center; gap: 14px; }
 .hero-badge { display: grid; place-items: center; flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; background: var(--lv); color: #0E1114; box-shadow: 0 0 0 5px var(--lv-bg), 0 0 18px var(--lv); }
 .hero-badge svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -188,6 +194,7 @@ a.btn-danger[href^="tel:"] { background: #C2412D; border-color: #C2412D; color: 
 .alarm h2 { text-align: center; font-size: 34px; }
 .alarm-head { margin: 0; text-align: center; font-size: 20px; font-weight: 600; }
 .alarm-sub { margin: 0; text-align: center; font-size: 14px; opacity: .92; }
+.alarm-why { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, .22); font-size: 14px; line-height: 1.55; }
 .alarm .steps { padding: 16px 18px; border-radius: 18px; background: rgba(255, 255, 255, .12); }
 .alarm .steps li { font-size: 16px; }
 .alarm .steps li::before { background: #fff; color: #B3261E; width: 26px; height: 26px; }

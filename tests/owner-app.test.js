@@ -13,7 +13,7 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 // [1] The page loads only the new app; every role's views exist; old UI is gone.
 const html = read('index.html');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
-assert.deepStrictEqual(scripts.filter(s => s.startsWith('js/')), ['js/auth-config.js', 'js/auth.js', 'js/trial.js', 'js/safety-logic.js', 'js/floor-plan.js', 'js/alarm.js', 'js/tech-views.js', 'js/admin-views.js', 'js/owner-app.js']);
+assert.deepStrictEqual(scripts.filter(s => s.startsWith('js/')), ['js/auth-config.js', 'js/auth.js', 'js/trial.js', 'js/safety-logic.js', 'js/incident.js', 'js/floor-plan.js', 'js/alarm.js', 'js/tech-views.js', 'js/admin-views.js', 'js/owner-app.js']);
 assert.match(html, /<link rel="stylesheet" href="css\/owner\.css">/);
 for (const view of ['home', 'plan', 'history', 'mine', 'jobs', 'install', 'overview', 'users', 'work', 'tools']) assert.match(html, new RegExp(`data-view="${view}"`), `view ${view}`);
 for (const id of ['login-form', 'invite-panel', 'alarm', 'report', 'tabbar', 'site-switch']) assert.match(html, new RegExp(`id="${id}"`), id);

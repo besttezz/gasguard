@@ -8,6 +8,7 @@
   // and written through Supabase as the signed-in user, so row-level security decides what is allowed.
   const L = window.GasGuardSafetyLogic;
   const FP = window.GasGuardFloorPlan;
+  const Incident = window.GasGuardIncident;
   const Auth = window.GasGuardAuth;
 
   const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
@@ -56,7 +57,7 @@
   const S = {
     user: null, role: 'general', profileName: null, sites: [], site: null, devices: [], device: null, membership: null, canEdit: false,
     real: null, offlineApi: false, members: null, settings: null, episode: null, config: null, lineLinked: null, lineCode: null,
-    summary: null, summaryLoading: false, sim: null, simTimer: null, scenario: 'cycle', tab: null, range: '1h',
+    summary: null, summaryLoading: false, explain: null, why: null, sim: null, simTimer: null, scenario: 'cycle', tab: null, range: '1h',
     hourly: null, hourlyKey: '', hourlyLoading: false, planCtl: null, alarmTest: false, pollTimer: null, alarmWasHidden: true,
     invite: null, inviteToken: null, inviteForm: null, views: {}
   };
@@ -279,6 +280,43 @@
     if (S.tab === 'history') renderHistory();
   }
 
+  // ---- What is happening -------------------------------------------------------------------------
+  // While the level is watch or above, the home card and the alarm explain the event in words. The rule-based
+  // wording (js/incident.js) shows at once; when AI is set up the same facts go to /api/v1/site/explain once
+  // per story (level, pattern, zone), and its wording replaces the rule text. Level and steps stay rule-based.
+  function whatHappened(st, a) {
+    const plan = S.planCtl ? S.planCtl.plan() : FP.loadPlan(planKey());
+    const f = Incident.facts(a, st.history, { plan, sim: Boolean(S.sim) });
+    if (!f) { S.explain = null; return null; }
+    const key = Incident.storyKey(f);
+    if (!S.explain || S.explain.key !== key) { S.explain = { key, ai: null, loading: false }; requestExplain(f, key); }
+    const ai = S.explain.ai;
+    return {
+      f, text: ai ? ai.text : Incident.explain(f), pattern: a.worst.trend.label,
+      by: ai ? `อธิบายโดย AI (${ai.model || 'Gemini'}) เมื่อ ${clock(ai.at)}` : S.explain.loading ? 'กำลังให้ AI อธิบาย…' : 'อธิบายอัตโนมัติจากข้อมูล'
+    };
+  }
+
+  async function requestExplain(f, key) {
+    if (!(S.config && S.config.ai && S.config.ai.configured) || window.GasGuardTrial) return;
+    S.explain.loading = true;
+    const r = await api('/api/v1/site/explain', { method: 'POST', body: JSON.stringify({ facts: f }) }).catch(() => ({ ok: false }));
+    if (!S.explain || S.explain.key !== key) return;
+    S.explain.loading = false;
+    if (r.ok && r.body && r.body.text) S.explain.ai = { text: r.body.text, model: r.body.model, at: Date.now() };
+    render();
+  }
+
+  function whyCard() {
+    const w = S.why;
+    if (!w) return '';
+    return `<section class="card why is-${w.f.level}">
+      <div class="card-head"><h2 style="display:flex;align-items:center;gap:8px">${ICON.spark} เกิดอะไรขึ้น</h2><span class="tag why-tag">${esc(w.pattern)}</span></div>
+      <p class="why-text">${esc(w.text)}</p>
+      <p class="muted small">${esc(w.by)} · ระดับและขั้นตอนตัดสินด้วยกฎ ไม่ใช่ AI</p>
+    </section>`;
+  }
+
   // ---- Demo mode ---------------------------------------------------------------------------------
   function startDemo(scenario) {
     stopDemo();
@@ -374,6 +412,7 @@
     const st = shown();
     const a = L.assess(st, Date.now());
     alarm.update(a.level);
+    S.why = whatHappened(st, a);
     renderTopbar(st);
     renderAlarm(a);
     if (S.planCtl) S.planCtl.update(readingsMap(a));
@@ -432,6 +471,7 @@
           <p class="muted">อัปเดต <span data-updated></span> · เซ็นเซอร์ ${sensorsCount} จุด${S.sim ? ' · ค่าจำลอง' : ''}</p>
           <div class="hero-foot">${sound}${ack}</div>
         </section>
+        ${whyCard()}
         <section class="card">
           <div class="card-head"><h2>ตรวจก่อนจุดเตา</h2><span class="tag ${a.readyToCook ? 'is-ok' : 'is-no'}">${a.readyToCook ? 'พร้อมใช้งาน' : 'ยังไม่ควรจุดเตา'}</span></div>
           <ul class="checks">${a.checks.map(c => `<li class="${c.ok ? 'is-ok' : 'is-no'}"><span aria-hidden="true">${c.ok ? '✓' : '✕'}</span>${esc(c.label)}</li>`).join('')}</ul>
@@ -500,6 +540,7 @@
       <h2 id="alarm-title">${esc(lv.label)}</h2>
       <p class="alarm-head">${esc(lv.headline)}</p>
       <p class="alarm-sub">${esc(sub)}</p>
+      ${!S.alarmTest && S.why ? `<p class="alarm-why">${esc(S.why.text)}</p>` : ''}
       <ol class="steps">${lv.actions.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
       ${acks}
       <div class="alarm-buttons"><a class="alarm-call" href="tel:199">โทรดับเพลิง 199</a><button class="alarm-ack" type="button" data-action="ack">${ackLabel()}</button></div>

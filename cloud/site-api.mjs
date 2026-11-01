@@ -4,6 +4,7 @@
 //   POST /api/v1/invite/signup    Create an account from an invitation link and join that home.
 //   POST /api/v1/line/webhook     LINE Messaging API webhook: links a LINE account with a 6-digit code.
 //   POST /api/v1/site/summary     Weekly summary of a site (Gemini when configured, else a template).
+//   POST /api/v1/site/explain     AI wording of an ongoing gas event from the facts the app computed (signed-in users).
 //   GET  /api/v1/admin/users      Admin: list accounts.        POST: create an account.   PATCH: change role.
 //
 // Env: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (secret),
@@ -223,22 +224,26 @@ export function templateSummary(f) {
   return parts.join(' ');
 }
 
-async function geminiSummary(env, fetchImpl, facts) {
+// One short Gemini call. Returns { text, model } or null; callers always have a rule-based fallback.
+async function gemini(env, fetchImpl, prompt, maxOutputTokens) {
   const model = clean(env.GEMINI_MODEL) || 'gemini-flash-lite-latest';
-  const prompt = `คุณเขียนสรุปความปลอดภัยแก๊ส LPG ประจำสัปดาห์ให้เจ้าของบ้าน
-กติกา: ภาษาไทยง่าย ๆ 2-3 ประโยค ไม่เกิน 350 ตัวอักษร ใช้เฉพาะตัวเลขในข้อมูลนี้ ห้ามเดา ห้ามตัดสินว่าอันตรายหรือปลอดภัยเกินกว่าข้อมูล
-ถ้ามีช่วงที่ค่าสูง ให้แนะนำตรวจสายแก๊สและข้อต่อ ถ้าบอร์ดส่งข้อมูลไม่ครบ ให้แนะนำตรวจไฟและ Wi-Fi
-เกณฑ์: ต่ำกว่า 900 ppm ปกติ, 900 เฝ้าระวัง, 1,800 เตือน, 3,600 อันตราย
-ข้อมูล: ${JSON.stringify(facts)}`;
   const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': clean(env.GEMINI_API_KEY) },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 300 } })
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens } })
   });
   if (!response.ok) return null;
   const body = await response.json().catch(() => null);
   const text = body?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
   return text ? { text: text.slice(0, 1200), model } : null;
+}
+
+function geminiSummary(env, fetchImpl, facts) {
+  return gemini(env, fetchImpl, `คุณเขียนสรุปความปลอดภัยแก๊ส LPG ประจำสัปดาห์ให้เจ้าของบ้าน
+กติกา: ภาษาไทยง่าย ๆ 2-3 ประโยค ไม่เกิน 350 ตัวอักษร ใช้เฉพาะตัวเลขในข้อมูลนี้ ห้ามเดา ห้ามตัดสินว่าอันตรายหรือปลอดภัยเกินกว่าข้อมูล
+ถ้ามีช่วงที่ค่าสูง ให้แนะนำตรวจสายแก๊สและข้อต่อ ถ้าบอร์ดส่งข้อมูลไม่ครบ ให้แนะนำตรวจไฟและ Wi-Fi
+เกณฑ์: ต่ำกว่า 900 ppm ปกติ, 900 เฝ้าระวัง, 1,800 เตือน, 3,600 อันตราย
+ข้อมูล: ${JSON.stringify(facts)}`, 300);
 }
 
 export async function handleSummary(request, env, fetchImpl = fetch, now = Date.now) {
@@ -271,6 +276,68 @@ export async function handleSummary(request, env, fetchImpl = fetch, now = Date.
   } catch (error) {
     return json(502, { ok: false, code: 'STORE_UNAVAILABLE' });
   }
+}
+
+// ---- Event explanation ---------------------------------------------------------------------------
+// The app computes the facts (js/incident.js) and shows its own rule-based wording straight away; this only
+// asks the AI to say the same thing more naturally. The level and the steps on screen never come from here.
+const EXPLAIN_TTL_MS = 10 * 60e3;
+const explainCache = new Map(); // per isolate; the same story is not sent to the AI twice in a row
+const PATTERN_KEYS = ['none', 'stable', 'falling', 'accumulating', 'spike'];
+const ALERT_KEYS = ['watch', 'warning', 'danger'];
+const label = v => (v == null ? null : String(v).replace(/[\u0000-\u001f"'`<>{}[\]\\]/g, '').trim().slice(0, 24) || null);
+const int = (v, lo, hi) => (v == null || !Number.isFinite(Number(v)) ? null : Math.min(hi, Math.max(lo, Math.round(Number(v)))));
+
+// Only known keys and bounded numbers reach the prompt; zone and room labels are short and stripped.
+export function explainFacts(f) {
+  if (!f || !ALERT_KEYS.includes(f.level)) return null;
+  return {
+    level: f.level,
+    escalated: Boolean(f.escalated),
+    zone: label(f.zone) || 'A',
+    room: label(f.room),
+    near: ['stove', 'tank'].includes(f.near) ? f.near : null,
+    ppm: int(f.ppm, 0, 100000),
+    lel_percent: f.lel_percent == null || !Number.isFinite(Number(f.lel_percent)) ? null : Math.min(1000, Math.max(0, Math.round(Number(f.lel_percent) * 10) / 10)),
+    pattern: PATTERN_KEYS.includes(f.pattern) ? f.pattern : 'none',
+    rate_ppm_per_min: int(f.rate_ppm_per_min, -100000, 100000),
+    minutes: int(f.minutes, 0, 1440),
+    start_ppm: int(f.start_ppm, 0, 100000),
+    sensors_above_watch: int(f.sensors_above_watch, 0, 16) ?? 1,
+    sensors_total: int(f.sensors_total, 1, 16) ?? 1,
+    others: (Array.isArray(f.others) ? f.others : []).slice(0, 8).map(o => ({
+      zone: label(o?.zone) || '-', ppm: int(o?.ppm, 0, 100000), level: ['unknown', 'safe', ...ALERT_KEYS].includes(o?.level) ? o.level : 'unknown'
+    })),
+    simulated: Boolean(f.simulated)
+  };
+}
+
+export function explainPrompt(facts) {
+  const lv = LEVELS[facts.level];
+  return `คุณช่วยอธิบายเหตุการณ์แก๊ส LPG ที่กำลังเกิดขึ้นตอนนี้ให้คนในบ้านเข้าใจ
+ระบบตัดสินระดับแล้วว่า "${lv.label}" และขึ้นขั้นตอนให้ทำแล้ว ("${lv.headline}") ห้ามเปลี่ยนระดับ ห้ามบอกว่าปลอดภัย และห้ามแนะนำสิ่งที่ขัดกับขั้นตอนนั้น
+เขียนภาษาไทยง่าย ๆ 2-3 ประโยค ไม่เกิน 300 ตัวอักษร ไม่ใช้หัวข้อหรือสัญลักษณ์
+บอกว่าแก๊สอยู่ตรงไหน เป็นแบบค่อย ๆ สะสม (accumulating) หรือพุ่งขึ้นเร็ว (spike) และสาเหตุที่เป็นไปได้ โดยใช้คำว่า "อาจ" เพราะเป็นการคาดคะเน
+ใช้เฉพาะตัวเลขในข้อมูลนี้ ห้ามเดาตัวเลขเพิ่ม LPG หนักกว่าอากาศ จึงสะสมที่พื้นในห้องปิด
+near: stove = ใกล้เตาแก๊ส, tank = ใกล้ถังแก๊ส${facts.simulated ? '\nนี่เป็นข้อมูลจำลองสำหรับสาธิต' : ''}
+ข้อมูล: ${JSON.stringify(facts)}`;
+}
+
+export async function handleExplain(request, env, fetchImpl = fetch, now = Date.now) {
+  if (!clean(env?.GEMINI_API_KEY)) return json(503, { ok: false, code: 'AI_NOT_CONFIGURED' });
+  const user = await getUser(env, fetchImpl, bearer(request)).catch(() => null);
+  if (!user?.id) return json(401, { ok: false, code: 'SIGN_IN_REQUIRED' });
+  const body = await request.json().catch(() => null);
+  const facts = explainFacts(body?.facts);
+  if (!facts) return json(400, { ok: false, code: 'BAD_FACTS' });
+  const key = await sha256Hex(JSON.stringify(facts));
+  const hit = explainCache.get(key);
+  if (hit && now() - hit.at < EXPLAIN_TTL_MS) return json(200, { ok: true, text: hit.text, model: hit.model, cached: true });
+  const ai = await gemini(env, fetchImpl, explainPrompt(facts), 220).catch(() => null);
+  if (!ai) return json(502, { ok: false, code: 'AI_UNAVAILABLE' });
+  if (explainCache.size > 200) explainCache.clear();
+  explainCache.set(key, { text: ai.text, model: ai.model, at: now() });
+  return json(200, { ok: true, text: ai.text, model: ai.model, cached: false });
 }
 
 // ---- Admin: accounts -----------------------------------------------------------------------------
