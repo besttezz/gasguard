@@ -23,7 +23,6 @@
   const SENSOR_NAMES = { 'MQ6-01': 'MQ-6', 'MQ2-01': 'MQ-2', 'MQ3-01': 'MQ-3' };
   const SERIES = { 'MQ6-01': '#4FA3D9', 'MQ2-01': '#2BB39A', 'MQ3-01': '#A57BE0' }; // readable on the dark app and the white printout
   const ROLE_LABEL = { admin: 'ผู้ดูแลระบบ', technician: 'ช่างติดตั้ง', developer: 'นักพัฒนา', general: 'ผู้ใช้' };
-  const LEVEL_OPTIONS = [['watch', 'ตั้งแต่เฝ้าระวัง (เหลือง)'], ['warning', 'ตั้งแต่เตือน (ส้ม)'], ['danger', 'เฉพาะอันตราย (แดง)']];
   const SVG = (d, size = 22) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const ICON = {
     safe: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>',
@@ -56,7 +55,7 @@
 
   const S = {
     user: null, role: 'general', profileName: null, sites: [], site: null, devices: [], device: null, membership: null, canEdit: false,
-    real: null, offlineApi: false, members: null, settings: null, episode: null, config: null, lineLinked: null, lineCode: null,
+    real: null, offlineApi: false, members: null, settings: null, episode: null, config: null,
     summary: null, summaryLoading: false, explain: null, why: null, incident: null, report: null, ask: null, sim: null, simTimer: null, scenario: 'cycle', tab: null, range: '1h',
     hourly: null, hourlyKey: '', hourlyLoading: false, planCtl: null, alarmTest: false, pollTimer: null, alarmWasHidden: true,
     invite: null, inviteToken: null, inviteForm: null, views: {}
@@ -245,14 +244,12 @@
     if (!S.site) return;
     const { data, error } = await q(db().rpc('site_members', { p_site_id: S.site.id }));
     S.members = error ? [] : (data || []);
-    const me = S.members.find(m => m.is_me);
-    if (me) S.lineLinked = me.line_linked;
     if (S.tab === 'mine') renderMine();
   }
 
   async function loadConfig() {
     const r = await api('/api/v1/config').catch(() => ({ ok: false }));
-    S.config = r.ok ? r.body : { line: { configured: false }, ai: { configured: false } };
+    S.config = r.ok ? r.body : { ai: { configured: false } };
   }
 
   async function loadHourly() {
@@ -777,14 +774,10 @@
   // ---- My home -------------------------------------------------------------------------------------
   function memberRow(m) {
     const name = m.display_name || m.email || 'สมาชิก';
-    const editable = S.canEdit || m.is_me;
-    const level = editable
-      ? `<label class="field" style="gap:2px"><span class="small muted">แจ้งเตือน LINE</span><select data-action="member-level" data-user="${esc(m.user_id)}">${LEVEL_OPTIONS.map(([v, t]) => `<option value="${v}"${m.alert_min_level === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`
-      : `<span class="tag is-off">${esc((LEVEL_OPTIONS.find(o => o[0] === m.alert_min_level) || ['', ''])[1])}</span>`;
     const remove = S.canEdit && !m.is_me && S.role !== 'technician' ? `<button class="btn btn-small btn-danger" type="button" data-action="member-remove" data-user="${esc(m.user_id)}">ลบ</button>` : '';
     return `<div class="row" style="flex-wrap:wrap"><span class="avatar" aria-hidden="true">${esc(name.trim().charAt(0).toUpperCase())}</span>
-      <div class="row-main"><strong>${esc(name)}${m.is_me ? ' (คุณ)' : ''}</strong><small>คนในบ้าน · ดูและจัดการบ้านนี้ได้${m.line_linked ? ' · เชื่อม LINE แล้ว' : ''}</small></div>
-      <div style="display:flex;gap:8px;align-items:flex-end">${level}${remove}</div></div>`;
+      <div class="row-main"><strong>${esc(name)}${m.is_me ? ' (คุณ)' : ''}</strong><small>คนในบ้าน · ดูและจัดการบ้านนี้ได้</small></div>
+      <div style="display:flex;gap:8px;align-items:flex-end">${remove}</div></div>`;
   }
 
   function inviteBlock() {
@@ -797,22 +790,10 @@
     if (f) {
       return `<form class="invite-form" data-form="invite"><div class="form-grid">
           <input type="hidden" name="type" value="owner">
-          <label class="field"><span>รับแจ้งเตือน LINE</span><select name="level">${LEVEL_OPTIONS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
+          <input type="hidden" name="level" value="watch">
         </div><div style="display:flex;gap:8px"><button class="btn btn-primary" type="submit">สร้างลิงก์เชิญ</button><button class="btn" type="button" data-action="invite-done">ยกเลิก</button></div></form>`;
     }
     return '<button class="btn" type="button" data-action="invite-open">+ เชิญคนในบ้าน / พนักงาน</button>';
-  }
-
-  function lineBlock() {
-    const cfg = S.config && S.config.line;
-    if (!cfg || !cfg.configured) return '<div class="switch-row"><span class="row-main"><strong>LINE</strong><small>ผู้ดูแลระบบยังไม่ได้ตั้งค่า LINE Official Account</small></span><span class="tag is-off">ยังไม่ได้ตั้งค่า</span></div>';
-    if (S.lineLinked) return '<div class="switch-row"><span class="row-main"><strong>LINE</strong><small>ได้รับแจ้งเตือนทาง LINE ตามระดับที่ตั้งไว้</small></span><button class="btn btn-small" type="button" data-action="line-unlink">ยกเลิกการเชื่อม</button></div>';
-    if (S.lineCode) {
-      return `<div class="line-link"><strong>เชื่อม LINE ใน 2 ขั้นตอน</strong><ol class="steps" style="--lv:var(--brand)">
-        <li>${cfg.addFriendUrl ? `<a href="${esc(cfg.addFriendUrl)}" target="_blank" rel="noopener">เพิ่มเพื่อน GasGuard ใน LINE</a>` : 'เพิ่มเพื่อนบัญชี LINE ของ GasGuard'}</li>
-        <li>ส่งรหัสนี้ในแชท: <span class="line-code">${esc(S.lineCode)}</span> (ใช้ได้ 15 นาที)</li></ol><p class="muted small">หน้านี้จะเปลี่ยนเป็น "เชื่อมแล้ว" เองเมื่อสำเร็จ</p></div>`;
-    }
-    return '<div class="switch-row"><span class="row-main"><strong>LINE</strong><small>รับแจ้งเตือนแม้ไม่ได้เปิดแอป</small></span><button class="btn btn-small btn-primary" type="button" data-action="line-link">เชื่อม LINE</button></div>';
   }
 
   function renderMine() {
@@ -864,7 +845,6 @@
         <label class="switch-row"><span class="row-main"><strong>เสียงเตือนบนเครื่องนี้</strong><small>เหลือง: เสียงเบา · ส้ม: บี๊บซ้ำ · แดง: ไซเรนจนกว่าจะกดรับทราบ</small></span><input type="checkbox" data-action="sound-toggle"${alarm.wantsSound() ? ' checked' : ''}></label>
         <div class="switch-row"><span class="row-main"><strong>แจ้งเตือนบนหน้าจอ</strong><small>ขึ้นข้อความเมื่อระดับสูงขึ้น ขณะเปิดแอปไว้</small></span>${notifCtl}</div>
         <div class="switch-row"><span class="row-main"><strong>สั่น</strong><small>ใช้ได้บนมือถือ Android · iPhone ไม่รองรับจากเว็บ</small></span><span class="tag is-info">อัตโนมัติ</span></div>
-        ${lineBlock()}
         <div style="margin-top:12px"><button class="btn" type="button" data-action="test-alarm">${ICON.bell} ทดสอบเสียงเตือน</button></div>
       </section>
       ${care}
@@ -885,7 +865,7 @@
     const st = shown();
     setHtml(view, `<section class="card">
         <div class="card-head"><h2>โหมดจำลอง</h2>${S.sim ? '<span class="tag is-info">กำลังใช้</span>' : ''}</div>
-        <label class="switch-row"><span class="row-main"><strong>ใช้ค่าจำลองแทนบอร์ดจริง</strong><small>ค่าเปลี่ยนทุก 10 วินาที อยู่ในเครื่องนี้เท่านั้น ไม่บันทึกลงฐานข้อมูลและไม่ส่ง LINE</small></span><input type="checkbox" data-action="demo-toggle"${S.sim ? ' checked' : ''}></label>
+        <label class="switch-row"><span class="row-main"><strong>ใช้ค่าจำลองแทนบอร์ดจริง</strong><small>ค่าเปลี่ยนทุก 10 วินาที อยู่ในเครื่องนี้เท่านั้น ไม่บันทึกลงฐานข้อมูล</small></span><input type="checkbox" data-action="demo-toggle"${S.sim ? ' checked' : ''}></label>
         <label class="field" style="margin-top:10px"><span>สถานการณ์</span><select data-action="scenario">${scenarios}</select></label>
       </section>
       <section class="card">
@@ -903,7 +883,6 @@
       <section class="card">
         <div class="card-head"><h2>สถานะระบบ</h2></div>
         <div class="switch-row"><span class="row-main"><strong>API รับข้อมูลบอร์ด</strong><small>/api/v1/device/status</small></span>${ready(!S.offlineApi, 'ติดต่อได้', 'ติดต่อไม่ได้')}</div>
-        <div class="switch-row"><span class="row-main"><strong>LINE Official Account</strong><small>ส่งแจ้งเตือนเมื่อระดับสูงขึ้น</small></span>${ready(cfg.line && cfg.line.configured, 'พร้อม', 'ยังไม่ตั้งค่า')}</div>
         <div class="switch-row"><span class="row-main"><strong>AI สรุปสัปดาห์</strong><small>ไม่ตั้งค่าจะใช้ข้อความแม่แบบแทน</small></span>${ready(cfg.ai && cfg.ai.configured, 'พร้อม', 'ใช้แม่แบบ')}</div>
         <div class="switch-row"><span class="row-main"><strong>บอร์ดของบ้านนี้</strong><small>ส่งค่าล่าสุด ${esc(ago(st.lastTelemetry))}</small></span>${ready(st.connection === 'ONLINE', 'ออนไลน์', 'ไม่ออนไลน์')}</div>
       </section>
@@ -1075,7 +1054,7 @@
   async function signOut() {
     try { await Auth.signOut(); } catch (e) { /* local session is cleared anyway */ }
     S.planCtl = null; $('#plan-mount').innerHTML = '';
-    Object.assign(S, { sites: [], site: null, device: null, devices: [], members: null, real: null, hourly: null, hourlyKey: '', summary: null, episode: null, lineLinked: null, lineCode: null, inviteForm: null });
+    Object.assign(S, { sites: [], site: null, device: null, devices: [], members: null, real: null, hourly: null, hourlyKey: '', summary: null, episode: null, inviteForm: null });
     document.querySelectorAll('.view[data-view]').forEach(v => { v.innerHTML = v.dataset.view === 'plan' ? v.innerHTML : ''; v.__html = null; });
     showLanding();
   }
@@ -1086,7 +1065,6 @@
   }
 
   // ---- Events --------------------------------------------------------------------------------------
-  let lineTimer = null;
   document.addEventListener('click', async evt => {
     const el = evt.target.closest('[data-action], [data-range]');
     if (!el) return;
@@ -1121,26 +1099,6 @@
       toast(error ? 'ลบไม่สำเร็จ' : data && data.code === 'LAST_OWNER' ? 'ต้องมีเจ้าของอย่างน้อย 1 คน' : 'ลบสมาชิกแล้ว');
       loadMembers();
     }
-    else if (action === 'line-link') {
-      const { data, error } = await q(db().rpc('create_line_link_code'));
-      if (error || !data) { toast('ขอรหัสไม่สำเร็จ ลองใหม่'); return; }
-      S.lineCode = data; renderMine();
-      clearInterval(lineTimer);
-      const started = Date.now();
-      lineTimer = setInterval(async () => {
-        const { data: me } = await q(db().from('profiles').select('line_user_id').eq('id', S.user.id).maybeSingle());
-        const link = Boolean(me && me.line_user_id);
-        if (link || Date.now() - started > 15 * 60e3) {
-          clearInterval(lineTimer); S.lineCode = null; S.lineLinked = link;
-          if (link) toast('เชื่อม LINE สำเร็จ');
-          loadMembers(); if (S.tab === 'mine') renderMine();
-        }
-      }, 4000);
-    }
-    else if (action === 'line-unlink') {
-      await q(db().rpc('unlink_line'));
-      S.lineLinked = false; toast('ยกเลิกการเชื่อม LINE แล้ว'); loadMembers(); renderMine();
-    }
   });
 
   document.addEventListener('change', async evt => {
@@ -1149,11 +1107,6 @@
     if (action === 'sound-toggle') { if (el.checked) alarm.enable(); else alarm.disable(); setTimeout(render, 150); }
     else if (action === 'demo-toggle') { if (el.checked) startDemo(); else stopDemo(); render(); if (S.tab === 'history') renderHistory(); if (S.tab === 'tools') renderTools(); }
     else if (action === 'scenario') { S.scenario = el.value; if (S.sim) startDemo(el.value); }
-    else if (action === 'member-level') {
-      const { error } = await q(db().rpc('set_member_alert_level', { p_site_id: S.site.id, p_user_id: el.dataset.user, p_level: el.value }));
-      toast(error ? 'บันทึกไม่สำเร็จ' : 'บันทึกระดับแจ้งเตือนแล้ว');
-      loadMembers();
-    }
     else if (el.id === 'site-switch') selectSite(el.value);
   });
 

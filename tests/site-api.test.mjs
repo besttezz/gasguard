@@ -23,13 +23,12 @@ function fakeFetch(routes) {
   return fn;
 }
 
-// [1] Config never leaks secrets, reports what is set up
-let r = api.handleConfig({ ...env, LINE_CHANNEL_ACCESS_TOKEN: 't', LINE_CHANNEL_SECRET: 's', LINE_ADD_FRIEND_URL: 'https://lin.ee/abc', GEMINI_API_KEY: 'g' });
+// [1] Config never leaks secrets and reports only whether AI is set up (LINE was removed)
+let r = api.handleConfig({ ...env, LINE_CHANNEL_ACCESS_TOKEN: 't', GEMINI_API_KEY: 'g' });
 let body = await r.json();
-assert.deepStrictEqual(body, { line: { configured: true, addFriendUrl: 'https://lin.ee/abc' }, ai: { configured: true } });
-body = await api.handleConfig({ LINE_ADD_FRIEND_URL: 'javascript:alert(1)' }).json();
-assert.deepStrictEqual(body, { line: { configured: false, addFriendUrl: null }, ai: { configured: false } });
-console.log('  [1] Config reports LINE/AI availability without exposing secrets: PASS');
+assert.deepStrictEqual(body, { ai: { configured: true } });
+assert.deepStrictEqual(await api.handleConfig({}).json(), { ai: { configured: false } });
+console.log('  [1] Config reports AI availability without exposing secrets: PASS');
 
 // [2] Invitation sign-up: validates input, creates a confirmed general account, claims the invite
 const token = crypto.randomBytes(32).toString('hex');
@@ -59,34 +58,13 @@ r = await api.handleInviteSignup(req('/x', { method: 'POST', body: JSON.stringif
 assert.strictEqual((await r.json()).code, 'EMAIL_EXISTS');
 console.log('  [2] Invite sign-up validates input, sends only the token hash, creates a general account: PASS');
 
-// [3] LINE webhook: rejects bad signatures, links an account with a 6-digit code and replies
-const lineEnv = { ...env, LINE_CHANNEL_ACCESS_TOKEN: 'tok', LINE_CHANNEL_SECRET: 'sec' };
-const event = { events: [{ type: 'message', replyToken: 'r1', source: { userId: `U${'a'.repeat(32)}` }, message: { type: 'text', text: '123456' } }] };
-const raw = JSON.stringify(event);
-const sig = crypto.createHmac('sha256', 'sec').update(raw).digest('base64');
-f = fakeFetch([['/rpc/consume_line_link_code', () => jsonRes(200, { ok: true })], ['api.line.me', () => jsonRes(200, {})]]);
-r = await api.handleLineWebhook(req('/w', { method: 'POST', body: raw, headers: { 'x-line-signature': 'bad' } }), lineEnv, f);
-assert.strictEqual(r.status, 401);
-r = await api.handleLineWebhook(req('/w', { method: 'POST', body: raw, headers: { 'x-line-signature': sig } }), lineEnv, f);
-assert.strictEqual(r.status, 200);
-const consume = f.calls.find(c => c.url.includes('consume_line_link_code'));
-assert.deepStrictEqual(JSON.parse(consume.init.body), { p_code: '123456', p_line_user_id: `U${'a'.repeat(32)}` });
-const reply = f.calls.find(c => c.url.includes('/message/reply'));
-assert.match(JSON.parse(reply.init.body).messages[0].text, /เชื่อมต่อสำเร็จ/);
-assert.strictEqual((await api.handleLineWebhook(req('/w', { method: 'POST', body: raw }), env, f)).status, 503, 'webhook is off until LINE is configured');
-console.log('  [3] LINE webhook checks the signature, links with a code and replies: PASS');
-
-// [4] Alert evaluation pushes LINE messages only to linked members in range
-assert.match(api.alertMessage({ event: 'raised', level: 'danger', ppm: 4200, site_name: 'ร้าน A' }), /ระดับอันตราย \(4,200 ppm\)[\s\S]*199/);
-assert.match(api.alertMessage({ event: 'resolved', site_name: 'ร้าน A' }), /กลับสู่ระดับปกติ/);
-f = fakeFetch([['/rpc/evaluate_site_alert', () => jsonRes(200, { event: 'raised', level: 'warning', ppm: 2000, site_name: 'บ้าน', line_recipients: [`U${'b'.repeat(32)}`, 'not-a-line-id'] })], ['api.line.me', () => jsonRes(200, {})]]);
-await api.evaluateAndNotify(lineEnv, f, 'ESP32-KITCHEN-01');
-const push = f.calls.find(c => c.url.includes('/message/multicast'));
-assert.deepStrictEqual(JSON.parse(push.init.body).to, [`U${'b'.repeat(32)}`]);
-f = fakeFetch([['/rpc/evaluate_site_alert', () => jsonRes(200, { event: null })]]);
-await api.evaluateAndNotify(lineEnv, f, 'ESP32-KITCHEN-01');
-assert.ok(!f.calls.some(c => c.url.includes('api.line.me')), 'no change, no message');
-console.log('  [4] Level changes push LINE messages to linked members only: PASS');
+// [3] After a stored reading only the alert episode is updated; nothing is sent to LINE any more
+f = fakeFetch([['/rpc/evaluate_site_alert', () => jsonRes(200, { ok: true, event: 'raised', level: 'warning', ppm: 2000 })]]);
+const ev = await api.evaluateSiteAlert({ ...env, LINE_CHANNEL_ACCESS_TOKEN: 'tok', LINE_CHANNEL_SECRET: 'sec' }, f, 'ESP32-KITCHEN-01');
+assert.strictEqual(ev.event, 'raised');
+assert.deepStrictEqual(f.calls.map(c => new URL(c.url).pathname), ['/rest/v1/rpc/evaluate_site_alert']);
+assert.ok(!('handleLineWebhook' in api) && !('alertMessage' in api), 'LINE code is gone');
+console.log('  [3] Alert episodes are updated after each reading, with no LINE messages: PASS');
 
 // [5] Weekly summary: facts from hourly data, template fallback, Gemini when configured, RLS-checked
 const hourly = [
@@ -242,7 +220,8 @@ assert.ok(capped >= 5, 'each account has its own cap on new AI answers');
 console.log('  [6c] Report and ask: whitelisted facts, quoted questions, trial preset-only, per-account cap: PASS');
 
 // [7] Routes and migration
-for (const route of ['config', 'invite/signup', 'line/webhook', 'site/summary', 'site/explain', 'admin/users']) assert.ok(fs.existsSync(path.join(root, `functions/api/v1/${route}.js`)), route);
+assert.ok(!fs.existsSync(path.join(root, 'functions/api/v1/line/webhook.js')), 'no LINE webhook route');
+for (const route of ['config', 'invite/signup', 'site/summary', 'site/explain', 'admin/users']) assert.ok(fs.existsSync(path.join(root, `functions/api/v1/${route}.js`)), route);
 const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261021000000_members_alerts_line_tech_admin.sql'), 'utf8');
 for (const t of ['alert_episodes', 'alert_acks', 'user_line_links', 'site_settings', 'ai_summaries', 'sensor_calibrations']) assert.match(sql, new RegExp(`alter table public\\.${t} enable row level security`), `${t} has RLS`);
 assert.match(sql, /when p_ppm >= 3600 then 'danger'\s+when p_ppm >= 1800 then 'warning'\s+when p_ppm >= 900 then 'watch'/, 'server thresholds match the app');

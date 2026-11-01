@@ -30,12 +30,13 @@ assert.match(app, /general: \['home', 'plan', 'history', 'mine'\]/);
 assert.match(app, /technician: \['jobs', 'install', 'plan', 'mine'\]/);
 assert.match(app, /admin: \['overview', 'users', 'work'/);
 for (const call of ["select('floor_plan')", "rpc('save_floor_plan'", "from('telemetry_hourly')", "from('alert_episodes')", "rpc('save_site_care'", "rpc('site_members'", "rpc('can_edit_site'",
-  "rpc('create_site_invitation'", "rpc('claim_site_invitation'", "rpc('ack_alert'", "rpc('create_line_link_code')", "rpc('unlink_line')", "rpc('set_member_alert_level'", '/api/v1/site/summary', '/api/v1/invite/signup']) {
+  "rpc('create_site_invitation'", "rpc('claim_site_invitation'", "rpc('ack_alert'", '/api/v1/site/summary', '/api/v1/invite/signup']) {
   assert.ok(app.includes(call), `app uses ${call}`);
 }
 assert.match(app, /neq\('data_classification', 'SYNTHETIC_HANDSHAKE'\)/, 'handshake test packets never show up in history');
 assert.match(app, /readOnly: !S\.canEdit/, 'only owners, admins and the assigned technician can change the plan');
 assert.match(app, /href="tel:199"/);
+for (const gone of ['create_line_link_code', 'unlink_line', 'set_member_alert_level', 'lineBlock', 'เชื่อม LINE']) assert.ok(!app.includes(gone), `LINE removed: ${gone}`);
 assert.match(app, /randomHex\(32\)[\s\S]*p_token_hash: await sha256Hex\(token\)/, 'invite links carry a random token; only its hash is stored');
 for (const f of ['js/owner-app.js', 'js/tech-views.js', 'js/admin-views.js']) {
   assert.ok(!/db\(\)[^;\n]*\)\.catch\(/.test(read(f)), `${f}: Supabase builders go through q(), never .catch()`);

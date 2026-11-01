@@ -1,14 +1,12 @@
 // GasGuard site/admin API (Cloudflare Pages Functions runtime, also importable from Node tests).
 //
-//   GET  /api/v1/config           Which optional services are configured (LINE, AI). Public, no secrets.
+//   GET  /api/v1/config           Whether AI is configured. Public, no secrets.
 //   POST /api/v1/invite/signup    Create an account from an invitation link and join that home.
-//   POST /api/v1/line/webhook     LINE Messaging API webhook: links a LINE account with a 6-digit code.
 //   POST /api/v1/site/summary     Weekly summary of a site (Gemini when configured, else a template).
 //   POST /api/v1/site/explain     AI wording: {task: explain | report | ask}. Signed in, or the trial in coarse form (see below).
 //   GET  /api/v1/admin/users      Admin: list accounts.        POST: create an account.   PATCH: change role.
 //
 // Env: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (secret),
-//      LINE_CHANNEL_ACCESS_TOKEN, LINE_CHANNEL_SECRET, LINE_ADD_FRIEND_URL (optional),
 //      GEMINI_API_KEY (optional secret), GEMINI_MODEL (optional).
 
 const ROLES = ['general', 'technician', 'admin', 'developer'];
@@ -17,7 +15,6 @@ const LEVELS = {
   warning: { label: 'เตือน', headline: 'ห้ามเปิด-ปิดสวิตช์ไฟ ปิดวาล์วถังแก๊ส', action: 'ปิดวาล์วถังแก๊สทันที เปิดประตูหน้าต่างทุกบาน' },
   danger: { label: 'อันตราย', headline: 'รีบอพยพออกจากพื้นที่ทันที', action: 'ออกจากอาคาร ห้ามแตะสวิตช์ไฟ แล้วโทร 199' }
 };
-const APP_URL = 'https://gasguard-bu.pages.dev';
 const SUMMARY_TTL_MS = 6 * 3600e3;
 
 export const json = (status, body) => new Response(JSON.stringify(body), {
@@ -56,15 +53,10 @@ export async function getUser(env, fetchImpl, token) {
 }
 
 const configured = env => Boolean(env?.SUPABASE_URL && clean(env.SUPABASE_SERVICE_ROLE_KEY) && env?.SUPABASE_ANON_KEY);
-const lineReady = env => Boolean(clean(env.LINE_CHANNEL_ACCESS_TOKEN) && clean(env.LINE_CHANNEL_SECRET));
 
 // ---- Config -------------------------------------------------------------------------------------
 export function handleConfig(env) {
-  const add = clean(env?.LINE_ADD_FRIEND_URL);
-  return json(200, {
-    line: { configured: lineReady(env || {}), addFriendUrl: /^https:\/\/(line\.me|lin\.ee)\//.test(add) ? add : null },
-    ai: { configured: Boolean(clean(env?.GEMINI_API_KEY)) }
-  });
+  return json(200, { ai: { configured: Boolean(clean(env?.GEMINI_API_KEY)) } });
 }
 
 // ---- Invitation sign-up -------------------------------------------------------------------------
@@ -103,80 +95,12 @@ export async function handleInviteSignup(request, env, fetchImpl = fetch) {
   }
 }
 
-// ---- LINE ----------------------------------------------------------------------------------------
-async function hmacBase64(secret, text) {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text));
-  let bin = '';
-  for (const b of new Uint8Array(sig)) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-
-function timingSafeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-async function lineCall(env, fetchImpl, path, payload) {
-  const response = await fetchImpl(`https://api.line.me/v2/bot/message/${path}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${clean(env.LINE_CHANNEL_ACCESS_TOKEN)}` },
-    body: JSON.stringify(payload)
-  });
-  return response.ok;
-}
-
-export async function handleLineWebhook(request, env, fetchImpl = fetch) {
-  if (!lineReady(env) || !configured(env)) return json(503, { ok: false, code: 'LINE_NOT_CONFIGURED' });
-  const text = await request.text();
-  const expected = await hmacBase64(clean(env.LINE_CHANNEL_SECRET), text);
-  if (!timingSafeEqual(request.headers.get('x-line-signature') || '', expected)) return json(401, { ok: false, code: 'BAD_SIGNATURE' });
-  let body;
-  try { body = JSON.parse(text); } catch (_) { return json(400, { ok: false }); }
-  for (const event of Array.isArray(body?.events) ? body.events : []) {
-    const lineUserId = event?.source?.userId;
-    if (!event.replyToken || !/^U[0-9a-f]{32}$/.test(lineUserId || '')) continue;
-    let reply = null;
-    if (event.type === 'follow') {
-      reply = 'สวัสดีครับ นี่คือ GasGuard\nเปิดแอป > บ้านของฉัน > เชื่อม LINE แล้วส่งรหัส 6 หลักมาที่แชทนี้ เพื่อรับแจ้งเตือนแก๊ส';
-    } else if (event.type === 'message' && event.message?.type === 'text') {
-      const code = String(event.message.text || '').replace(/\s+/g, '');
-      if (/^\d{6}$/.test(code)) {
-        const result = await rpc(env, fetchImpl, 'consume_line_link_code', { p_code: code, p_line_user_id: lineUserId }).catch(() => null);
-        reply = result?.ok ? 'เชื่อมต่อสำเร็จ จากนี้คุณจะได้รับแจ้งเตือนแก๊สของบ้านทาง LINE' : 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว ขอรหัสใหม่ในแอปแล้วส่งมาอีกครั้ง';
-      } else {
-        reply = 'ส่งรหัส 6 หลักจากแอป GasGuard (บ้านของฉัน > เชื่อม LINE) เพื่อเชื่อมบัญชี';
-      }
-    }
-    if (reply) await lineCall(env, fetchImpl, 'reply', { replyToken: event.replyToken, messages: [{ type: 'text', text: reply }] }).catch(() => false);
-  }
-  return json(200, { ok: true });
-}
-
-export function alertMessage(result) {
-  const site = result.site_name || 'บ้านของคุณ';
-  if (result.event === 'resolved') return `GasGuard · ${site}\nค่าแก๊สกลับสู่ระดับปกติแล้ว\n${APP_URL}`;
-  const lv = LEVELS[result.level];
-  if (!lv) return null;
-  const ppm = Number(result.ppm);
-  return `GasGuard · ${site}\nระดับ${lv.label} (${Number.isFinite(ppm) ? Math.round(ppm).toLocaleString('en-US') : '?'} ppm)\n${lv.headline}\n${lv.action}\nดูในแอป: ${APP_URL}`;
-}
-
-// Called by the ingress after a stored reading: updates the site's alert episode and pushes LINE messages.
-export async function evaluateAndNotify(env, fetchImpl, deviceUid) {
+// ---- Site alert episodes -----------------------------------------------------------------------
+// Called by the ingress after a stored reading: opens, raises or closes the site's alert episode (alert_episodes),
+// which the app shows as the event timeline and uses for "who acknowledged".
+export async function evaluateSiteAlert(env, fetchImpl, deviceUid) {
   if (!configured(env)) return null;
-  const result = await rpc(env, fetchImpl, 'evaluate_site_alert', { p_device_uid: deviceUid });
-  if (!result?.event || !lineReady(env)) return result;
-  const to = (Array.isArray(result.line_recipients) ? result.line_recipients : []).filter(id => /^U[0-9a-f]{32}$/.test(id));
-  const text = alertMessage(result);
-  if (to.length && text) {
-    for (let i = 0; i < to.length; i += 500) {
-      await lineCall(env, fetchImpl, 'multicast', { to: to.slice(i, i + 500), messages: [{ type: 'text', text }] }).catch(() => false);
-    }
-  }
-  return result;
+  return rpc(env, fetchImpl, 'evaluate_site_alert', { p_device_uid: deviceUid });
 }
 
 // ---- Weekly summary ------------------------------------------------------------------------------

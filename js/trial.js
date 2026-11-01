@@ -33,7 +33,7 @@
   };
   const rpcData = {
     can_edit_site: true,
-    site_members: [{ user_id: user.id, membership_type: 'owner', display_name: 'ผู้ทดลองใช้', email: user.email, is_me: true, alert_min_level: 'watch', line_linked: false }]
+    site_members: [{ user_id: user.id, membership_type: 'owner', display_name: 'ผู้ทดลองใช้', email: user.email, is_me: true, alert_min_level: 'watch' }]
   };
   const builder = table => {
     let single = false;
@@ -77,7 +77,7 @@
     return { deviceId: 'GG-DEMO-0001', dataClassification: 'DEVICE_DATA', connection: 'ONLINE', lastTelemetry: history[history.length - 1].receivedAt, sensorLatest: latest, history };
   }
   const api = {
-    '/api/v1/config': () => ({ line: { configured: false }, ai: { configured: false } }),
+    '/api/v1/config': () => ({ ai: { configured: false } }),
     '/api/v1/device/status': status,
     '/api/v1/site/summary': () => ({ ok: true, summary: 'สัปดาห์นี้ค่าแก๊สส่วนใหญ่อยู่ระดับปกติ มีช่วงที่สูงขึ้นถึงระดับเฝ้าระวัง 2 ครั้ง (สูงสุด 1,250 ppm) แนะนำให้ตรวจข้อต่อและวาล์วที่ถังแก๊ส', source: 'template', created_at: new Date().toISOString() })
   };

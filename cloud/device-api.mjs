@@ -8,7 +8,7 @@
 //
 // Env: SUPABASE_URL, SUPABASE_ANON_KEY (public vars) and SUPABASE_SERVICE_ROLE_KEY (secret).
 
-import { evaluateAndNotify } from './site-api.mjs';
+import { evaluateSiteAlert } from './site-api.mjs';
 
 export const WORKSPACE_DEVICES = Object.freeze({
   'hardware-pilot': 'ESP32-KITCHEN-01',
@@ -165,9 +165,9 @@ export async function handleTelemetry(request, env, fetchImpl = fetch, options =
 
   try {
     const result = await rpc(env, fetchImpl, 'ingest_telemetry', { p_device_uid: device.device_uid, p_reading: reading });
-    // Site alert level and LINE messages run after the reply when the runtime allows, so the board is not kept waiting.
+    // The site alert episode is updated after the reply when the runtime allows, so the board is not kept waiting.
     if (!result?.duplicate && dataClassification !== 'SYNTHETIC_HANDSHAKE' && gasPpm != null) {
-      const work = evaluateAndNotify(env, fetchImpl, device.device_uid).catch(() => null);
+      const work = evaluateSiteAlert(env, fetchImpl, device.device_uid).catch(() => null);
       if (typeof options.waitUntil === 'function') options.waitUntil(work); else await work;
     }
     // Duplicates are acknowledged with 202 so a retrying device advances its sequence.
