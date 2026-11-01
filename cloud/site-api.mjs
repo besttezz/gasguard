@@ -4,7 +4,7 @@
 //   POST /api/v1/invite/signup    Create an account from an invitation link and join that home.
 //   POST /api/v1/line/webhook     LINE Messaging API webhook: links a LINE account with a 6-digit code.
 //   POST /api/v1/site/summary     Weekly summary of a site (Gemini when configured, else a template).
-//   POST /api/v1/site/explain     AI wording of an ongoing gas event from the facts the app computed (signed-in users).
+//   POST /api/v1/site/explain     AI wording of an ongoing gas event from the facts the app computed (signed in, or trial in coarse form).
 //   GET  /api/v1/admin/users      Admin: list accounts.        POST: create an account.   PATCH: change role.
 //
 // Env: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (secret),
@@ -318,21 +318,44 @@ export function explainPrompt(facts) {
 ระบบตัดสินระดับแล้วว่า "${lv.label}" และขึ้นขั้นตอนให้ทำแล้ว ("${lv.headline}") ห้ามเปลี่ยนระดับ ห้ามบอกว่าปลอดภัย และห้ามแนะนำสิ่งที่ขัดกับขั้นตอนนั้น
 เขียนภาษาไทยง่าย ๆ 2-3 ประโยค ไม่เกิน 300 ตัวอักษร ไม่ใช้หัวข้อหรือสัญลักษณ์
 บอกว่าแก๊สอยู่ตรงไหน เป็นแบบค่อย ๆ สะสม (accumulating) หรือพุ่งขึ้นเร็ว (spike) และสาเหตุที่เป็นไปได้ โดยใช้คำว่า "อาจ" เพราะเป็นการคาดคะเน
-ใช้เฉพาะตัวเลขในข้อมูลนี้ ห้ามเดาตัวเลขเพิ่ม LPG หนักกว่าอากาศ จึงสะสมที่พื้นในห้องปิด
+ใช้เฉพาะตัวเลขในข้อมูลนี้ ห้ามเดาตัวเลขเพิ่ม ถ้าข้อมูลไม่มีตัวเลขก็ไม่ต้องใส่ตัวเลข LPG หนักกว่าอากาศ จึงสะสมที่พื้นในห้องปิด
 near: stove = ใกล้เตาแก๊ส, tank = ใกล้ถังแก๊ส${facts.simulated ? '\nนี่เป็นข้อมูลจำลองสำหรับสาธิต' : ''}
 ข้อมูล: ${JSON.stringify(facts)}`;
 }
 
+// Trial mode (/?trial, no account) may ask too, but only about simulated data and only in coarse form: no numbers,
+// a one-letter zone and a template room name. That leaves a few dozen possible stories, so nearly every trial request
+// is a cache hit, and new trial stories are capped per isolate so nobody can drain the Gemini quota.
+const TRIAL_ROOMS = ['ครัว / ทางเดิน', 'ครัว', 'พื้นที่รับประทานอาหาร', 'ระเบียง', 'ลานจอดรถ', 'ห้องครัว', 'ห้องนอน / นั่งเล่น', 'ห้องนอน 1', 'ห้องนอน 2',
+  'ห้องนั่งเล่น', 'ห้องน้ำ', 'ห้องเก็บถังแก๊ส', 'แคชเชียร์'];
+const TRIAL_AI_PER_WINDOW = 20;
+let trialCalls = { at: 0, n: 0 };
+
+export function trialFacts(f) {
+  const x = f && f.simulated === true ? explainFacts(f) : null;
+  if (!x) return null;
+  return {
+    level: x.level, escalated: x.escalated, zone: /^[A-Z]$/.test(x.zone) ? x.zone : 'A', room: TRIAL_ROOMS.includes(x.room) ? x.room : null,
+    near: x.near, pattern: x.pattern, sensors_above_watch: Math.min(4, x.sensors_above_watch), sensors_total: Math.min(4, x.sensors_total), simulated: true
+  };
+}
+
 export async function handleExplain(request, env, fetchImpl = fetch, now = Date.now) {
   if (!clean(env?.GEMINI_API_KEY)) return json(503, { ok: false, code: 'AI_NOT_CONFIGURED' });
-  const user = await getUser(env, fetchImpl, bearer(request)).catch(() => null);
-  if (!user?.id) return json(401, { ok: false, code: 'SIGN_IN_REQUIRED' });
+  const token = bearer(request);
+  const user = token ? await getUser(env, fetchImpl, token).catch(() => null) : null;
+  const signedIn = Boolean(user?.id);
   const body = await request.json().catch(() => null);
-  const facts = explainFacts(body?.facts);
-  if (!facts) return json(400, { ok: false, code: 'BAD_FACTS' });
+  const facts = signedIn ? explainFacts(body?.facts) : trialFacts(body?.facts);
+  if (!facts) return signedIn ? json(400, { ok: false, code: 'BAD_FACTS' }) : json(401, { ok: false, code: 'SIGN_IN_REQUIRED' });
   const key = await sha256Hex(JSON.stringify(facts));
   const hit = explainCache.get(key);
   if (hit && now() - hit.at < EXPLAIN_TTL_MS) return json(200, { ok: true, text: hit.text, model: hit.model, cached: true });
+  if (!signedIn) {
+    if (now() - trialCalls.at > EXPLAIN_TTL_MS) trialCalls = { at: now(), n: 0 };
+    if (trialCalls.n >= TRIAL_AI_PER_WINDOW) return json(429, { ok: false, code: 'AI_BUSY' });
+    trialCalls.n++;
+  }
   const ai = await gemini(env, fetchImpl, explainPrompt(facts), 220).catch(() => null);
   if (!ai) return json(502, { ok: false, code: 'AI_UNAVAILABLE' });
   if (explainCache.size > 200) explainCache.clear();

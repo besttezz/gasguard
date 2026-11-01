@@ -179,7 +179,28 @@ assert.strictEqual((await r.json()).code, 'BAD_FACTS', 'nothing to explain when 
 r = await api.handleExplain(req('/e', { method: 'POST', headers: { authorization: 'Bearer t' }, body: JSON.stringify({ facts: { ...gasEvent, ppm: 2200 } }) }), aiEnv,
   fakeFetch([['/auth/v1/user', () => jsonRes(200, { id: 'u1' })], ['generativelanguage.googleapis.com', () => jsonRes(429, {})]]));
 assert.strictEqual((await r.json()).code, 'AI_UNAVAILABLE', 'the app keeps its rule-based text when the AI fails');
-console.log('  [6b] Event explanation: signed-in only, whitelisted facts, rule level kept, cached, fails soft: PASS');
+// Trial (no account): simulated only, coarse facts without numbers, few distinct stories, capped calls
+r = await api.handleExplain(req('/e', { method: 'POST', body: JSON.stringify({ facts: gasEvent }) }), aiEnv, fakeFetch([]));
+assert.strictEqual(r.status, 401, 'real (non-simulated) events need an account');
+const trialEvent = { ...gasEvent, zone: 'A', room: 'ห้องครัว', simulated: true };
+assert.deepStrictEqual(api.trialFacts(trialEvent), { level: 'warning', escalated: true, zone: 'A', room: 'ห้องครัว', near: 'tank', pattern: 'spike', sensors_above_watch: 1, sensors_total: 2, simulated: true });
+assert.strictEqual(api.trialFacts({ ...trialEvent, zone: 'ห้องลับ', room: 'บ้านเลขที่ 99' }).zone, 'A', 'free text never reaches the AI from the trial');
+assert.strictEqual(api.trialFacts({ ...trialEvent, room: 'บ้านเลขที่ 99' }).room, null);
+let trialPrompt = null;
+f = fakeFetch([['generativelanguage.googleapis.com', (u, init) => { trialPrompt = JSON.parse(init.body).contents[0].parts[0].text; return jsonRes(200, { candidates: [{ content: { parts: [{ text: 'แก๊สพุ่งขึ้นเร็วที่จุด A' }] } }] }); }]]);
+r = await api.handleExplain(req('/e', { method: 'POST', body: JSON.stringify({ facts: trialEvent }) }), aiEnv, f);
+assert.strictEqual((await r.json()).ok, true);
+assert.ok(!f.calls.some(c => c.url.includes('/auth/v1/user')), 'no token, no auth lookup');
+assert.ok(!/\d{3,}/.test(trialPrompt.split('ข้อมูล:')[1]), 'no readings in the trial prompt');
+r = await api.handleExplain(req('/e', { method: 'POST', body: JSON.stringify({ facts: { ...trialEvent, ppm: 2400, minutes: 3 } }) }), aiEnv, f);
+assert.strictEqual((await r.json()).cached, true, 'changing numbers does not make a new trial story');
+let busy = 0;
+for (const level of ['watch', 'warning', 'danger']) for (const pattern of ['none', 'stable', 'falling', 'accumulating', 'spike']) for (const zone of ['B', 'C']) {
+  const res = await api.handleExplain(req('/e', { method: 'POST', body: JSON.stringify({ facts: { ...trialEvent, level, pattern, zone } }) }), aiEnv, f);
+  if (res.status === 429) busy++;
+}
+assert.ok(busy > 0 && f.calls.filter(c => c.url.includes('generativelanguage')).length <= 20, 'new trial stories are capped');
+console.log('  [6b] Event explanation: whitelisted facts, rule level kept, cached, fails soft; trial is coarse and capped: PASS');
 
 // [7] Routes and migration
 for (const route of ['config', 'invite/signup', 'line/webhook', 'site/summary', 'site/explain', 'admin/users']) assert.ok(fs.existsSync(path.join(root, `functions/api/v1/${route}.js`)), route);

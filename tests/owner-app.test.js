@@ -112,10 +112,10 @@ console.log('  [5] Role scope: tools tab for crew only, plain sensor words and l
 const vm = require('node:vm');
 const trialSrc = read('js/trial.js');
 assert.ok(!/supabase|createClient/i.test(trialSrc.replace(/\/\/.*$/gm, '')), 'trial mode never creates a Supabase client');
-function runTrial(search) {
+function runTrial(search, fetchImpl) {
   const realAuth = { real: true };
   const body = { prepend() {}, classList: { add() {} } };
-  const win = { GasGuardAuth: realAuth, fetch: async () => { throw new Error('network used in trial mode'); } };
+  const win = { GasGuardAuth: realAuth, fetch: fetchImpl || (async () => { throw new Error('network used in trial mode'); }) };
   const ctx = { window: win, location: { search, href: `https://gasguard.test/${search}`, origin: 'https://gasguard.test' }, URLSearchParams, URL, Response, Promise,
     document: { readyState: 'complete', body, createElement: () => ({ setAttribute() {}, addEventListener() {}, set innerHTML(v) {} }) } };
   vm.runInNewContext(trialSrc, ctx);
@@ -133,6 +133,15 @@ function runTrial(search) {
   assert.strictEqual(status.connection, 'ONLINE');
   assert.strictEqual(Object.keys(status.sensorLatest).length, 2);
   assert.match(app, /window\.GasGuardTrial \? \['home', 'plan', 'history'\]/, 'the trial shows only the gas-detection screens');
+  // Only the event explanation reaches the real server, and without the stand-in token.
+  const sent = [];
+  const live = runTrial('?trial', async (u, init) => { sent.push({ u, init }); return new Response('{"ok":false}', { status: 503 }); });
+  await live.fetch('/api/v1/site/explain', { method: 'POST', headers: { authorization: 'Bearer trial', 'content-type': 'application/json' }, body: '{}' });
+  await live.fetch('/api/v1/site/summary', { method: 'POST', headers: { authorization: 'Bearer trial' } });
+  await live.fetch('/api/v1/device/status?device=x');
+  assert.deepStrictEqual(sent.map(c => c.u), ['/api/v1/site/explain']);
+  assert.ok(!('authorization' in sent[0].init.headers), 'no stand-in token goes to the server');
+  assert.match(app, /sim: Boolean\(S\.sim \|\| window\.GasGuardTrial\)/, 'trial events are marked as simulated');
   console.log('  [6] Trial mode: inactive by default, fake data only, gas-detection screens only: PASS');
   console.log('\nALL OWNER-1 APP TESTS PASSED!');
 })().catch(err => { console.error(err); process.exit(1); });

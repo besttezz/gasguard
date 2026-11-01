@@ -286,7 +286,7 @@
   // per story (level, pattern, zone), and its wording replaces the rule text. Level and steps stay rule-based.
   function whatHappened(st, a) {
     const plan = S.planCtl ? S.planCtl.plan() : FP.loadPlan(planKey());
-    const f = Incident.facts(a, st.history, { plan, sim: Boolean(S.sim) });
+    const f = Incident.facts(a, st.history, { plan, sim: Boolean(S.sim || window.GasGuardTrial) });
     if (!f) { S.explain = null; return null; }
     const key = Incident.storyKey(f);
     if (!S.explain || S.explain.key !== key) { S.explain = { key, ai: null, loading: false }; requestExplain(f, key); }
@@ -298,7 +298,8 @@
   }
 
   async function requestExplain(f, key) {
-    if (!(S.config && S.config.ai && S.config.ai.configured) || window.GasGuardTrial) return;
+    // The trial does not know whether AI is set up; it just asks and keeps the rule text if the answer is no.
+    if (!window.GasGuardTrial && !(S.config && S.config.ai && S.config.ai.configured)) return;
     S.explain.loading = true;
     const r = await api('/api/v1/site/explain', { method: 'POST', body: JSON.stringify({ facts: f }) }).catch(() => ({ ok: false }));
     if (!S.explain || S.explain.key !== key) return;

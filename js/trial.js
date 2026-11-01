@@ -81,9 +81,17 @@
     '/api/v1/device/status': status,
     '/api/v1/site/summary': () => ({ ok: true, summary: 'สัปดาห์นี้ค่าแก๊สส่วนใหญ่อยู่ระดับปกติ มีช่วงที่สูงขึ้นถึงระดับเฝ้าระวัง 2 ครั้ง (สูงสุด 1,250 ppm) แนะนำให้ตรวจข้อต่อและวาล์วที่ถังแก๊ส', source: 'template', created_at: new Date().toISOString() })
   };
+  // The one real call: the AI wording of a simulated gas event. It goes without an account; the server accepts only
+  // coarse, simulated facts from it (no numbers) and caps how often it asks the AI.
+  const PASS_THROUGH = ['/api/v1/site/explain'];
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+    if (url.origin === location.origin && PASS_THROUGH.includes(url.pathname)) {
+      const headers = { ...((init && init.headers) || {}) };
+      delete headers.authorization;
+      return realFetch(url.pathname, { ...init, headers });
+    }
     if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
       const make = api[url.pathname];
       const body = make ? make() : { ok: true, trial: true };
